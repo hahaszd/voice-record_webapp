@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>语音录制与转录</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎤</text></svg>">
+    <link rel="stylesheet" href="/static/style.css?v=12">
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 语音录制与转录</h1>
+        
+        <div class="main-layout">
+            <!-- 左侧：转录结果区域 -->
+            <div id="resultSection" class="result-section">
+                <div class="result-header">
+                    <h3>转录结果：</h3>
+                <label class="auto-copy-switch">
+                    <input type="checkbox" id="autoCopyToggle" checked>
+                    <span class="slider"></span>
+                    <span class="label-text">自动复制</span>
+                </label>
+                <label class="auto-notify-switch">
+                    <input type="checkbox" id="autoNotifyToggle" checked>
+                    <span class="slider"></span>
+                    <span class="label-text">转录提醒</span>
+                </label>
+                </div>
+                <div class="result-box">
+                    <textarea id="transcriptionResult" readonly placeholder="录音完成后，点击右侧按钮进行转录..."></textarea>
+                    <button id="copyBtn" class="copy-btn" title="复制到剪贴板" disabled>
+                        <span>📋</span> 复制
+                    </button>
+                </div>
+                <div id="loadingIndicator" class="loading" style="visibility: hidden;">
+                    <div class="spinner"></div>
+                    <span>正在转录...</span>
+                </div>
+            </div>
+
+            <!-- 右侧：录音控制区域 -->
+            <div class="control-panel">
+                <div id="playbackSection" class="playback-section">
+                    <h4>转录时长：</h4>
+                    <div class="button-group">
+                        <div class="duration-option">
+                            <span class="duration-label">30秒</span>
+                            <label class="default-duration-checkbox">
+                                <input type="checkbox" class="default-duration-check" data-duration="30">
+                            </label>
+                        </div>
+                        <div class="duration-option">
+                            <span class="duration-label">1分钟</span>
+                            <label class="default-duration-checkbox">
+                                <input type="checkbox" class="default-duration-check" data-duration="60">
+                            </label>
+                        </div>
+                        <div class="duration-option">
+                            <span class="duration-label">5分钟</span>
+                            <label class="default-duration-checkbox">
+                                <input type="checkbox" class="default-duration-check" data-duration="300" checked>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recording-section">
+                    <div class="audio-source-selector">
+                        <label for="audioSource">音频源：</label>
+                        <select id="audioSource">
+                            <option value="microphone" selected>仅麦克风</option>
+                            <option value="system">仅系统音频</option>
+                            <option value="both">麦克风+系统音频</option>
+                        </select>
+                        <div class="audio-source-hint">💡 系统音频需授权，自动录音时会保持授权</div>
+                        <div id="audioSourceWarning" class="audio-source-warning">
+                            💡 录音进行中，请先停止录音再切换音频源
+                        </div>
+                    </div>
+                    <div class="recording-controls">
+                        <label class="auto-record-switch">
+                            <input type="checkbox" id="autoRecordToggle" checked>
+                            <span class="slider"></span>
+                            <span class="label-text">自动录音</span>
+                        </label>
+                        <button id="recordBtn" class="record-btn">
+                            <span class="mic-icon">🎤</span>
+                            <span id="recordBtnText">开始录音</span>
+                        </button>
+                    </div>
+                    <div id="recordingTime" class="recording-time">00:00</div>
+                    <div id="recordingStatus" class="recording-status">准备就绪</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/audio-storage.js?v=12"></script>
+    <script src="/static/script.js?v=12"></script>
+</body>
+</html>

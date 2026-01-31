@@ -1,0 +1,4 @@
+{
+  "AI_BUILDER_API_BASE": "https://space.ai-builders.com/backend/v1",
+  "note": "Copy this file to aibuilder_config.json and add your AI_BUILDER_TOKEN, or set AI_BUILDER_TOKEN environment variable"
+}

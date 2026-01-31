@@ -1,0 +1,16 @@
+{
+  "name": "voice-record-web-test",
+  "version": "1.0.0",
+  "description": "Test suite for voice recording web application",
+  "main": "test_recording.js",
+  "scripts": {
+    "test": "node test_recording.js",
+    "test:watch": "node test_recording.js --watch"
+  },
+  "keywords": ["test", "puppeteer", "voice-recording"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "puppeteer": "^24.15.0"
+  }
+}

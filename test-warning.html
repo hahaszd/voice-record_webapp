@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>警告测试</title>
+    <style>
+        .audio-source-warning {
+            margin-top: 8px;
+            padding: 8px 10px;
+            font-size: 0.75em;
+            color: #d9534f;
+            background: #fff3f3;
+            border: 1px solid #ffcdd2;
+            border-radius: 6px;
+            line-height: 1.4;
+            /* 使用 visibility 和 opacity，元素始终占据空间 */
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .audio-source-warning.show {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        input[type="checkbox"] {
+            margin-right: 10px;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>警告显示测试</h1>
+        
+        <label>
+            <input type="checkbox" id="autoRecordToggle" checked>
+            自动录音
+        </label>
+
+        <div class="audio-source-warning" id="audioSourceWarning">
+            ⚠️ 自动录音开启中，更改音频源请先关闭自动录音并停止录音
+        </div>
+
+        <button style="margin-top: 15px; padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">
+            🎤 开始录音（测试按钮位置是否稳定）
+        </button>
+
+        <div class="status">
+            <h3>状态信息：</h3>
+            <p>自动录音: <strong id="autoRecordStatus">开启</strong></p>
+            <p>警告显示: <strong id="warningStatus">显示</strong></p>
+            <p>CSS类: <strong id="cssClasses">show</strong></p>
+        </div>
+    </div>
+
+    <script>
+        const autoRecordToggle = document.getElementById('autoRecordToggle');
+        const audioSourceWarning = document.getElementById('audioSourceWarning');
+        const autoRecordStatus = document.getElementById('autoRecordStatus');
+        const warningStatus = document.getElementById('warningStatus');
+        const cssClasses = document.getElementById('cssClasses');
+
+        function updateAudioSourceWarning() {
+            const isAutoRecordOn = autoRecordToggle.checked;
+            console.log(`[DEBUG] 更新警告: 自动录音=${isAutoRecordOn}`);
+            
+            if (isAutoRecordOn) {
+                audioSourceWarning.classList.add('show');
+                console.log('[DEBUG] 添加 .show 类');
+            } else {
+                audioSourceWarning.classList.remove('show');
+                console.log('[DEBUG] 移除 .show 类');
+            }
+
+            // 更新状态显示
+            autoRecordStatus.textContent = isAutoRecordOn ? '开启' : '关闭';
+            warningStatus.textContent = audioSourceWarning.classList.contains('show') ? '显示' : '隐藏';
+            cssClasses.textContent = audioSourceWarning.className || '(无)';
+            
+            console.log('[DEBUG] 当前类:', audioSourceWarning.className);
+            console.log('[DEBUG] 计算样式:', window.getComputedStyle(audioSourceWarning).display);
+        }
+
+        // 初始化
+        updateAudioSourceWarning();
+
+        // 监听变化
+        autoRecordToggle.addEventListener('change', () => {
+            console.log('[EVENT] 自动录音开关变化');
+            updateAudioSourceWarning();
+        });
+    </script>
+</body>
+</html>

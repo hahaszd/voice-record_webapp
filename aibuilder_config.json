@@ -1,0 +1,4 @@
+{
+  "AI_BUILDER_API_BASE": "https://space.ai-builders.com/backend/v1",
+  "note": "AI_BUILDER_TOKEN should be set via environment variable AI_BUILDER_TOKEN or in .env file. Do not commit tokens to version control."
+}
