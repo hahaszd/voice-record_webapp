@@ -391,6 +391,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const recordBtnText = document.getElementById('recordBtnText');
     const recordingStatus = document.getElementById('recordingStatus');
     const recordingTime = document.getElementById('recordingTime');
+    const cancelRecordBtn = document.getElementById('cancelRecordBtn');
     const playbackSection = document.getElementById('playbackSection');
     const resultSection = document.getElementById('resultSection');
     const transcriptionResult = document.getElementById('transcriptionResult');
@@ -400,27 +401,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const autoRecordToggle = document.getElementById('autoRecordToggle');
     const autoNotifyToggle = document.getElementById('autoNotifyToggle');
     const audioSourceSelect = document.getElementById('audioSource');
-    const audioSourceWarning = document.getElementById('audioSourceWarning');
     
-    let audioWarningTimer = null; // 音频源警告定时器
     let transcriptionWarningTimer = null; // 转录进行中警告定时器
-    
-    // 显示音频源警告（带自动隐藏）
-    function showAudioSourceWarning() {
-        audioSourceWarning.classList.add('show');
-        console.log('[INFO] 显示音频源警告提示');
-        
-        // 清除之前的定时器
-        if (audioWarningTimer) {
-            clearTimeout(audioWarningTimer);
-        }
-        
-        // 3秒后自动隐藏
-        audioWarningTimer = setTimeout(() => {
-            audioSourceWarning.classList.remove('show');
-            console.log('[INFO] 音频源警告自动隐藏');
-        }, 3000);
-    }
     
     // 显示转录进行中警告（带自动隐藏）
     function showTranscriptionInProgressWarning() {
@@ -454,24 +436,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log('[INFO] 转录进行中警告自动隐藏');
         }, 3000);
     }
-    
-    // 监听音频源选择器的点击/聚焦事件
-    audioSourceSelect.addEventListener('mousedown', (e) => {
-        // 如果正在录音，阻止选择并显示警告
-        if (isRecording) {
-            e.preventDefault();
-            showAudioSourceWarning();
-            console.log('[INFO] 录音中，无法切换音频源');
-        }
-    });
-    
-    audioSourceSelect.addEventListener('focus', () => {
-        // 如果正在录音，失去焦点并显示警告
-        if (isRecording) {
-            audioSourceSelect.blur();
-            showAudioSourceWarning();
-        }
-    });
     
     // 监听音频源变化，切换时清理现有流
     audioSourceSelect.addEventListener('change', () => {
@@ -517,6 +481,63 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
             await stopRecording();
+        }
+    });
+
+    // 🔥 取消录音按钮点击事件
+    cancelRecordBtn.addEventListener('click', async () => {
+        if (isRecording) {
+            console.log('[INFO] 用户点击取消录音');
+            
+            // 停止录音
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            
+            // 停止定时器
+            if (recordingTimer) {
+                clearInterval(recordingTimer);
+                recordingTimer = null;
+            }
+            
+            // 停止内存监控
+            if (memoryCleanupTimer) {
+                clearInterval(memoryCleanupTimer);
+                memoryCleanupTimer = null;
+            }
+            
+            // 停止清理定时器
+            audioStorage.stopCleanupTimer();
+            
+            // 清空数据
+            allChunks = [];
+            firstRecordedChunk = null;
+            await audioStorage.clearAll();
+            console.log('[INFO] 已清空所有录音数据');
+            
+            // 重置状态
+            isRecording = false;
+            mediaRecorder = null;
+            recordingStartTime = null;
+            
+            // 更新UI
+            recordBtn.classList.remove('recording');
+            recordBtnText.textContent = '开始录音';
+            recordingTime.textContent = '00:00';
+            recordingStatus.textContent = '已取消录音';
+            cancelRecordBtn.style.display = 'none';
+            
+            // 恢复音频源选择器
+            audioSourceSelect.disabled = false;
+            
+            console.log('[SUCCESS] 录音已取消，数据已清空');
+            
+            // 3秒后恢复状态提示
+            setTimeout(() => {
+                if (!isRecording) {
+                    recordingStatus.textContent = '准备就绪';
+                }
+            }, 3000);
         }
     });
 
@@ -771,20 +792,11 @@ function cleanupAudioStreams(force = false) {
     async function startRecording(waitForStorageClear = false) {
         let stream = null;
         try {
-            // 如果需要等待旧数据被转录读取完毕
-            if (waitForStorageClear) {
-                console.log('[INFO] 等待转录读取IndexedDB数据，然后清空...');
-                // 不立即清空，而是注册一个回调，让转录完成读取后调用
-                pendingStorageClear = async () => {
-                    await audioStorage.clearAll();
-                    console.log('[INFO] ✅ IndexedDB已清空（转录已读取完数据）');
-                    pendingStorageClear = null;
-                };
-            } else {
-                // 立即清空之前的录音数据
-                await audioStorage.clearAll();
-                pendingStorageClear = null;
-            }
+            // 🔥 关键修复：无论是否等待转录，都要立即清空 IndexedDB
+            // 因为新的录音会立即开始写入chunks，不能和旧数据混在一起
+            console.log('[INFO] 开始新录音，立即清空 IndexedDB');
+            await audioStorage.clearAll();
+            pendingStorageClear = null; // 清除待执行的回调
             
             firstRecordedChunk = null; // 清空第一个chunk
             allChunks = []; // 清空chunks数组
@@ -881,6 +893,9 @@ function cleanupAudioStreams(force = false) {
             recordBtnText.textContent = '转录';
             recordingStatus.textContent = '正在录音中...';
             
+            // 🔥 显示取消录音按钮
+            cancelRecordBtn.style.display = 'block';
+            
             // 🔥 录音期间禁用音频源选择器，防止用户修改
             audioSourceSelect.disabled = true;
             console.log('[INFO] 录音期间禁用音频源选择器');
@@ -967,11 +982,14 @@ function cleanupAudioStreams(force = false) {
         recordBtnText.textContent = '开始录音';
         recordingStatus.textContent = '录音已停止';
         
+        // 🔥 隐藏取消录音按钮
+        cancelRecordBtn.style.display = 'none';
+        
         // 🔥 录音停止后重新启用音频源选择器
         audioSourceSelect.disabled = false;
         console.log('[INFO] 录音停止，重新启用音频源选择器');
         
-        // 🔥 关键修复：使用回调机制，确保转录读取完数据后再清空IndexedDB
+        // 检查是否需要自动转录和自动录音
         const shouldAutoRecord = autoRecordToggle.checked;
         const defaultDurationCheckbox = document.querySelector('.default-duration-check:checked');
         
@@ -979,25 +997,25 @@ function cleanupAudioStreams(force = false) {
             const defaultDuration = parseInt(defaultDurationCheckbox.dataset.duration);
             console.log(`[INFO] 检测到默认转录时长: ${defaultDuration}秒，自动开始转录`);
             
-            // 立即开始转录（不延迟，优先读取IndexedDB数据）
+            // 立即开始转录
             generateAndPlayAudio(defaultDuration);
             
-            // 如果自动录音开启，立即开始新录音，但等待转录读取完数据后再清空
+            // 如果自动录音开启，立即开始新录音
+            // 新录音会自动清空 IndexedDB，不会包含旧数据
             if (shouldAutoRecord) {
-                console.log('[INFO] 自动录音已开启，立即开始新录音（等待转录读取数据后清空）');
+                console.log('[INFO] 自动录音已开启，立即开始新录音');
                 setTimeout(async () => {
                     if (!isRecording) {
                         // 自动录音前也检查麦克风权限
                         const hasMicPermission = await checkMicrophonePermission();
                         if (hasMicPermission) {
-                            console.log('[INFO] 开始自动录音（无缝衔接，回调式清空）');
-                            // 传递 waitForStorageClear=true，注册清空回调
-                            await startRecording(true);
+                            console.log('[INFO] 开始自动录音（IndexedDB会被自动清空）');
+                            await startRecording(); // 不需要 waitForStorageClear 参数
                         } else {
                             console.warn('[WARNING] 麦克风权限不可用，取消自动录音');
                         }
                     }
-                }, 200); // 快速启动新录音，但等待转录通知后才清空
+                }, 200); // 快速启动新录音
             }
         } else if (shouldAutoRecord) {
             // 如果没有默认转录时长，但自动录音开启，立即开始新录音
@@ -1007,7 +1025,7 @@ function cleanupAudioStreams(force = false) {
                     const hasMicPermission = await checkMicrophonePermission();
                     if (hasMicPermission) {
                         console.log('[INFO] 开始自动录音');
-                        await startRecording(false); // 立即清空，因为没有转录
+                        await startRecording();
                     } else {
                         console.warn('[WARNING] 麦克风权限不可用，取消自动录音');
                     }
@@ -1038,17 +1056,11 @@ function cleanupAudioStreams(force = false) {
         copyBtn.disabled = true;
         
         try {
-            // 🔥 关键修复：始终从IndexedDB获取chunks，确保WebM头部完整性
+            // 从IndexedDB获取所有chunks
             const dbReadStart = Date.now();
             const allChunksFromDB = await audioStorage.getAllChunks();
             const dbReadTime = Date.now() - dbReadStart;
             console.log(`[PERF] IndexedDB读取耗时: ${dbReadTime}ms`);
-            
-            // 🔥 数据读取完成，立即通知可以清空IndexedDB了
-            if (pendingStorageClear) {
-                console.log('[INFO] ✅ 转录已从IndexedDB读取数据，通知清空存储');
-                await pendingStorageClear();
-            }
             
             if (allChunksFromDB.length === 0) {
                 alert('没有可用的音频数据');

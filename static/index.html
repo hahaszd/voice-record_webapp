@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>语音录制与转录</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎤</text></svg>">
-    <link rel="stylesheet" href="/static/style.css?v=12">
+    <link rel="stylesheet" href="/static/style.css?v=20">
 </head>
 <body>
     <div class="container">
@@ -24,7 +24,7 @@
                 <label class="auto-notify-switch">
                     <input type="checkbox" id="autoNotifyToggle" checked>
                     <span class="slider"></span>
-                    <span class="label-text">转录提醒</span>
+                    <span class="label-text">转录完成提醒</span>
                 </label>
                 </div>
                 <div class="result-box">
@@ -41,6 +41,17 @@
 
             <!-- 右侧：录音控制区域 -->
             <div class="control-panel">
+                <!-- 1. 音频源 -->
+                <div class="audio-source-selector">
+                    <label for="audioSource">音频源：</label>
+                    <select id="audioSource">
+                        <option value="microphone" selected>仅麦克风</option>
+                        <option value="system">仅系统音频</option>
+                        <option value="both">麦克风+系统音频</option>
+                    </select>
+                </div>
+
+                <!-- 2. 转录时长 -->
                 <div id="playbackSection" class="playback-section">
                     <h4>转录时长：</h4>
                     <div class="button-group">
@@ -65,19 +76,8 @@
                     </div>
                 </div>
 
+                <!-- 3. 自动录音 + 4. 转录按钮 -->
                 <div class="recording-section">
-                    <div class="audio-source-selector">
-                        <label for="audioSource">音频源：</label>
-                        <select id="audioSource">
-                            <option value="microphone" selected>仅麦克风</option>
-                            <option value="system">仅系统音频</option>
-                            <option value="both">麦克风+系统音频</option>
-                        </select>
-                        <div class="audio-source-hint">💡 系统音频需授权，自动录音时会保持授权</div>
-                        <div id="audioSourceWarning" class="audio-source-warning">
-                            💡 录音进行中，请先停止录音再切换音频源
-                        </div>
-                    </div>
                     <div class="recording-controls">
                         <label class="auto-record-switch">
                             <input type="checkbox" id="autoRecordToggle" checked>
@@ -90,13 +90,17 @@
                         </button>
                     </div>
                     <div id="recordingTime" class="recording-time">00:00</div>
+                    <!-- 5. 取消录音 -->
+                    <button id="cancelRecordBtn" class="cancel-record-btn" style="display: none;">
+                        <span>✕</span> 取消录音
+                    </button>
                     <div id="recordingStatus" class="recording-status">准备就绪</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="/static/audio-storage.js?v=12"></script>
-    <script src="/static/script.js?v=12"></script>
+    <script src="/static/audio-storage.js?v=20"></script>
+    <script src="/static/script.js?v=20"></script>
 </body>
 </html>
