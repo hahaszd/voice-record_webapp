@@ -9,8 +9,24 @@ from pydantic import BaseModel
 from google.oauth2 import service_account
 from logging_helper import TranscriptionLogger, detect_audio_format, format_file_header_hex
 
-# 设置 Google Cloud 凭证文件路径
-CREDENTIALS_FILE = "oceanic-hook-453405-u5-9e4b90fc923f.json"
+# 🔥 支持环境变量部署（Railway/Heroku等）
+# 优先从环境变量读取 Google Cloud 凭证
+if os.getenv('GOOGLE_APPLICATION_CREDENTIALS_JSON'):
+    print("[INFO] 从环境变量加载 Google Cloud 凭证")
+    try:
+        credentials_json = json.loads(os.getenv('GOOGLE_APPLICATION_CREDENTIALS_JSON'))
+        # 在临时目录创建凭证文件
+        CREDENTIALS_FILE = '/tmp/gcp-credentials.json'
+        with open(CREDENTIALS_FILE, 'w') as f:
+            json.dump(credentials_json, f)
+        print(f"[INFO] 凭证文件已创建: {CREDENTIALS_FILE}")
+    except Exception as e:
+        print(f"[ERROR] 无法从环境变量加载凭证: {str(e)}")
+        CREDENTIALS_FILE = "oceanic-hook-453405-u5-9e4b90fc923f.json"
+else:
+    # 本地开发时使用文件
+    print("[INFO] 使用本地凭证文件")
+    CREDENTIALS_FILE = "oceanic-hook-453405-u5-9e4b90fc923f.json"
 
 # 缓存访问令牌，避免重复获取
 _access_token_cache = None

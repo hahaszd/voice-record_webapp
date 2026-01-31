@@ -45,6 +45,14 @@ logs/
 .env.local
 .env.*.local
 
+# Google Cloud credentials (IMPORTANT: Don't commit to GitHub!)
+oceanic-hook-*.json
+*-credentials.json
+service-account*.json
+
+# AI Builder config with API keys
+aibuilder_config.json
+
 # Database
 *.db
 *.sqlite
