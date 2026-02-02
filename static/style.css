@@ -619,19 +619,19 @@ h1 {
     position: absolute;
     top: 10px;
     right: 10px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
     background: #f8f9fa;
     color: #2d3436;
     border: 1px solid #e0e0e0;
-    border-radius: 6px;
+    border-radius: 50%;
     cursor: pointer;
-    font-size: 0.85em;
-    font-weight: 500;
     transition: all 0.2s ease;
     z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .result-copy-btn:hover:not(:disabled) {
