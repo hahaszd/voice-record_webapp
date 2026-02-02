@@ -258,18 +258,18 @@ h1 {
 }
 
 .cancel-record-btn {
-    padding: 6px 16px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
     border: 1px solid #e0e0e0;
     background: #f8f9fa;
     color: #666;
-    border-radius: 20px;
-    font-size: 0.8em;
+    border-radius: 50%;
     cursor: pointer;
     margin-top: 8px;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
-    gap: 4px;
     justify-content: center;
 }
 
@@ -280,16 +280,12 @@ h1 {
 }
 
 .cancel-record-btn:active {
-    transform: scale(0.98);
+    transform: scale(0.95);
 }
 
 .cancel-record-btn svg {
     width: 14px;
     height: 14px;
-}
-
-.cancel-record-btn span {
-    font-size: 0.9em;
 }
 
 .transcribe-options,
