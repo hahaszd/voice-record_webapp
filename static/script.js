@@ -553,9 +553,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (text) {
             try {
                 await navigator.clipboard.writeText(text);
-                copyBtn.innerHTML = '<span>✓</span> 已复制';
+                const originalHTML = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+                copyBtn.style.background = '#2ecc71';
                 setTimeout(() => {
-                    copyBtn.innerHTML = '<span>📋</span> 复制';
+                    copyBtn.innerHTML = originalHTML;
+                    copyBtn.style.background = '';
                 }, 2000);
             } catch (err) {
                 console.error('[ERROR] 复制失败:', err);
@@ -1314,10 +1317,12 @@ function cleanupAudioStreams(force = false) {
                             await navigator.clipboard.writeText(result.text);
                             console.log('[INFO] ✅ 自动复制成功');
                             // 显示复制成功提示
-                            const originalText = copyBtn.innerHTML;
-                            copyBtn.innerHTML = '<span>✓</span> 已自动复制';
+                            const originalHTML = copyBtn.innerHTML;
+                            copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+                            copyBtn.style.background = '#2ecc71';
                             setTimeout(() => {
-                                copyBtn.innerHTML = originalText;
+                                copyBtn.innerHTML = originalHTML;
+                                copyBtn.style.background = '';
                             }, 2000);
                         } catch (err) {
                             // 🔥 改进：区分不同的错误类型
@@ -1326,8 +1331,8 @@ function cleanupAudioStreams(force = false) {
                                 console.log('[INFO] 将在用户返回页面时尝试复制');
                                 
                                 // 显示温和的提示，不显示为错误
-                                const originalText = copyBtn.innerHTML;
-                                copyBtn.innerHTML = '<span>📋</span> 点击复制';
+                                const originalHTML = copyBtn.innerHTML;
+                                copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
                                 copyBtn.style.background = '#4a9eff'; // 蓝色，提示操作
                                 
                                 // 监听文档重新获得焦点，自动尝试复制
@@ -1335,10 +1340,11 @@ function cleanupAudioStreams(force = false) {
                                     try {
                                         await navigator.clipboard.writeText(result.text);
                                         console.log('[INFO] ✅ 重新聚焦后自动复制成功');
-                                        copyBtn.innerHTML = '<span>✓</span> 已自动复制';
-                                        copyBtn.style.background = '';
+                                        copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+                                        copyBtn.style.background = '#2ecc71';
                                         setTimeout(() => {
-                                            copyBtn.innerHTML = originalText;
+                                            copyBtn.innerHTML = originalHTML;
+                                            copyBtn.style.background = '';
                                         }, 2000);
                                         // 移除监听器
                                         window.removeEventListener('focus', autoRetry);
