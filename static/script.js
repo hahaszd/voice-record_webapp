@@ -553,30 +553,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (text) {
             try {
                 await navigator.clipboard.writeText(text);
-                const originalHTML = copyBtn.innerHTML;
-                copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-                copyBtn.style.background = '#2ecc71';
+                // 成功状态
+                copyBtn.classList.add('success');
+                copyBtn.querySelector('.copy-text').textContent = 'Copied!';
                 setTimeout(() => {
-                    copyBtn.innerHTML = originalHTML;
-                    copyBtn.style.background = '';
+                    copyBtn.classList.remove('success');
+                    copyBtn.querySelector('.copy-text').textContent = 'Copy';
                 }, 2000);
             } catch (err) {
-                console.error('[ERROR] 复制失败:', err);
+                console.error('[ERROR] Copy failed:', err);
                 // 降级方案：使用 execCommand
                 try {
                     transcriptionResult.select();
                     document.execCommand('copy');
-                    copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+                    copyBtn.classList.add('success');
+                    copyBtn.querySelector('.copy-text').textContent = 'Copied!';
                     setTimeout(() => {
-                        copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+                        copyBtn.classList.remove('success');
+                        copyBtn.querySelector('.copy-text').textContent = 'Copy';
                     }, 2000);
                 } catch (execErr) {
-                    console.error('[ERROR] execCommand 复制也失败:', execErr);
-                    copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
-                    copyBtn.style.background = '#f5576c';
+                    console.error('[ERROR] execCommand copy also failed:', execErr);
+                    copyBtn.classList.add('error');
+                    copyBtn.querySelector('.copy-text').textContent = 'Failed';
                     setTimeout(() => {
-                        copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-                        copyBtn.style.background = '';
+                        copyBtn.classList.remove('error');
+                        copyBtn.querySelector('.copy-text').textContent = 'Copy';
                     }, 2000);
                     
                     // 请求剪贴板权限
@@ -1315,41 +1317,40 @@ function cleanupAudioStreams(force = false) {
                     if (autoCopyToggle.checked) {
                         try {
                             await navigator.clipboard.writeText(result.text);
-                            console.log('[INFO] ✅ 自动复制成功');
+                            console.log('[INFO] ✅ Auto-copy successful');
                             // 显示复制成功提示
-                            const originalHTML = copyBtn.innerHTML;
-                            copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-                            copyBtn.style.background = '#2ecc71';
+                            copyBtn.classList.add('success');
+                            copyBtn.querySelector('.copy-text').textContent = 'Copied!';
                             setTimeout(() => {
-                                copyBtn.innerHTML = originalHTML;
-                                copyBtn.style.background = '';
+                                copyBtn.classList.remove('success');
+                                copyBtn.querySelector('.copy-text').textContent = 'Copy';
                             }, 2000);
                         } catch (err) {
                             // 🔥 改进：区分不同的错误类型
                             if (err.name === 'NotAllowedError' && err.message.includes('not focused')) {
-                                console.warn('[WARNING] ⚠️ 自动复制失败：文档未聚焦（用户可能在其他标签页）');
-                                console.log('[INFO] 将在用户返回页面时尝试复制');
+                                console.warn('[WARNING] ⚠️ Auto-copy failed: document not focused');
+                                console.log('[INFO] Will retry when user returns to page');
                                 
                                 // 显示温和的提示，不显示为错误
-                                const originalHTML = copyBtn.innerHTML;
-                                copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-                                copyBtn.style.background = '#4a9eff'; // 蓝色，提示操作
+                                copyBtn.classList.add('pending');
+                                copyBtn.querySelector('.copy-text').textContent = 'Waiting...';
                                 
                                 // 监听文档重新获得焦点，自动尝试复制
                                 const autoRetry = async () => {
                                     try {
                                         await navigator.clipboard.writeText(result.text);
-                                        console.log('[INFO] ✅ 重新聚焦后自动复制成功');
-                                        copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-                                        copyBtn.style.background = '#2ecc71';
+                                        console.log('[INFO] ✅ Auto-copy successful after refocus');
+                                        copyBtn.classList.remove('pending');
+                                        copyBtn.classList.add('success');
+                                        copyBtn.querySelector('.copy-text').textContent = 'Copied!';
                                         setTimeout(() => {
-                                            copyBtn.innerHTML = originalHTML;
-                                            copyBtn.style.background = '';
+                                            copyBtn.classList.remove('success');
+                                            copyBtn.querySelector('.copy-text').textContent = 'Copy';
                                         }, 2000);
                                         // 移除监听器
                                         window.removeEventListener('focus', autoRetry);
                                     } catch (retryErr) {
-                                        console.log('[INFO] 重试复制失败，用户需要手动点击');
+                                        console.log('[INFO] Retry copy failed, user needs to click manually');
                                     }
                                 };
                                 
@@ -1358,18 +1359,17 @@ function cleanupAudioStreams(force = false) {
                                 
                                 // 10秒后恢复按钮样式
                                 setTimeout(() => {
-                                    copyBtn.innerHTML = originalText;
-                                    copyBtn.style.background = '';
+                                    copyBtn.classList.remove('pending');
+                                    copyBtn.querySelector('.copy-text').textContent = 'Copy';
                                 }, 10000);
                             } else {
                                 // 其他类型的错误
-                                console.error('[ERROR] 自动复制失败:', err.name, '-', err.message);
-                                const originalText = copyBtn.innerHTML;
-                                copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
-                                copyBtn.style.background = '#f5576c';
+                                console.error('[ERROR] Auto-copy failed:', err.name, '-', err.message);
+                                copyBtn.classList.add('error');
+                                copyBtn.querySelector('.copy-text').textContent = 'Failed';
                                 setTimeout(() => {
-                                    copyBtn.innerHTML = originalText;
-                                    copyBtn.style.background = '';
+                                    copyBtn.classList.remove('error');
+                                    copyBtn.querySelector('.copy-text').textContent = 'Copy';
                                 }, 2000);
                             }
                         }
