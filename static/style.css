@@ -232,7 +232,7 @@ h1.header-with-icon .header-text {
 
 .record-btn.recording .btn-icon {
     position: absolute;
-    top: 50%;
+    top: 52%;
     left: 50%;
     transform: translate(-50%, -50%) !important;
     display: block;
