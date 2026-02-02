@@ -334,18 +334,15 @@ function drawWaveform() {
     const width = rect.width;
     const height = rect.height;
     
-    // Clear canvas with gradient background
-    const gradient = waveformCtx.createLinearGradient(0, 0, width, 0);
-    gradient.addColorStop(0, '#1e3a8a');
-    gradient.addColorStop(1, '#2563eb');
-    waveformCtx.fillStyle = gradient;
+    // Clear canvas with light background (matches website style)
+    waveformCtx.fillStyle = '#f8f9fa';
     waveformCtx.fillRect(0, 0, width, height);
     
-    // Draw waveform
-    waveformCtx.lineWidth = 2;
-    waveformCtx.strokeStyle = '#10b981'; // Green wave color
-    waveformCtx.shadowBlur = 10;
-    waveformCtx.shadowColor = '#10b981';
+    // Draw waveform (brand orange color - matches VoiceSpark theme)
+    waveformCtx.lineWidth = 2.5;
+    waveformCtx.strokeStyle = '#e67e22'; // Brand orange (Spark theme)
+    waveformCtx.shadowBlur = 8;
+    waveformCtx.shadowColor = 'rgba(230, 126, 34, 0.3)';
     waveformCtx.beginPath();
     
     const sliceWidth = width / waveformDataArray.length;

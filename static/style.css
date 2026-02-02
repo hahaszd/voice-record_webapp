@@ -303,9 +303,10 @@ h1.header-with-icon .header-text {
     max-width: 600px;
     height: 60px;
     margin: 15px auto 10px;
-    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+    background: #f8f9fa;
+    border: 2px solid #e0e0e0;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .recording-time {
