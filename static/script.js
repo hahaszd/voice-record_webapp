@@ -284,7 +284,7 @@ async function checkClipboardPermission() {
         const statusDiv = document.getElementById('recordingStatus');
         if (statusDiv) {
             const originalText = statusDiv.textContent;
-            statusDiv.textContent = '⚠️ 需要剪贴板权限才能自动复制';
+            statusDiv.textContent = '⚠️ Clipboard permission required for auto-copy';
             statusDiv.style.color = '#f5576c';
             
             // 3秒后恢复
@@ -375,7 +375,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('[INFO] IndexedDB存储初始化成功');
     } catch (error) {
         console.error('[ERROR] IndexedDB初始化失败:', error);
-        alert('浏览器存储初始化失败，录音功能可能无法正常使用');
+        alert('Browser storage initialization failed. Recording may not work properly.');
     }
     
     // 检查剪贴板权限
@@ -530,7 +530,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             recordBtn.classList.remove('recording');
             recordBtnText.textContent = 'Record';
             recordingTime.textContent = '00:00';
-            recordingStatus.textContent = '已取消录音';
+            recordingStatus.textContent = 'Recording cancelled';
             cancelRecordBtn.style.display = 'none';
             
             // 恢复音频源选择器
@@ -566,16 +566,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 try {
                     transcriptionResult.select();
                     document.execCommand('copy');
-                    copyBtn.innerHTML = '<span>✓</span> 已复制';
+                    copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
                     setTimeout(() => {
-                        copyBtn.innerHTML = '<span>📋</span> 复制';
+                        copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
                     }, 2000);
                 } catch (execErr) {
                     console.error('[ERROR] execCommand 复制也失败:', execErr);
-                    copyBtn.innerHTML = '<span>⚠️</span> 复制失败';
+                    copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
                     copyBtn.style.background = '#f5576c';
                     setTimeout(() => {
-                        copyBtn.innerHTML = '<span>📋</span> 复制';
+                        copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
                         copyBtn.style.background = '';
                     }, 2000);
                     
@@ -619,7 +619,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (audioSource === 'system' || audioSource === 'both') {
             console.log('[INFO] ⚠️ 系统音频需要用户选择源（浏览器安全限制）');
             // 更新UI提示
-            recordingStatus.textContent = '请在弹窗中选择要录制的系统音频源...';
+            recordingStatus.textContent = 'Please select system audio source in the popup...';
         }
         
         currentAudioSource = audioSource;
@@ -811,7 +811,7 @@ function cleanupAudioStreams(force = false) {
             allChunks = []; // 清空chunks数组
             
             // 显示正在获取权限的提示
-            recordingStatus.textContent = '正在请求麦克风权限...';
+            recordingStatus.textContent = 'Requesting microphone permission...';
             
             // 获取音频流
             stream = await getAudioStreams();
@@ -931,7 +931,7 @@ function cleanupAudioStreams(force = false) {
                 // 🔥 新增：超过12小时自动停止录音（防止长时间录音导致崩溃）
                 if (elapsed > 12 * 60 * 60 * 1000) { // 12小时
                     console.warn('[WARNING] 录音时长超过12小时，自动停止');
-                    recordingStatus.textContent = '⚠️ 录音时长过长，已自动停止';
+                    recordingStatus.textContent = '⚠️ Recording too long, auto-stopped';
                     recordingStatus.style.color = '#f5576c';
                     stopRecording();
                 }
@@ -939,7 +939,7 @@ function cleanupAudioStreams(force = false) {
             
         } catch (error) {
             console.error('无法访问麦克风:', error);
-            alert('无法访问麦克风，请检查权限设置');
+            alert('Cannot access microphone. Please check permission settings.');
         }
     }
 
@@ -988,8 +988,8 @@ function cleanupAudioStreams(force = false) {
         
         // 更新UI
         recordBtn.classList.remove('recording');
-        recordBtnText.textContent = '开始录音';
-        recordingStatus.textContent = '录音已停止';
+        recordBtnText.textContent = 'Record';
+        recordingStatus.textContent = 'Recording stopped';
         
         // 🔥 隐藏取消录音按钮
         cancelRecordBtn.style.display = 'none';
@@ -1365,7 +1365,7 @@ function cleanupAudioStreams(force = false) {
                                 // 其他类型的错误
                                 console.error('[ERROR] 自动复制失败:', err.name, '-', err.message);
                                 const originalText = copyBtn.innerHTML;
-                                copyBtn.innerHTML = '<span>⚠️</span> 复制失败';
+                                copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
                                 copyBtn.style.background = '#f5576c';
                                 setTimeout(() => {
                                     copyBtn.innerHTML = originalText;
@@ -1415,7 +1415,7 @@ function cleanupAudioStreams(force = false) {
             if (isRecording) {
                 recordingStatus.textContent = 'Recording...';
             } else {
-                recordingStatus.textContent = '录音已停止';
+                recordingStatus.textContent = 'Recording stopped';
             }
             console.log('[INFO] 转录完成，启用转录按钮');
         }
