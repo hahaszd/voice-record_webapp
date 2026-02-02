@@ -15,7 +15,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voice Recorder & Transcription</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎤</text></svg>">
-    <link rel="stylesheet" href="/static/style.css?v=21">
+    <link rel="stylesheet" href="/static/style.css?v=22">
 </head>
 <body>
     <div class="container">
@@ -26,6 +26,9 @@
             <div id="resultSection" class="result-section">
                 <div class="result-header">
                     <h3>Transcript</h3>
+                <button id="historyBtn" class="history-btn" title="View transcription history">
+                    <span>📜</span>
+                </button>
                 <label class="auto-copy-switch" title="Auto-copy transcript to clipboard">
                     <input type="checkbox" id="autoCopyToggle" checked>
                     <span class="slider"></span>
@@ -110,7 +113,27 @@
         </div>
     </div>
 
-    <script src="/static/audio-storage.js?v=21"></script>
-    <script src="/static/script.js?v=21"></script>
+    <!-- History Modal -->
+    <div id="historyModal" class="history-modal">
+        <div class="history-modal-content">
+            <div class="history-modal-header">
+                <h2>📜 Transcription History</h2>
+                <button id="clearHistoryBtn" class="clear-history-btn" title="Clear all history">
+                    🗑️ Clear All
+                </button>
+                <button id="closeHistoryBtn" class="close-history-btn" title="Close">
+                    ✕
+                </button>
+            </div>
+            <div id="historyList" class="history-list">
+                <div class="history-empty">
+                    No transcription history yet. Start recording to create your first transcript!
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/audio-storage.js?v=22"></script>
+    <script src="/static/script.js?v=22"></script>
 </body>
 </html>

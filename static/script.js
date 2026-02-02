@@ -1,4 +1,5 @@
 // 全局变量
+let transcriptionHistory = []; // 转录历史记录（Session级别）
 let mediaRecorder = null;
 let isRecording = false;
 let isTranscribing = false; // 是否正在转录（转录期间禁用转录按钮）
@@ -401,6 +402,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const autoRecordToggle = document.getElementById('autoRecordToggle');
     const autoNotifyToggle = document.getElementById('autoNotifyToggle');
     const audioSourceSelect = document.getElementById('audioSource');
+    const historyBtn = document.getElementById('historyBtn');
+    const historyModal = document.getElementById('historyModal');
+    const closeHistoryBtn = document.getElementById('closeHistoryBtn');
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+    const historyList = document.getElementById('historyList');
     
     let transcriptionWarningTimer = null; // 转录进行中警告定时器
     
@@ -1288,6 +1294,11 @@ function cleanupAudioStreams(force = false) {
                 transcriptionResult.value = result.text || '未识别到文字';
                 console.log(`[SUCCESS] 转录完成`);
                 
+                // 🔥 添加到历史记录
+                if (result.text) {
+                    addToHistory(result.text);
+                }
+                
                 // 🔥 发送浏览器通知
                 if (result.text) {
                     sendTranscriptionNotification(result.text);
@@ -1576,6 +1587,160 @@ function cleanupAudioStreams(force = false) {
         } else {
             // 用户关闭通知
             console.log('[INFO] 用户关闭通知开关');
+        }
+    });
+    
+    // ================================
+    // 转录历史记录功能
+    // ================================
+    
+    // 添加转录到历史记录
+    function addToHistory(text) {
+        if (!text || text.trim() === '') return;
+        
+        const historyItem = {
+            id: Date.now(),
+            timestamp: new Date(),
+            text: text.trim()
+        };
+        
+        transcriptionHistory.unshift(historyItem); // 添加到开头（最新的在前）
+        console.log(`[INFO] 已添加转录到历史记录，总数: ${transcriptionHistory.length}`);
+    }
+    
+    // 格式化时间戳
+    function formatTimestamp(date) {
+        const now = new Date();
+        const diff = now - date;
+        
+        // 小于1分钟显示"刚刚"
+        if (diff < 60000) {
+            return 'Just now';
+        }
+        
+        // 小于1小时显示"X分钟前"
+        if (diff < 3600000) {
+            const minutes = Math.floor(diff / 60000);
+            return `${minutes} min${minutes > 1 ? 's' : ''} ago`;
+        }
+        
+        // 今天显示"今天 HH:MM"
+        if (date.toDateString() === now.toDateString()) {
+            return `Today ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+        }
+        
+        // 昨天显示"昨天 HH:MM"
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (date.toDateString() === yesterday.toDateString()) {
+            return `Yesterday ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+        }
+        
+        // 其他显示完整日期时间
+        return date.toLocaleString('en-US', { 
+            month: 'short', 
+            day: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: false
+        });
+    }
+    
+    // 渲染历史记录列表
+    function renderHistoryList() {
+        if (transcriptionHistory.length === 0) {
+            historyList.innerHTML = `
+                <div class="history-empty">
+                    No transcription history yet. Start recording to create your first transcript!
+                </div>
+            `;
+            return;
+        }
+        
+        historyList.innerHTML = transcriptionHistory.map(item => `
+            <div class="history-item" data-id="${item.id}">
+                <div class="history-item-header">
+                    <span class="history-item-time">${formatTimestamp(item.timestamp)}</span>
+                    <button class="history-item-copy" data-text="${encodeURIComponent(item.text)}" title="Copy to clipboard">
+                        📋 Copy
+                    </button>
+                </div>
+                <div class="history-item-text">${item.text}</div>
+            </div>
+        `).join('');
+        
+        // 添加复制按钮事件监听
+        historyList.querySelectorAll('.history-item-copy').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const text = decodeURIComponent(btn.dataset.text);
+                try {
+                    await navigator.clipboard.writeText(text);
+                    
+                    // 显示复制成功反馈
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '✓ Copied!';
+                    btn.style.background = '#2ecc71';
+                    
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.style.background = '';
+                    }, 2000);
+                    
+                    console.log('[INFO] 历史记录已复制到剪贴板');
+                } catch (error) {
+                    console.error('[ERROR] 复制失败:', error);
+                    btn.innerHTML = '✗ Failed';
+                    btn.style.background = '#e74c3c';
+                    
+                    setTimeout(() => {
+                        btn.innerHTML = '📋 Copy';
+                        btn.style.background = '';
+                    }, 2000);
+                }
+            });
+        });
+    }
+    
+    // 打开历史记录Modal
+    historyBtn.addEventListener('click', () => {
+        renderHistoryList();
+        historyModal.classList.add('show');
+        console.log('[INFO] 打开转录历史记录');
+    });
+    
+    // 关闭历史记录Modal
+    closeHistoryBtn.addEventListener('click', () => {
+        historyModal.classList.remove('show');
+        console.log('[INFO] 关闭转录历史记录');
+    });
+    
+    // 点击Modal背景关闭
+    historyModal.addEventListener('click', (e) => {
+        if (e.target === historyModal) {
+            historyModal.classList.remove('show');
+            console.log('[INFO] 点击背景关闭转录历史记录');
+        }
+    });
+    
+    // 清空历史记录
+    clearHistoryBtn.addEventListener('click', () => {
+        if (transcriptionHistory.length === 0) {
+            return;
+        }
+        
+        if (confirm('Are you sure you want to clear all transcription history?')) {
+            transcriptionHistory = [];
+            renderHistoryList();
+            console.log('[INFO] 已清空所有转录历史记录');
+        }
+    });
+    
+    // ESC键关闭Modal
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && historyModal.classList.contains('show')) {
+            historyModal.classList.remove('show');
+            console.log('[INFO] ESC键关闭转录历史记录');
         }
     });
 });
