@@ -565,9 +565,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             recordingStatus.textContent = 'Recording cancelled';
             cancelRecordBtn.style.display = 'none';
             
-            // 恢复音频源和时长选择器
+            // 恢复音频源选择器（时长选择器一直可用，无需恢复）
             audioSourceBtns.forEach(btn => btn.disabled = false);
-            durationBtns.forEach(btn => btn.disabled = false);
             
             console.log('[SUCCESS] 录音已取消，数据已清空');
             
@@ -958,10 +957,9 @@ function cleanupAudioStreams(force = false) {
             // 🔥 显示取消录音按钮
             cancelRecordBtn.style.display = 'block';
             
-            // 🔥 录音期间禁用音频源选择器和时长选择器，防止用户修改
+            // 🔥 录音期间禁用音频源选择器（不能切换音频源），但保持时长选择器可用
             audioSourceBtns.forEach(btn => btn.disabled = true);
-            durationBtns.forEach(btn => btn.disabled = true);
-            console.log('[INFO] 录音期间禁用音频源和时长选择器');
+            console.log('[INFO] 录音期间禁用音频源选择器（时长选择器保持可用）');
             
             // 禁用复制按钮
             copyBtn.disabled = true;
@@ -1064,10 +1062,9 @@ function cleanupAudioStreams(force = false) {
         // 🔥 隐藏取消录音按钮
         cancelRecordBtn.style.display = 'none';
         
-        // 🔥 录音停止后重新启用音频源和时长选择器
+        // 🔥 录音停止后重新启用音频源选择器
         audioSourceBtns.forEach(btn => btn.disabled = false);
-        durationBtns.forEach(btn => btn.disabled = false);
-        console.log('[INFO] 录音停止，重新启用音频源和时长选择器');
+        console.log('[INFO] 录音停止，重新启用音频源选择器');
         
         // 检查是否需要自动转录和自动录音
         const shouldAutoRecord = autoRecordToggle.checked;
