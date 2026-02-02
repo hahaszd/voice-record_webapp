@@ -25,6 +25,7 @@ let waveformCtx = null;
 let waveformAnalyser = null;
 let waveformAnimationId = null;
 let waveformDataArray = null;
+let waveformHistory = []; // Store historical waveform data for scrolling effect
 
 // 页面关闭/刷新时清理音频流
 window.addEventListener('beforeunload', () => {
@@ -307,11 +308,12 @@ function initWaveformAnalyser(stream) {
         const source = visualAudioContext.createMediaStreamSource(stream);
         
         waveformAnalyser = visualAudioContext.createAnalyser();
-        waveformAnalyser.fftSize = 2048;
-        waveformAnalyser.smoothingTimeConstant = 0.8;
+        waveformAnalyser.fftSize = 256; // Smaller for smoother scrolling
+        waveformAnalyser.smoothingTimeConstant = 0.92; // Higher = smoother (0-1)
         
         const bufferLength = waveformAnalyser.frequencyBinCount;
         waveformDataArray = new Uint8Array(bufferLength);
+        waveformHistory = []; // Reset history
         
         source.connect(waveformAnalyser);
         
@@ -321,7 +323,7 @@ function initWaveformAnalyser(stream) {
     }
 }
 
-// Draw waveform on canvas
+// Draw waveform on canvas with smooth scrolling effect
 function drawWaveform() {
     if (!waveformCanvas || !waveformCtx || !waveformAnalyser) {
         return;
@@ -330,6 +332,16 @@ function drawWaveform() {
     waveformAnimationId = requestAnimationFrame(drawWaveform);
     
     waveformAnalyser.getByteTimeDomainData(waveformDataArray);
+    
+    // Calculate average amplitude for smoother display
+    let sum = 0;
+    for (let i = 0; i < waveformDataArray.length; i++) {
+        sum += Math.abs(waveformDataArray[i] - 128);
+    }
+    const average = sum / waveformDataArray.length;
+    
+    // Add new data point to history (normalized amplitude)
+    waveformHistory.push(average);
     
     // Set canvas size
     const dpr = window.devicePixelRatio || 1;
@@ -340,36 +352,52 @@ function drawWaveform() {
     
     const width = rect.width;
     const height = rect.height;
+    const maxPoints = Math.floor(width / 2); // One point every 2 pixels for smooth look
     
-    // Clear canvas with light background (matches website style)
+    // Keep only recent history (scrolling window)
+    if (waveformHistory.length > maxPoints) {
+        waveformHistory.shift(); // Remove oldest point (left side)
+    }
+    
+    // Clear canvas with light background
     waveformCtx.fillStyle = '#f8f9fa';
     waveformCtx.fillRect(0, 0, width, height);
     
-    // Draw waveform (brand orange color - matches VoiceSpark theme)
+    // Draw waveform (scrolling from right to left)
     waveformCtx.lineWidth = 2.5;
-    waveformCtx.strokeStyle = '#e67e22'; // Brand orange (Spark theme)
+    waveformCtx.strokeStyle = '#e67e22'; // Brand orange
     waveformCtx.shadowBlur = 8;
     waveformCtx.shadowColor = 'rgba(230, 126, 34, 0.3)';
     waveformCtx.beginPath();
     
-    const sliceWidth = width / waveformDataArray.length;
-    let x = 0;
+    const sliceWidth = width / maxPoints;
+    const centerY = height / 2;
+    const amplitudeScale = height / 3; // Scale factor for wave height
     
-    for (let i = 0; i < waveformDataArray.length; i++) {
-        const v = waveformDataArray[i] / 128.0;
-        const y = (v * height) / 2;
+    // Draw from left (oldest) to right (newest)
+    for (let i = 0; i < waveformHistory.length; i++) {
+        const x = i * sliceWidth;
+        const amplitude = waveformHistory[i];
+        const y = centerY + (amplitude * amplitudeScale / 128) * Math.sin(i * 0.1); // Smooth wave effect
         
         if (i === 0) {
             waveformCtx.moveTo(x, y);
         } else {
             waveformCtx.lineTo(x, y);
         }
-        
-        x += sliceWidth;
     }
     
-    waveformCtx.lineTo(width, height / 2);
     waveformCtx.stroke();
+    
+    // Draw center line for reference
+    waveformCtx.strokeStyle = 'rgba(230, 126, 34, 0.2)';
+    waveformCtx.lineWidth = 1;
+    waveformCtx.setLineDash([5, 5]);
+    waveformCtx.beginPath();
+    waveformCtx.moveTo(0, centerY);
+    waveformCtx.lineTo(width, centerY);
+    waveformCtx.stroke();
+    waveformCtx.setLineDash([]);
 }
 
 // Start waveform visualization
