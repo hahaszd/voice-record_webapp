@@ -512,8 +512,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 memoryCleanupTimer = null;
             }
             
-            // 停止清理定时器
-            audioStorage.stopCleanupTimer();
+            // 🔥 优化：不再有定期清理任务，已取消
+            // audioStorage.stopCleanupTimer();
             
             // 清空数据
             allChunks = [];
@@ -893,8 +893,9 @@ function cleanupAudioStreams(force = false) {
             isRecording = true;
             recordingStartTime = Date.now();
             
-            // 启动定期清理任务（每10秒清理一次IndexedDB）
-            audioStorage.startCleanupTimer(recordingStartTime);
+            // 🔥 优化：不再启动定期清理任务（避免重复操作）
+            // IndexedDB将在录音停止时清理一次即可
+            // audioStorage.startCleanupTimer(recordingStartTime);
             
             // 🔥 新增：启动内存监控定时器
             startMemoryMonitor();
@@ -974,8 +975,8 @@ function cleanupAudioStreams(force = false) {
         isRecording = false;
         clearInterval(recordingTimer);
         
-        // 停止定期清理任务
-        audioStorage.stopCleanupTimer();
+        // 🔥 优化：不再有定期清理任务，已取消
+        // audioStorage.stopCleanupTimer();
         
         // 停止内存监控
         stopMemoryMonitor();
@@ -987,6 +988,14 @@ function cleanupAudioStreams(force = false) {
         console.log(`[INFO] 录音停止:`);
         console.log(`  - 总录音时长: ${(elapsed / 1000).toFixed(2)}秒`);
         console.log(`  - 内存中的chunks数量: ${allChunks.length}`);
+        
+        // 🔥 优化：在录音停止时清理一次IndexedDB（如果录音超过5分钟）
+        if (elapsed > maxRecordingDuration) {
+            console.log('[INFO] 录音超过5分钟，执行IndexedDB清理');
+            await audioStorage.cleanupOldChunks(recordingStartTime);
+        } else {
+            console.log('[INFO] 录音未超过5分钟，无需清理IndexedDB');
+        }
         
         // 更新UI
         recordBtn.classList.remove('recording');

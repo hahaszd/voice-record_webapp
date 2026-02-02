@@ -195,6 +195,8 @@ class AudioStorage {
 
     /**
      * 启动定期清理任务
+     * ⚠️ 已废弃：v40版本后不再使用定期清理，改为在录音停止时清理一次
+     * 保留此方法仅用于向后兼容
      */
     startCleanupTimer(recordingStartTime) {
         if (this.cleanupTimer) {
@@ -216,6 +218,8 @@ class AudioStorage {
 
     /**
      * 停止定期清理任务
+     * ⚠️ 已废弃：v40版本后不再使用定期清理
+     * 保留此方法仅用于向后兼容
      */
     stopCleanupTimer() {
         if (this.cleanupTimer) {
