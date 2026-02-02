@@ -1,255 +1,348 @@
-# 🎤 语音录制与转录系统
+# ✨ Spark Capture
 
-一个基于Web的实时语音录制和转录系统，支持自动录音、自动转录、系统音频捕获等功能。
+**Your always-on companion for capturing ideas, learning notes, and moments of inspiration**
 
-## ✨ 主要功能
-
-### 🎯 核心功能
-- **实时录音**：支持麦克风、系统音频、混合音频三种模式
-- **自动转录**：使用AI Builder Space API / Google Speech-to-Text API
-- **自动录音**：设置转录时长后自动循环录音和转录
-- **无缝录音**：转录期间继续录音，无时间间隙
-- **自动复制**：转录完成后自动复制到剪贴板
-- **浏览器通知**：页面失焦时转录完成发送通知提醒
-
-### 🔧 技术特性
-- **内存优化**：5分钟音频数据自动清理，防止内存泄漏
-- **IndexedDB存储**：浏览器本地存储音频chunks
-- **音频压缩**：自动压缩超过25MB的音频文件
-- **WebM格式**：完整保留音频头部，确保格式正确
-- **权限管理**：智能检测和请求麦克风、系统音频、剪贴板、通知权限
-
-### 🎨 用户体验
-- **友好的权限请求**：自定义对话框解释权限用途
-- **可控开关**：自动录音、自动复制、转录提醒三个独立开关
-- **冲突保护**：转录期间禁止停止录音，避免数据冲突
-- **音频源锁定**：录音期间禁止切换音频源
-- **实时反馈**：录音时间显示、状态提示、进度指示
-
-## 🚀 技术栈
-
-### 前端
-- **原生HTML/CSS/JavaScript**（无框架依赖）
-- **Web Audio API**：音频捕获和处理
-- **MediaRecorder API**：录音功能
-- **IndexedDB API**：本地数据存储
-- **Notification API**：浏览器通知
-
-### 后端
-- **FastAPI**：Python Web框架
-- **AI Builder Space Audio API**：音频转录
-- **Google Speech-to-Text API**：备用转录服务
-
-## 📦 项目结构
-
-```
-d:\Cursor voice record web\
-├── server2.py                    # FastAPI后端服务器
-├── static/
-│   ├── index.html               # 主页面
-│   ├── style.css                # 样式表
-│   ├── script.js                # 主要业务逻辑
-│   └── audio-storage.js         # IndexedDB存储管理
-├── .gitignore                   # Git忽略文件
-├── README.md                    # 项目文档（本文件）
-├── TEST_CHECKLIST.md            # 测试清单（27项测试场景）
-├── BROWSER_NOTIFICATION.md      # 通知功能说明
-├── NOTIFICATION_ENHANCEMENT.md  # 通知增强功能
-├── WEBM_DECODE_ERROR_FIX.md    # WebM解码问题修复
-├── SEAMLESS_AUTO_RECORD.md     # 无缝自动录音实现
-├── SYSTEM_AUDIO_EXPLANATION.md # 系统音频说明
-├── AUDIO_SIZE_OPTIMIZATION.md  # 音频压缩优化
-├── AUTO_COPY_FIX.md            # 自动复制修复
-├── TRANSCRIPTION_SPEED_ANALYSIS.md # 转录速度分析
-├── AUDIO_SOURCE_LOCK.md        # 音频源锁定
-├── AUTO_RECORD_WARNING.md      # 自动录音警告
-├── DEBUG_WARNING.md            # 调试指南
-├── LAYOUT_STABILITY_FIX.md     # 布局稳定性修复
-├── CONTEXTUAL_WARNING.md       # 上下文警告
-├── DURATION_BUTTON_WARNING.md  # 转录时长按钮警告
-├── TRANSCRIPTION_LOCK.md       # 转录锁定机制
-└── UI_SIMPLIFICATION.md        # UI简化说明
-```
-
-## 🛠️ 安装和运行
-
-### 环境要求
-- Python 3.8+
-- 现代浏览器（Chrome/Edge/Firefox推荐）
-- HTTPS或localhost环境（用于音频和通知API）
-
-### 安装依赖
-
-```bash
-pip install fastapi uvicorn python-multipart requests
-```
-
-### 运行服务器
-
-```bash
-python server2.py
-```
-
-服务器将在 `http://localhost:8000` 启动
-
-### 访问应用
-
-在浏览器中打开：`http://localhost:8000`
-
-## 🎮 使用说明
-
-### 基础使用流程
-
-1. **首次访问**
-   - 允许麦克风权限
-   - 允许通知权限（可选）
-   - 选择转录时长（默认5分钟）
-
-2. **开始录音**
-   - 点击"开始录音"按钮
-   - 开始说话
-   - 观察录音时间
-
-3. **停止录音**
-   - 点击"停止录音"按钮
-   - 自动触发转录
-   - 等待20-30秒
-
-4. **查看结果**
-   - 转录文本显示在左侧
-   - 如果开启"自动复制"，自动复制到剪贴板
-   - 如果开启"转录提醒"，失焦时收到通知
-
-### 高级功能
-
-#### 自动录音模式
-1. 开启"自动录音"开关
-2. 选择转录时长（30秒/1分钟/5分钟）
-3. 录音到达时长自动停止并转录
-4. 转录完成后自动开始下一轮录音
-5. 形成连续的录音转录循环
-
-#### 系统音频录制
-1. 选择音频源："仅系统音频"或"麦克风+系统音频"
-2. 点击"开始录音"
-3. 浏览器弹出窗口，选择要捕获的标签页/窗口/整个屏幕
-4. 播放需要录制的音频
-5. 停止录音并转录
-
-#### 失焦通知
-1. 开启"转录提醒"开关
-2. 录音并停止后，切换到其他标签页
-3. 转录完成后，系统右下角弹出通知
-4. 点击通知返回页面查看结果
-
-## 🧪 测试
-
-详细的测试清单请参考：`TEST_CHECKLIST.md`
-
-测试覆盖：
-- ✅ 首次使用流程（5项）
-- ✅ 自动录音循环（3项）
-- ✅ 音频源切换（3项）
-- ✅ 转录冲突处理（2项）
-- ✅ 错误处理（3项）
-- ✅ 稳定性测试（3项）
-- ✅ 浏览器通知（8项）
-
-**总计：27项测试场景**
-
-## 📝 更新日志
-
-### v10 (2026-01-29) - 通知功能增强
-- ✨ 添加友好的权限请求对话框
-- ✨ 添加页面内"转录提醒"开关
-- 🎨 优化权限请求流程
-- 📚 新增测试场景（G1-G8）
-
-### v9 (2026-01-29) - 浏览器通知
-- ✨ 添加转录完成浏览器通知
-- ✨ 失焦时自动提醒用户
-- 🎨 通知点击聚焦到页面
-
-### v8 (2026-01-29) - UI简化
-- 🎨 移除10秒转录选项
-- 🎨 简化转录时长UI（移除按钮，保留checkbox）
-- 🎨 移除"默认"文字标签
-
-### v7 (2026-01-29) - 转录冲突保护
-- 🐛 修复转录期间停止录音的冲突
-- ✨ 转录时禁用停止录音按钮
-- ✨ 添加转录进行中的视觉反馈
-
-### v6 (2026-01-29) - 音频源锁定
-- 🐛 修复录音时可切换音频源的问题
-- ✨ 录音期间禁用音频源选择器
-- ✨ 添加友好的提示信息
-
-### v5 (2026-01-28) - 转录速度优化
-- 📊 添加转录速度分析和性能日志
-- 📚 记录瓶颈分析
-
-### v4 (2026-01-28) - 自动复制修复
-- 🐛 修复页面失焦时自动复制失败
-- ✨ 添加"点击复制"提示和自动重试
-
-### v3 (2026-01-28) - 音频大小优化
-- 🐛 修复音频文件超过25MB的问题
-- ✨ 自动压缩音频（16kHz单声道）
-
-### v2 (2026-01-28) - 无缝自动录音
-- 🐛 修复自动录音间隙问题
-- ✨ 转录期间继续录音
-
-### v1 (2026-01-28) - WebM解码修复
-- 🐛 修复长时间录音后的解码错误
-- 🐛 修复内存泄漏问题
-
-## 🐛 已知问题
-
-### 系统音频限制
-- 浏览器安全策略限制，每次需要用户手动选择音频源
-- 无法完全避免选择窗口的弹出
-- 用户手动停止共享后需要重新授权
-
-### 浏览器兼容性
-- Safari对系统音频支持有限
-- 移动端浏览器功能受限
-- 通知API需要HTTPS或localhost
-
-### 性能限制
-- 转录速度取决于API响应时间（通常20-30秒）
-- 长时间录音（>5分钟）会增加处理时间
-- IndexedDB有存储限制（通常几百MB）
-
-## 🔒 隐私和安全
-
-- ✅ 所有音频数据仅存储在浏览器本地（IndexedDB）
-- ✅ 音频仅在转录时上传到API，不保存在服务器
-- ✅ 权限请求透明，用户可随时撤销
-- ✅ 转录文本仅保存在浏览器内存中
-- ✅ 无第三方追踪和数据收集
-
-## 🤝 贡献
-
-欢迎提交Issue和Pull Request！
-
-## 📄 许可证
-
-MIT License
-
-## 👥 作者
-
-开发者：[Your Name]
-
-## 🙏 致谢
-
-- AI Builder Space - 提供音频转录API
-- Google Cloud - 提供备用转录服务
-- FastAPI - 优秀的Python Web框架
+Never miss a spark of insight again. Whether you're watching YouTube, listening to a podcast, brainstorming ideas, or having a sudden moment of inspiration—Spark Capture is always ready to turn your thoughts and audio into searchable, editable text.
 
 ---
 
-**版本**：v10  
-**最后更新**：2026-01-29  
-**状态**：MVP准备中 🚀
+## 🎯 What is Spark Capture?
+
+Spark Capture is a lightweight, web-based tool designed for **personal idea capture** and **learning note-taking**. Unlike heavy meeting recorders, we focus on:
+
+- **5-Minute Snippets**: Quick captures for ideas, not hour-long meetings
+- **Always-On Listening**: Open your browser, and we're ready—no bot, no setup
+- **System Audio**: Capture YouTube videos, podcasts, online courses—anything you're listening to
+- **Your Voice + Your Thoughts**: Record what you hear, plus add your own commentary
+- **Instant Text**: Everything becomes searchable, editable text
+
+---
+
+## 💡 Perfect For
+
+### 🎓 **Learners & Students**
+```
+Watching online courses? YouTube tutorials?
+→ Capture key moments + your notes
+→ Review later without rewatching
+```
+
+### ✍️ **Content Creators**
+```
+Researching competitors? Getting inspired?
+→ Capture quotes + your reactions
+→ Build your content library
+```
+
+### 🧠 **Thinkers & Writers**
+```
+Sudden idea while working?
+→ Speak it out, we'll save it
+→ Never lose a thought again
+```
+
+### 📚 **Knowledge Managers**
+```
+Building your Second Brain?
+→ Voice is faster than typing
+→ 5-minute snippets, organized
+```
+
+---
+
+## ✨ Core Features
+
+### 🎤 **Flexible Audio Capture**
+- **Your Voice**: Capture your thoughts and ideas
+- **System Audio**: Record YouTube, podcasts, online courses, any audio playing on your computer
+- **Both**: Commentary while watching—perfect for learning notes
+
+### ⚡ **Quick & Focused**
+- **30 seconds, 1 minute, or 5 minutes**: Perfect for idea snippets
+- **No long meetings**: Optimized for quick captures, not hour-long recordings
+- **Continuous mode**: Auto-capture in learning sessions
+
+### 📝 **Instant Transcription**
+- **AI-Powered**: Speech-to-text in 20-30 seconds
+- **Editable**: Fix errors, add notes, refine ideas
+- **Searchable History**: Find any idea instantly
+
+### 🔄 **Smart Workflow**
+- **Auto-Copy**: Paste your ideas anywhere immediately
+- **Browser Notifications**: Get notified when capture completes
+- **History Management**: All your ideas, organized and searchable
+
+---
+
+## 🚀 How It Works
+
+### **Quick Start (30 seconds)**
+
+1. **Open** → Visit the website in your browser
+2. **Allow** → Grant microphone permission
+3. **Capture** → Click the button, speak or play audio
+4. **Done** → Get instant text, edit if needed
+
+### **Example Use Cases**
+
+#### **📺 YouTube Learning**
+```
+1. Open Spark Capture in one tab
+2. Play YouTube video in another tab
+3. Select "System Audio" mode
+4. Hit capture when something insightful is said
+5. Add your commentary if you want
+6. Get text transcript + your thoughts
+```
+
+#### **💭 Idea Capture**
+```
+1. Keep Spark Capture open while working
+2. When inspiration strikes, hit the button
+3. Speak your idea (30 seconds)
+4. Done—it's saved and searchable
+```
+
+#### **🎧 Podcast Notes**
+```
+1. Set to 5-minute continuous mode
+2. Listen to podcast while Spark Capture runs
+3. Auto-captures every 5 minutes
+4. Review all snippets later
+```
+
+---
+
+## 🛠️ Technology
+
+### **Frontend**
+- **Pure Web**: No installation, works in any modern browser
+- **Web Audio API**: Capture microphone + system audio
+- **IndexedDB**: Local storage for privacy
+- **Progressive Web App**: Install as desktop app (optional)
+
+### **Backend**
+- **FastAPI**: Lightweight Python server
+- **AI Transcription**: Google Speech-to-Text API
+- **Privacy-First**: Audio uploaded only for transcription, never stored
+
+### **Key Technologies**
+```
+- HTML/CSS/JavaScript (no frameworks)
+- Web Audio API (audio capture)
+- MediaRecorder API (recording)
+- IndexedDB (local storage)
+- Notification API (alerts)
+```
+
+---
+
+## 📦 Installation & Setup
+
+### **For Users (Simple)**
+
+**Just visit the website—that's it!**
+
+No installation needed. Works in:
+- ✅ Chrome/Edge (best experience)
+- ✅ Firefox
+- ⚠️ Safari (limited system audio support)
+
+### **For Developers (Self-Hosting)**
+
+#### **Requirements**
+- Python 3.8+
+- Modern browser
+- HTTPS or localhost
+
+#### **Quick Setup**
+```bash
+# 1. Clone the repository
+git clone <repository-url>
+cd "Cursor voice record web"
+
+# 2. Install dependencies
+pip install fastapi uvicorn python-multipart requests
+
+# 3. Run server
+python server2.py
+
+# 4. Open browser
+# Visit: http://localhost:8000
+```
+
+---
+
+## 🎮 User Guide
+
+### **Choosing Audio Source**
+
+**🎤 Microphone** (default)
+```
+Use for: Your thoughts, ideas, brainstorming
+Perfect for: Quick voice notes, idea capture
+```
+
+**🔊 System Audio**
+```
+Use for: YouTube, podcasts, online courses
+Perfect for: Learning notes, content research
+Note: Browser will ask you to select audio source
+```
+
+**🎤+🔊 Both**
+```
+Use for: Commentary while watching videos
+Perfect for: Active learning, research with notes
+```
+
+### **Choosing Duration**
+
+**⏱️ 30 seconds**
+```
+Quick thoughts, sudden ideas
+"Just had an insight..."
+```
+
+**⏱️ 1 minute**
+```
+Short explanations, quotes + commentary
+"This video said X, and I think Y..."
+```
+
+**⏱️ 5 minutes** (recommended)
+```
+Learning snippets, podcast notes
+Perfect default for most use cases
+```
+
+### **Continuous Capture Mode**
+
+**🔄 Auto-Capture Toggle**
+```
+Turn on for learning sessions
+Automatically captures every N minutes
+Great for courses, podcasts, long videos
+```
+
+---
+
+## 📊 Project Structure
+
+```
+d:\Cursor voice record web\
+├── server2.py                  # FastAPI backend
+├── static/
+│   ├── index.html             # Main interface
+│   ├── style.css              # Styling
+│   ├── script.js              # Core logic
+│   └── audio-storage.js       # Local storage management
+├── .gitignore
+├── README.md                  # This file
+└── docs/                      # Additional documentation
+    ├── FEATURES.md            # Detailed features
+    ├── USE_CASES.md           # Real-world examples
+    └── PRIVACY.md             # Privacy & security info
+```
+
+---
+
+## 🔒 Privacy & Security
+
+### **Your Data is Safe**
+
+✅ **Local Storage**: Audio stored only in your browser (IndexedDB)  
+✅ **No Cloud Storage**: Audio never saved on our servers  
+✅ **Transcription Only**: Audio uploaded only for text conversion  
+✅ **No Tracking**: No analytics, no user tracking  
+✅ **Transparent Permissions**: You control what we access  
+
+### **What We Access**
+
+- **Microphone**: Only when you click record
+- **System Audio**: Only when you select it
+- **Clipboard**: Only when auto-copy is enabled
+- **Notifications**: Only if you allow them
+
+You can revoke any permission anytime through browser settings.
+
+---
+
+## 🎯 Roadmap
+
+### **Now (v1.0 - Current)**
+- ✅ Basic voice & system audio capture
+- ✅ AI transcription
+- ✅ Editable results
+- ✅ History management
+
+### **Next (v1.5 - Coming Soon)**
+- 🔜 AI summaries (key points extraction)
+- 🔜 Speaker identification
+- 🔜 Tags and organization
+- 🔜 Export to Notion/Obsidian
+- 🔜 Mobile app (iOS/Android)
+
+### **Future (v2.0+)**
+- 💡 Video timestamps (for YouTube captures)
+- 💡 Chrome extension (sidebar integration)
+- 💡 Highlights and bookmarks
+- 💡 Multi-language support
+- 💡 Team sharing (optional)
+
+---
+
+## 🤝 Contributing
+
+This is a small, indie project focused on simplicity. If you have ideas or find bugs, feel free to:
+
+- 🐛 **Report bugs**: Open an issue
+- 💡 **Suggest features**: Start a discussion
+- 🔧 **Submit PRs**: Small improvements welcome
+
+---
+
+## 📄 License
+
+MIT License - Free for personal and commercial use
+
+---
+
+## 👤 About
+
+**Spark Capture** is built by an indie developer who believes:
+
+- Ideas shouldn't be lost because you didn't have a pen
+- Learning should be active, not passive
+- Tools should be simple, not overwhelming
+- Privacy matters
+
+This is a **small & beautiful** product, not a billion-dollar startup. It's designed for individuals who value their thoughts and want a simple way to capture them.
+
+---
+
+## 🙏 Acknowledgments
+
+- **Google Cloud** - Speech-to-Text API
+- **FastAPI** - Excellent Python framework
+- **The PKM Community** - Inspiration and feedback
+
+---
+
+## 📞 Contact & Support
+
+- 🌐 **Website**: [Your Website URL]
+- 📧 **Email**: [Your Email]
+- 💬 **Discord**: [Your Discord Server]
+- 🐦 **Twitter**: [@YourHandle]
+
+---
+
+**Version**: v1.0  
+**Last Updated**: 2026-01-30  
+**Status**: Live & Actively Maintained ✨
+
+---
+
+### ⭐ If Spark Capture helps you capture your best ideas, please star this project!
+

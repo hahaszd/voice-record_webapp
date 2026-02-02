@@ -39,15 +39,26 @@ body {
 h1 {
     text-align: center;
     color: #2c3e50;
-    margin-bottom: 30px;
-    font-size: 1.8em;
+    margin-bottom: 10px;
+    font-size: 2em;
     font-weight: 600;
     flex-shrink: 0;
     letter-spacing: -0.5px;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    gap: 0;
+}
+
+.tagline {
+    font-size: 0.45em;
+    font-weight: 400;
+    color: #666;
+    margin-top: 8px;
+    margin-bottom: 20px;
+    max-width: 600px;
+    line-height: 1.4;
 }
 
 h1.header-with-icon {

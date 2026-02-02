@@ -13,19 +13,20 @@
     
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Recorder & Transcription</title>
+    <title>Spark Capture - Never Miss an Idea</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232d3436' stroke-width='2'><path d='M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z'/><path d='M19 10v2a7 7 0 0 1-14 0v-2'/></svg>">
     <link rel="stylesheet" href="/static/style.css?v=48">
 </head>
 <body>
     <div class="container">
-        <h1>Voice to Text</h1>
+        <h1>Spark Capture</h1>
+        <p class="tagline">Your always-on companion for capturing ideas, learning notes, and moments of inspiration</p>
         
         <div class="main-layout">
             <!-- Left: Transcript Result -->
             <div id="resultSection" class="result-section">
                 <div class="result-header">
-                <label class="auto-copy-switch" title="Auto-copy transcript to clipboard">
+                <label class="auto-copy-switch" title="Auto-copy your captured ideas to clipboard">
                     <input type="checkbox" id="autoCopyToggle" checked>
                     <span class="slider"></span>
                     <span class="icon-label">
@@ -35,7 +36,7 @@
                         </svg>
                     </span>
                 </label>
-                <label class="auto-notify-switch" title="Notify when transcription completes">
+                <label class="auto-notify-switch" title="Get notified when your idea is captured">
                     <input type="checkbox" id="autoNotifyToggle" checked>
                     <span class="slider"></span>
                     <span class="icon-label">
@@ -48,7 +49,7 @@
                 </div>
                 <div class="result-box">
                     <textarea id="transcriptionResult"></textarea>
-                    <button id="copyBtn" class="result-copy-btn" title="Copy to clipboard" disabled>
+                    <button id="copyBtn" class="result-copy-btn" title="Copy your captured idea" disabled>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -56,7 +57,7 @@
                     </button>
                 </div>
                 <!-- History Button Below Textarea -->
-                <button id="historyBtn" class="history-expand-btn" title="View transcription history" disabled>
+                <button id="historyBtn" class="history-expand-btn" title="View your captured ideas" disabled>
                     <svg class="history-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                         <polyline points="14 2 14 8 20 8"/>
@@ -68,14 +69,14 @@
                 </button>
                 <div id="loadingIndicator" class="loading" style="visibility: hidden;">
                     <div class="spinner"></div>
-                    <span>Transcribing...</span>
+                    <span>Capturing your idea...</span>
                 </div>
             </div>
 
             <!-- Right: Controls -->
             <div class="control-panel">
                 <!-- 1. Audio Source -->
-                <div class="audio-source-selector" title="Select audio input source">
+                <div class="audio-source-selector" title="Choose what to capture: your voice, system audio (e.g., YouTube, podcasts), or both">
                     <label for="audioSource">
                         <svg class="icon-small" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
@@ -91,7 +92,7 @@
 
                 <!-- 2. Duration -->
                 <div id="playbackSection" class="playback-section">
-                    <h4 title="Select transcription duration">
+                    <h4 title="Select capture duration (perfect for quick ideas and learning snippets)">
                         <svg class="icon-small" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="10"/>
                             <polyline points="12 6 12 12 16 14"/>
@@ -122,7 +123,7 @@
                 <!-- 3. Recording Controls -->
                 <div class="recording-section">
                     <div class="recording-controls">
-                        <label class="auto-record-switch" title="Auto-start recording after transcription">
+                        <label class="auto-record-switch" title="Continuous capture mode - perfect for learning sessions">
                             <input type="checkbox" id="autoRecordToggle" checked>
                             <span class="slider"></span>
                             <span class="icon-label">
@@ -132,7 +133,7 @@
                                 </svg>
                             </span>
                         </label>
-                        <button id="recordBtn" class="record-btn" title="Start recording">
+                        <button id="recordBtn" class="record-btn" title="Start capturing">
                             <svg class="btn-icon" width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
                                 <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
@@ -142,7 +143,7 @@
                         <div class="recording-status-wrapper">
                             <div id="recordingTime" class="recording-time">00:00</div>
                             <!-- Cancel Button (shown during recording) -->
-                            <button id="cancelRecordBtn" class="cancel-record-btn" style="display: none;" title="Cancel recording">
+                            <button id="cancelRecordBtn" class="cancel-record-btn" style="display: none;" title="Cancel capture">
                                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <line x1="4" y1="4" x2="12" y2="12"/>
                                     <line x1="12" y1="4" x2="4" y2="12"/>
@@ -150,7 +151,7 @@
                             </button>
                         </div>
                     </div>
-                    <div id="recordingStatus" class="recording-status">Ready</div>
+                    <div id="recordingStatus" class="recording-status">Ready to capture your ideas</div>
                 </div>
             </div>
         </div>
@@ -167,7 +168,7 @@
                         <line x1="16" y1="13" x2="8" y2="13"/>
                         <line x1="16" y1="17" x2="8" y2="17"/>
                     </svg>
-                    Transcription History
+                    Your Captured Ideas
                 </h2>
                 <button id="clearHistoryBtn" class="clear-history-btn" title="Clear all history">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -185,7 +186,7 @@
             </div>
             <div id="historyList" class="history-list">
                 <div class="history-empty">
-                    No transcription history yet. Start recording to create your first transcript!
+                    No captured ideas yet. Start capturing your thoughts, learning notes, or inspirations!
                 </div>
             </div>
         </div>
