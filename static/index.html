@@ -14,12 +14,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voice Recorder & Transcription</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎤</text></svg>">
-    <link rel="stylesheet" href="/static/style.css?v=23">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232d3436' stroke-width='2'><path d='M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z'/><path d='M19 10v2a7 7 0 0 1-14 0v-2'/></svg>">
+    <link rel="stylesheet" href="/static/style.css?v=24">
 </head>
 <body>
     <div class="container">
-        <h1>🎤 Voice Transcription</h1>
+        <h1>
+            <svg class="icon-inline" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+            Voice Transcription
+        </h1>
         
         <div class="main-layout">
             <!-- Left: Transcript Result -->
@@ -27,23 +35,42 @@
                 <div class="result-header">
                     <h3>Transcript</h3>
                 <button id="historyBtn" class="history-btn" title="View transcription history">
-                    <span>📜</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                    </svg>
                 </button>
                 <label class="auto-copy-switch" title="Auto-copy transcript to clipboard">
                     <input type="checkbox" id="autoCopyToggle" checked>
                     <span class="slider"></span>
-                    <span class="icon-label">📋</span>
+                    <span class="icon-label">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                    </span>
                 </label>
                 <label class="auto-notify-switch" title="Notify when transcription completes">
                     <input type="checkbox" id="autoNotifyToggle" checked>
                     <span class="slider"></span>
-                    <span class="icon-label">🔔</span>
+                    <span class="icon-label">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                        </svg>
+                    </span>
                 </label>
                 </div>
                 <div class="result-box">
                     <textarea id="transcriptionResult" readonly placeholder="Start recording, then click Transcribe..."></textarea>
                     <button id="copyBtn" class="copy-btn" title="Copy to clipboard" disabled>
-                        <span>📋</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
                     </button>
                 </div>
                 <div id="loadingIndicator" class="loading" style="visibility: hidden;">
@@ -56,17 +83,28 @@
             <div class="control-panel">
                 <!-- 1. Audio Source -->
                 <div class="audio-source-selector" title="Select audio input source">
-                    <label for="audioSource">🎙️</label>
+                    <label for="audioSource">
+                        <svg class="icon-small" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        </svg>
+                    </label>
                     <select id="audioSource">
-                        <option value="microphone" selected>🎤 Mic</option>
-                        <option value="system">🔊 System</option>
-                        <option value="both">🎵 Both</option>
+                        <option value="microphone" selected>Mic</option>
+                        <option value="system">System</option>
+                        <option value="both">Both</option>
                     </select>
                 </div>
 
                 <!-- 2. Duration -->
                 <div id="playbackSection" class="playback-section">
-                    <h4 title="Select transcription duration">⏱️ Duration</h4>
+                    <h4 title="Select transcription duration">
+                        <svg class="icon-small" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        Duration
+                    </h4>
                     <div class="button-group">
                         <div class="duration-option" title="30 seconds">
                             <span class="duration-label">30s</span>
@@ -95,17 +133,31 @@
                         <label class="auto-record-switch" title="Auto-start recording after transcription">
                             <input type="checkbox" id="autoRecordToggle" checked>
                             <span class="slider"></span>
-                            <span class="icon-label">🔁</span>
+                            <span class="icon-label">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="23 4 23 10 17 10"/>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                </svg>
+                            </span>
                         </label>
                         <button id="recordBtn" class="record-btn" title="Start recording">
-                            <span class="mic-icon">🎤</span>
+                            <span class="mic-icon">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                    <line x1="12" y1="19" x2="12" y2="23"/>
+                                </svg>
+                            </span>
                             <span id="recordBtnText">Record</span>
                         </button>
                     </div>
                     <div id="recordingTime" class="recording-time">00:00</div>
                     <!-- Cancel Button -->
                     <button id="cancelRecordBtn" class="cancel-record-btn" style="display: none;" title="Cancel recording">
-                        <span>✕</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
                     </button>
                     <div id="recordingStatus" class="recording-status">Ready</div>
                 </div>
@@ -117,17 +169,41 @@
     <div id="historyModal" class="history-modal">
         <div class="history-modal-content">
             <div class="history-modal-header">
-                <h2>📜 Transcription History</h2>
+                <h2>
+                    <svg class="icon-inline" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                    </svg>
+                    Transcription History
+                </h2>
                 <button id="clearHistoryBtn" class="clear-history-btn" title="Clear all history">
-                    🗑️ Clear All
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                    Clear All
                 </button>
                 <button id="closeHistoryBtn" class="close-history-btn" title="Close">
-                    ✕
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
                 </button>
             </div>
             <div id="historyList" class="history-list">
                 <div class="history-empty">
                     No transcription history yet. Start recording to create your first transcript!
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/audio-storage.js?v=24"></script>
+    <script src="/static/script.js?v=24"></script>
+</body>
+</html>
                 </div>
             </div>
         </div>

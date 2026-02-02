@@ -1662,7 +1662,11 @@ function cleanupAudioStreams(force = false) {
                 <div class="history-item-header">
                     <span class="history-item-time">${formatTimestamp(item.timestamp)}</span>
                     <button class="history-item-copy" data-text="${encodeURIComponent(item.text)}" title="Copy to clipboard">
-                        📋 Copy
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                        Copy
                     </button>
                 </div>
                 <div class="history-item-text">${item.text}</div>
@@ -1678,23 +1682,23 @@ function cleanupAudioStreams(force = false) {
                     await navigator.clipboard.writeText(text);
                     
                     // 显示复制成功反馈
-                    const originalText = btn.innerHTML;
-                    btn.innerHTML = '✓ Copied!';
+                    const originalHTML = btn.innerHTML;
+                    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
                     btn.style.background = '#2ecc71';
                     
                     setTimeout(() => {
-                        btn.innerHTML = originalText;
+                        btn.innerHTML = originalHTML;
                         btn.style.background = '';
                     }, 2000);
                     
                     console.log('[INFO] 历史记录已复制到剪贴板');
                 } catch (error) {
                     console.error('[ERROR] 复制失败:', error);
-                    btn.innerHTML = '✗ Failed';
+                    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Failed';
                     btn.style.background = '#e74c3c';
                     
                     setTimeout(() => {
-                        btn.innerHTML = '📋 Copy';
+                        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy';
                         btn.style.background = '';
                     }, 2000);
                 }
