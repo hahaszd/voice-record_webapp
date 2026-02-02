@@ -1,4 +1,4 @@
-# 🔒 Spark Capture - Privacy & Security
+# 🔒 VoiceSpark - Privacy & Security
 
 **Your data, your control. Always.**
 

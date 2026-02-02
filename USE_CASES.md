@@ -1,6 +1,6 @@
-# 🎯 Spark Capture - Real-World Use Cases
+# 🎯 VoiceSpark - Real-World Use Cases
 
-**How real people use Spark Capture in their daily lives**
+**How real people use VoiceSpark in their daily lives**
 
 ---
 
@@ -12,7 +12,7 @@
 
 **Her workflow**:
 ```
-1. Opens Spark Capture in one browser tab
+1. Opens VoiceSpark in one browser tab
 2. Opens YouTube tutorial in another tab
 3. Selects "System Audio" mode
 4. Sets duration to 5 minutes
@@ -44,7 +44,7 @@ Result: Complete notes from 1-hour tutorial, broken into 12 searchable chunks
 ```
 Week 1-6:
 - Turns on Continuous Capture mode (5 min)
-- Watches all lectures with Spark Capture running
+- Watches all lectures with VoiceSpark running
 - Gets automatic transcripts every 5 minutes
 
 At end of week:
@@ -69,11 +69,11 @@ Exam prep:
 **Her workflow**:
 ```
 Problem: Can't take notes while driving
-Solution: Spark Capture on phone (coming soon) or laptop at home
+Solution: VoiceSpark on phone (coming soon) or laptop at home
 
 Method 1 (Desktop):
 1. Plays audiobook on computer
-2. Runs Spark Capture with system audio
+2. Runs VoiceSpark with system audio
 3. Captures 5-minute segments
 4. Reviews transcripts later
 
@@ -116,10 +116,10 @@ After 2 hours:
 
 **Scenario**: Maria hosts a weekly podcast and needs content ideas
 
-**How she uses Spark Capture**:
+**How she uses VoiceSpark**:
 ```
 Monday-Friday:
-- Keeps Spark Capture open while working
+- Keeps VoiceSpark open while working
 - When she hears interesting news or has an idea:
   → Clicks capture
   → Speaks: "Podcast topic: [idea] because [reason]"
@@ -131,8 +131,8 @@ Friday:
 - Has detailed notes for each topic
 ```
 
-**Before Spark Capture**: Struggled to remember ideas, often went with mediocre topics  
-**After Spark Capture**: Never runs out of great topics, all documented with reasoning
+**Before VoiceSpark**: Struggled to remember ideas, often went with mediocre topics  
+**After VoiceSpark**: Never runs out of great topics, all documented with reasoning
 
 ---
 
@@ -167,7 +167,7 @@ Recording day:
 ```
 Daily routine:
 - Reads articles, watches videos
-- Captures key insights via Spark Capture
+- Captures key insights via VoiceSpark
 - Transcripts auto-copy to clipboard
 - Pastes into Obsidian as new notes
 - Links to related notes
@@ -191,7 +191,7 @@ Result: Rich, interconnected knowledge base built from spoken thoughts
 **Her ritual**:
 ```
 Every evening (5 minutes):
-1. Opens Spark Capture
+1. Opens VoiceSpark
 2. Reflects on the day:
    - What went well?
    - What could be better?
@@ -222,7 +222,7 @@ Monthly:
 **Her hack**:
 ```
 During Zoom call:
-- Keeps Spark Capture ready
+- Keeps VoiceSpark ready
 - When client says something important:
   → Clicks capture (30 sec mode)
   → Captures just that one point
@@ -246,7 +246,7 @@ After meeting:
 **His workflow**:
 ```
 Finds bug:
-1. Clicks Spark Capture
+1. Clicks VoiceSpark
 2. Speaks:
    "Bug in checkout flow, step 3. 
     When user enters discount code, 
@@ -295,7 +295,7 @@ Research phase:
 
 **Scenario**: Chris is stuck on a complex technical problem
 
-**How he uses Spark Capture**:
+**How he uses VoiceSpark**:
 ```
 Thinks out loud:
 "Okay, so the problem is X.
@@ -450,7 +450,7 @@ Benefits:
 
 ## 📊 Comparison Table
 
-| Need | Traditional Method | With Spark Capture |
+| Need | Traditional Method | With VoiceSpark |
 |------|-------------------|-------------------|
 | **YouTube notes** | Pause, type, rewind, repeat | Capture while watching, get text |
 | **Idea capture** | Find phone, open notes, type | Click button, speak, done |
@@ -472,7 +472,7 @@ Makes searching history much easier.
 
 ### **Tip 2: Combine with other tools**
 ```
-Spark Capture → Clipboard → Notion/Obsidian
+VoiceSpark → Clipboard → Notion/Obsidian
 Perfect workflow for PKM enthusiasts
 ```
 
@@ -512,7 +512,7 @@ Which scenario resonates with you?
 
 ## 📞 Share Your Story
 
-Using Spark Capture in a unique way? We'd love to hear!
+Using VoiceSpark in a unique way? We'd love to hear!
 
 - 💬 Share on [Discord](#)
 - 🐦 Tweet [@SparkCapture](#)

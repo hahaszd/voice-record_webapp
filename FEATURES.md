@@ -1,4 +1,4 @@
-# 🎯 Spark Capture - Detailed Features
+# 🎯 VoiceSpark - Detailed Features
 
 **Complete feature breakdown for personal idea capture and learning notes**
 
@@ -73,7 +73,7 @@
 
 ### **Why 5-Minute Maximum?**
 
-Spark Capture is designed for **idea snippets**, not long-form recording. Here's why:
+VoiceSpark is designed for **idea snippets**, not long-form recording. Here's why:
 
 **Benefits of short captures**:
 - ⚡ Faster transcription (20-30 seconds vs. minutes)

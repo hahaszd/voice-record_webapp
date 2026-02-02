@@ -1,14 +1,14 @@
-# ✨ Spark Capture
+# ✨ VoiceSpark
 
 **Your always-on companion for capturing ideas, learning notes, and moments of inspiration**
 
-Never miss a spark of insight again. Whether you're watching YouTube, listening to a podcast, brainstorming ideas, or having a sudden moment of inspiration—Spark Capture is always ready to turn your thoughts and audio into searchable, editable text.
+Never miss a spark of insight again. Whether you're watching YouTube, listening to a podcast, brainstorming ideas, or having a sudden moment of inspiration—VoiceSpark is always ready to turn your thoughts and audio into searchable, editable text.
 
 ---
 
-## 🎯 What is Spark Capture?
+## 🎯 What is VoiceSpark?
 
-Spark Capture is a lightweight, web-based tool designed for **personal idea capture** and **learning note-taking**. Unlike heavy meeting recorders, we focus on:
+VoiceSpark is a lightweight, web-based tool designed for **personal idea capture** and **learning note-taking**. Unlike heavy meeting recorders, we focus on:
 
 - **5-Minute Snippets**: Quick captures for ideas, not hour-long meetings
 - **Always-On Listening**: Open your browser, and we're ready—no bot, no setup
@@ -87,7 +87,7 @@ Building your Second Brain?
 
 #### **📺 YouTube Learning**
 ```
-1. Open Spark Capture in one tab
+1. Open VoiceSpark in one tab
 2. Play YouTube video in another tab
 3. Select "System Audio" mode
 4. Hit capture when something insightful is said
@@ -97,7 +97,7 @@ Building your Second Brain?
 
 #### **💭 Idea Capture**
 ```
-1. Keep Spark Capture open while working
+1. Keep VoiceSpark open while working
 2. When inspiration strikes, hit the button
 3. Speak your idea (30 seconds)
 4. Done—it's saved and searchable
@@ -106,7 +106,7 @@ Building your Second Brain?
 #### **🎧 Podcast Notes**
 ```
 1. Set to 5-minute continuous mode
-2. Listen to podcast while Spark Capture runs
+2. Listen to podcast while VoiceSpark runs
 3. Auto-captures every 5 minutes
 4. Review all snippets later
 ```
@@ -310,7 +310,7 @@ MIT License - Free for personal and commercial use
 
 ## 👤 About
 
-**Spark Capture** is built by an indie developer who believes:
+**VoiceSpark** is built by an indie developer who believes:
 
 - Ideas shouldn't be lost because you didn't have a pen
 - Learning should be active, not passive
@@ -344,5 +344,5 @@ This is a **small & beautiful** product, not a billion-dollar startup. It's desi
 
 ---
 
-### ⭐ If Spark Capture helps you capture your best ideas, please star this project!
+### ⭐ If VoiceSpark helps you capture your best ideas, please star this project!
 
