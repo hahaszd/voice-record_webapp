@@ -939,14 +939,17 @@ function cleanupAudioStreams(force = false) {
             recordBtn.innerHTML = `
                 <svg class="btn-icon" width="55" height="55" viewBox="0 0 48 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <!-- 左侧：箭头 -->
-                    <line x1="4" y1="12" x2="24" y2="12" />
-                    <polyline points="20,8 24,12 20,16" />
+                    <line x1="4" y1="12" x2="22" y2="12" />
+                    <polyline points="18,8 22,12 18,16" />
                     
-                    <!-- 右侧：文档 -->
-                    <rect x="30" y="4" width="16" height="16" rx="2" />
-                    <line x1="33" y1="8" x2="43" y2="8" />
-                    <line x1="33" y1="12" x2="43" y2="12" />
-                    <line x1="33" y1="16" x2="43" y2="16" />
+                    <!-- 右侧：文档（与历史按钮图标一致） -->
+                    <g transform="translate(26, 2)">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <line x1="10" y1="9" x2="9" y2="9"/>
+                    </g>
                 </svg>
             `;
             recordBtn.title = 'Click to transcribe';
