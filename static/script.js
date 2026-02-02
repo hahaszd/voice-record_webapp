@@ -912,10 +912,10 @@ function cleanupAudioStreams(force = false) {
             // 切换图标为转换图标（麦克风→文字）
             recordBtn.innerHTML = `
                 <svg class="btn-icon" width="70" height="70" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <!-- 左侧：麦克风 -->
-                    <rect x="8" y="12" width="8" height="12" rx="4" />
-                    <line x1="12" y1="24" x2="12" y2="28" />
-                    <path d="M6 20 Q6 28 12 28 Q18 28 18 20" />
+                    <!-- 左侧：麦克风（与Record按钮形状一致） -->
+                    <path d="M12 8 a3 3 0 0 0 -3 3 v8 a3 3 0 0 0 6 0 v-8 a3 3 0 0 0 -3 -3 z"/>
+                    <path d="M17.5 17 v2 a5.5 5.5 0 0 1 -11 0 v-2"/>
+                    <line x1="12" y1="25" x2="12" y2="30"/>
                     
                     <!-- 中间：箭头 -->
                     <line x1="22" y1="20" x2="36" y2="20" />
