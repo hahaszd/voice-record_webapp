@@ -279,24 +279,121 @@ async function checkClipboardPermission() {
         
     } catch (error) {
         console.warn('[WARNING] 剪贴板权限未授予或不可用:', error);
-        
-        // 显示提示信息
-        const statusDiv = document.getElementById('recordingStatus');
-        if (statusDiv) {
-            const originalText = statusDiv.textContent;
-            statusDiv.textContent = '⚠️ Clipboard permission required for auto-copy';
-            statusDiv.style.color = '#f5576c';
-            
-            // 3秒后恢复
-            setTimeout(() => {
-                statusDiv.textContent = originalText;
-                statusDiv.style.color = '';
-            }, 3000);
-        }
+        console.warn('[WARNING] ⚠️ Clipboard permission required for auto-copy');
         
         return false;
     }
 }
+
+// ==================== Waveform Visualization ====================
+
+// Initialize waveform analyser from audio stream
+function initWaveformAnalyser(stream) {
+    try {
+        if (!waveformCanvas || !waveformCtx) {
+            console.warn('[WAVEFORM] Canvas not available');
+            return;
+        }
+        
+        // Create audio context for visualization only (doesn't affect recording)
+        const visualAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = visualAudioContext.createMediaStreamSource(stream);
+        
+        waveformAnalyser = visualAudioContext.createAnalyser();
+        waveformAnalyser.fftSize = 2048;
+        waveformAnalyser.smoothingTimeConstant = 0.8;
+        
+        const bufferLength = waveformAnalyser.frequencyBinCount;
+        waveformDataArray = new Uint8Array(bufferLength);
+        
+        source.connect(waveformAnalyser);
+        
+        console.log('[WAVEFORM] Analyser initialized');
+    } catch (error) {
+        console.error('[WAVEFORM] Failed to initialize analyser:', error);
+    }
+}
+
+// Draw waveform on canvas
+function drawWaveform() {
+    if (!waveformCanvas || !waveformCtx || !waveformAnalyser) {
+        return;
+    }
+    
+    waveformAnimationId = requestAnimationFrame(drawWaveform);
+    
+    waveformAnalyser.getByteTimeDomainData(waveformDataArray);
+    
+    // Set canvas size
+    const dpr = window.devicePixelRatio || 1;
+    const rect = waveformCanvas.getBoundingClientRect();
+    waveformCanvas.width = rect.width * dpr;
+    waveformCanvas.height = rect.height * dpr;
+    waveformCtx.scale(dpr, dpr);
+    
+    const width = rect.width;
+    const height = rect.height;
+    
+    // Clear canvas with gradient background
+    const gradient = waveformCtx.createLinearGradient(0, 0, width, 0);
+    gradient.addColorStop(0, '#1e3a8a');
+    gradient.addColorStop(1, '#2563eb');
+    waveformCtx.fillStyle = gradient;
+    waveformCtx.fillRect(0, 0, width, height);
+    
+    // Draw waveform
+    waveformCtx.lineWidth = 2;
+    waveformCtx.strokeStyle = '#10b981'; // Green wave color
+    waveformCtx.shadowBlur = 10;
+    waveformCtx.shadowColor = '#10b981';
+    waveformCtx.beginPath();
+    
+    const sliceWidth = width / waveformDataArray.length;
+    let x = 0;
+    
+    for (let i = 0; i < waveformDataArray.length; i++) {
+        const v = waveformDataArray[i] / 128.0;
+        const y = (v * height) / 2;
+        
+        if (i === 0) {
+            waveformCtx.moveTo(x, y);
+        } else {
+            waveformCtx.lineTo(x, y);
+        }
+        
+        x += sliceWidth;
+    }
+    
+    waveformCtx.lineTo(width, height / 2);
+    waveformCtx.stroke();
+}
+
+// Start waveform visualization
+function startWaveform(stream) {
+    if (!waveformCanvas) return;
+    
+    initWaveformAnalyser(stream);
+    waveformCanvas.style.display = 'block';
+    drawWaveform();
+    console.log('[WAVEFORM] Visualization started');
+}
+
+// Stop waveform visualization
+function stopWaveform() {
+    if (!waveformCanvas) return;
+    
+    if (waveformAnimationId) {
+        cancelAnimationFrame(waveformAnimationId);
+        waveformAnimationId = null;
+    }
+    
+    waveformCanvas.style.display = 'none';
+    waveformAnalyser = null;
+    waveformDataArray = null;
+    console.log('[WAVEFORM] Visualization stopped');
+}
+
+// ==================== End Waveform Visualization ====================
 
 // 检查并请求麦克风权限
 async function checkMicrophonePermission() {
@@ -349,22 +446,9 @@ async function checkMicrophonePermission() {
     }
 }
 
-// 显示权限警告提示
+// 显示权限警告提示（使用console记录）
 function showPermissionWarning(permissionType, message) {
-    const statusDiv = document.getElementById('recordingStatus');
-    if (statusDiv) {
-        const originalText = statusDiv.textContent;
-        const originalColor = statusDiv.style.color;
-        
-        statusDiv.textContent = `⚠️ ${message}`;
-        statusDiv.style.color = '#f5576c';
-        
-        // 5秒后恢复
-        setTimeout(() => {
-            statusDiv.textContent = originalText;
-            statusDiv.style.color = originalColor;
-        }, 5000);
-    }
+    console.warn(`[PERMISSION WARNING] ${permissionType}: ${message}`);
 }
 
 // 初始化
@@ -389,7 +473,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     
 
     const recordBtn = document.getElementById('recordBtn');
-    const recordingStatus = document.getElementById('recordingStatus');
     const recordingTime = document.getElementById('recordingTime');
     const cancelRecordBtn = document.getElementById('cancelRecordBtn');
     const playbackSection = document.getElementById('playbackSection');
@@ -405,6 +488,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const historyBtn = document.getElementById('historyBtn');
     const historyModal = document.getElementById('historyModal');
     const closeHistoryBtn = document.getElementById('closeHistoryBtn');
+    
+    // Waveform visualization
+    const waveformCanvas = document.getElementById('waveformCanvas');
+    const waveformCtx = waveformCanvas ? waveformCanvas.getContext('2d') : null;
+    let waveformAnalyser = null;
+    let waveformAnimationId = null;
+    let waveformDataArray = null;
     
     // 当前选择的音频源
     let selectedAudioSource = 'microphone'; // 默认麦克风
@@ -426,7 +516,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             warning.id = 'transcriptionInProgressWarning';
             warning.className = 'transcription-in-progress-warning show';
             warning.textContent = '💡 Transcription in progress. Please wait...';
-            recordingStatus.parentNode.insertBefore(warning, recordingStatus.nextSibling);
+            // Insert after waveform canvas
+            if (waveformCanvas && waveformCanvas.parentNode) {
+                waveformCanvas.parentNode.insertBefore(warning, waveformCanvas.nextSibling);
+            }
         }
         
         console.log('[INFO] 显示转录进行中警告');
@@ -559,20 +652,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             `;
             recordBtn.title = 'Start recording';
             recordingTime.textContent = '00:00';
-            recordingStatus.textContent = 'Recording cancelled';
+            
+            // 停止波形可视化
+            stopWaveform();
+            
             cancelRecordBtn.style.display = 'none';
             
             // 恢复音频源选择器（时长选择器一直可用，无需恢复）
             audioSourceBtns.forEach(btn => btn.disabled = false);
             
             console.log('[SUCCESS] 录音已取消，数据已清空');
-            
-            // 3秒后恢复状态提示
-            setTimeout(() => {
-                if (!isRecording) {
-                    recordingStatus.textContent = 'Ready';
-                }
-            }, 3000);
         }
     });
 
@@ -649,8 +738,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 如果是系统音频，提示用户
         if (audioSource === 'system' || audioSource === 'both') {
             console.log('[INFO] ⚠️ 系统音频需要用户选择源（浏览器安全限制）');
-            // 更新UI提示
-            recordingStatus.textContent = 'Please select system audio source in the popup...';
         }
         
         currentAudioSource = audioSource;
@@ -841,9 +928,6 @@ function cleanupAudioStreams(force = false) {
             firstRecordedChunk = null; // 清空第一个chunk
             allChunks = []; // 清空chunks数组
             
-            // 显示正在获取权限的提示
-            recordingStatus.textContent = 'Requesting microphone permission...';
-            
             // 获取音频流
             stream = await getAudioStreams();
             
@@ -949,10 +1033,12 @@ function cleanupAudioStreams(force = false) {
                 </svg>
             `;
             recordBtn.title = 'Click to transcribe';
-            recordingStatus.textContent = 'Recording...';
             
             // 🔥 显示取消录音按钮
             cancelRecordBtn.style.display = 'block';
+            
+            // 🔥 启动波形可视化
+            startWaveform(stream);
             
             // 🔥 录音期间禁用音频源选择器（不能切换音频源），但保持时长选择器可用
             audioSourceBtns.forEach(btn => btn.disabled = true);
@@ -972,16 +1058,9 @@ function cleanupAudioStreams(force = false) {
                 const displaySeconds = seconds % 60;
                 recordingTime.textContent = `${String(minutes).padStart(2, '0')}:${String(displaySeconds).padStart(2, '0')}`;
                 
-                // 🔥 新增：超过5分钟显示警告
-                if (elapsed > 300000) { // 5分钟 = 300000毫秒
-                    recordingStatus.textContent = 'Recording (5min max)...';
-                }
-                
                 // 🔥 新增：超过12小时自动停止录音（防止长时间录音导致崩溃）
                 if (elapsed > 12 * 60 * 60 * 1000) { // 12小时
                     console.warn('[WARNING] 录音时长超过12小时，自动停止');
-                    recordingStatus.textContent = '⚠️ Recording too long, auto-stopped';
-                    recordingStatus.style.color = '#f5576c';
                     stopRecording();
                 }
             }, 1000);
@@ -1054,7 +1133,9 @@ function cleanupAudioStreams(force = false) {
             </svg>
         `;
         recordBtn.title = 'Start recording';
-        recordingStatus.textContent = 'Recording stopped';
+        
+        // 🔥 停止波形可视化
+        stopWaveform();
         
         // 🔥 隐藏取消录音按钮
         cancelRecordBtn.style.display = 'none';
@@ -1119,7 +1200,6 @@ function cleanupAudioStreams(force = false) {
         // 🔥 设置转录状态（禁用转录按钮）
         isTranscribing = true;
         recordBtn.disabled = true;
-        recordingStatus.textContent = 'Transcribing... ⏳';
         console.log('[INFO] 转录开始，禁用转录按钮');
         
         // 显示加载指示器
@@ -1474,12 +1554,6 @@ function cleanupAudioStreams(force = false) {
             // 🔥 恢复转录状态（启用转录按钮）
             isTranscribing = false;
             recordBtn.disabled = false;
-            // 如果仍在录音，恢复录音状态显示
-            if (isRecording) {
-                recordingStatus.textContent = 'Recording...';
-            } else {
-                recordingStatus.textContent = 'Recording stopped';
-            }
             console.log('[INFO] 转录完成，启用转录按钮');
         }
     }
