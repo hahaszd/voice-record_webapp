@@ -359,9 +359,8 @@ function drawWaveform() {
         waveformHistory.shift(); // Remove oldest point (left side)
     }
     
-    // Clear canvas with light background
-    waveformCtx.fillStyle = '#f8f9fa';
-    waveformCtx.fillRect(0, 0, width, height);
+    // Clear canvas (transparent background)
+    waveformCtx.clearRect(0, 0, width, height);
     
     // Draw waveform (scrolling from right to left)
     waveformCtx.lineWidth = 2.5;
