@@ -1612,6 +1612,23 @@ function cleanupAudioStreams(force = false) {
         
         transcriptionHistory.unshift(historyItem); // 添加到开头（最新的在前）
         console.log(`[INFO] 已添加转录到历史记录，总数: ${transcriptionHistory.length}`);
+        
+        // 更新History按钮状态
+        updateHistoryButton();
+    }
+    
+    // 更新History按钮状态和计数
+    function updateHistoryButton() {
+        const count = transcriptionHistory.length;
+        const historyCount = historyBtn.querySelector('.history-count');
+        
+        if (count > 0) {
+            historyBtn.disabled = false;
+            historyCount.textContent = `(${count})`;
+        } else {
+            historyBtn.disabled = true;
+            historyCount.textContent = '(0)';
+        }
     }
     
     // 格式化时间戳
@@ -1742,6 +1759,7 @@ function cleanupAudioStreams(force = false) {
         if (confirm('Are you sure you want to clear all transcription history?')) {
             transcriptionHistory = [];
             renderHistoryList();
+            updateHistoryButton();
             console.log('[INFO] 已清空所有转录历史记录');
         }
     });

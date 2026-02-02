@@ -15,7 +15,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voice Recorder & Transcription</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232d3436' stroke-width='2'><path d='M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z'/><path d='M19 10v2a7 7 0 0 1-14 0v-2'/></svg>">
-    <link rel="stylesheet" href="/static/style.css?v=31">
+    <link rel="stylesheet" href="/static/style.css?v=32">
 </head>
 <body>
     <div class="container">
@@ -34,15 +34,6 @@
             <div id="resultSection" class="result-section">
                 <div class="result-header">
                     <h3>Transcript</h3>
-                <button id="historyBtn" class="history-btn" title="View transcription history">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                        <line x1="16" y1="13" x2="8" y2="13"/>
-                        <line x1="16" y1="17" x2="8" y2="17"/>
-                        <polyline points="10 9 9 9 8 9"/>
-                    </svg>
-                </button>
                 <label class="auto-copy-switch" title="Auto-copy transcript to clipboard">
                     <input type="checkbox" id="autoCopyToggle" checked>
                     <span class="slider"></span>
@@ -74,6 +65,17 @@
                         <span class="copy-text">Copy</span>
                     </button>
                 </div>
+                <!-- History Button Below Textarea -->
+                <button id="historyBtn" class="history-expand-btn" title="View transcription history" disabled>
+                    <svg class="history-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    <span class="history-count">(0)</span>
+                    <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                </button>
                 <div id="loadingIndicator" class="loading" style="visibility: hidden;">
                     <div class="spinner"></div>
                     <span>Transcribing...</span>
@@ -151,15 +153,16 @@
                             </span>
                             <span id="recordBtnText">Record</span>
                         </button>
+                        <!-- Cancel Button (shown during recording) -->
+                        <button id="cancelRecordBtn" class="cancel-record-btn" style="display: none;" title="Cancel recording">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                            <span>Cancel</span>
+                        </button>
                     </div>
                     <div id="recordingTime" class="recording-time">00:00</div>
-                    <!-- Cancel Button -->
-                    <button id="cancelRecordBtn" class="cancel-record-btn" style="display: none;" title="Cancel recording">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18"/>
-                            <line x1="6" y1="6" x2="18" y2="18"/>
-                        </svg>
-                    </button>
                     <div id="recordingStatus" class="recording-status">Ready</div>
                 </div>
             </div>
@@ -201,7 +204,7 @@
         </div>
     </div>
 
-    <script src="/static/audio-storage.js?v=31"></script>
-    <script src="/static/script.js?v=31"></script>
+    <script src="/static/audio-storage.js?v=32"></script>
+    <script src="/static/script.js?v=32"></script>
 </body>
 </html>

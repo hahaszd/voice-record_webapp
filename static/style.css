@@ -258,16 +258,19 @@ h1 {
 }
 
 .cancel-record-btn {
-    padding: 8px 20px;
-    border: 2px solid #e0e0e0;
-    background: #f5f5f5;
+    padding: 6px 16px;
+    border: 1px solid #e0e0e0;
+    background: #f8f9fa;
     color: #666;
-    border-radius: 6px;
+    border-radius: 20px;
+    font-size: 0.8em;
     cursor: pointer;
-    font-size: 0.85em;
-    margin: 8px auto;
-    display: block;
-    transition: all 0.3s ease;
+    margin-top: 8px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    justify-content: center;
 }
 
 .cancel-record-btn:hover {
@@ -280,9 +283,13 @@ h1 {
     transform: scale(0.98);
 }
 
+.cancel-record-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
 .cancel-record-btn span {
-    font-size: 1.1em;
-    margin-right: 4px;
+    font-size: 0.9em;
 }
 
 .transcribe-options,
@@ -660,6 +667,54 @@ h1 {
     background: #4a9eff;
     color: white;
     border-color: #4a9eff;
+}
+
+/* History Expand Button */
+.history-expand-btn {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+    background: #f8f9fa;
+    color: #999;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    cursor: not-allowed;
+    font-size: 0.85em;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.history-expand-btn:not(:disabled) {
+    background: #fff;
+    color: #2d3436;
+    cursor: pointer;
+}
+
+.history-expand-btn:not(:disabled):hover {
+    background: #f0f0f0;
+    border-color: #2d3436;
+}
+
+.history-expand-btn .history-icon {
+    width: 18px;
+    height: 18px;
+}
+
+.history-expand-btn .history-count {
+    font-weight: 500;
+}
+
+.history-expand-btn .arrow-icon {
+    width: 16px;
+    height: 16px;
+    margin-left: auto;
+}
+
+.history-expand-btn:disabled {
+    opacity: 0.5;
 }
 
 /* Old copy button styles - REMOVED
