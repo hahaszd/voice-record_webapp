@@ -911,21 +911,21 @@ function cleanupAudioStreams(force = false) {
             recordBtn.classList.add('recording');
             // 切换图标为转换图标（麦克风→文字）
             recordBtn.innerHTML = `
-                <svg class="btn-icon" width="70" height="70" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <svg class="btn-icon" width="70" height="70" viewBox="0 0 72 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <!-- 左侧：麦克风（与Record按钮形状一致） -->
-                    <path d="M12 8 a3 3 0 0 0 -3 3 v8 a3 3 0 0 0 6 0 v-8 a3 3 0 0 0 -3 -3 z"/>
-                    <path d="M17.5 17 v2 a5.5 5.5 0 0 1 -11 0 v-2"/>
-                    <line x1="12" y1="25" x2="12" y2="30"/>
+                    <path d="M10 8 a3 3 0 0 0 -3 3 v8 a3 3 0 0 0 6 0 v-8 a3 3 0 0 0 -3 -3 z"/>
+                    <path d="M15.5 17 v2 a5.5 5.5 0 0 1 -11 0 v-2"/>
+                    <line x1="10" y1="25" x2="10" y2="30"/>
                     
-                    <!-- 中间：箭头 -->
-                    <line x1="22" y1="20" x2="36" y2="20" />
-                    <polyline points="32,16 36,20 32,24" />
+                    <!-- 中间：箭头（增加间距） -->
+                    <line x1="24" y1="20" x2="40" y2="20" />
+                    <polyline points="36,16 40,20 36,24" />
                     
-                    <!-- 右侧：文档/文字 -->
-                    <rect x="40" y="12" width="16" height="20" rx="2" />
-                    <line x1="44" y1="18" x2="52" y2="18" />
-                    <line x1="44" y1="22" x2="52" y2="22" />
-                    <line x1="44" y1="26" x2="52" y2="26" />
+                    <!-- 右侧：文档/文字（增加间距） -->
+                    <rect x="48" y="12" width="16" height="20" rx="2" />
+                    <line x1="52" y1="18" x2="60" y2="18" />
+                    <line x1="52" y1="22" x2="60" y2="22" />
+                    <line x1="52" y1="26" x2="60" y2="26" />
                 </svg>
             `;
             recordBtn.title = 'Click to transcribe';
