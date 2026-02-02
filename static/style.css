@@ -92,30 +92,48 @@ h1.header-with-icon .header-text {
     padding: 10px;
     background: #f8f9fa;
     border-radius: 8px;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
 }
 
-.audio-source-selector label {
-    display: block;
-    font-size: 0.85em;
-    color: #666;
-    margin-bottom: 5px;
-    font-weight: 500;
-}
-
-.audio-source-selector select {
-    width: 100%;
-    padding: 8px;
-    border: 2px solid #e0e0e0;
-    border-radius: 6px;
-    font-size: 0.9em;
+.audio-source-btn {
+    flex: 1;
+    padding: 12px 8px;
     background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.audio-source-selector select:focus {
-    outline: none;
-    border-color: #2d3436;
+.audio-source-btn:hover {
+    background: #f8f9fa;
+    border-color: #bdc3c7;
+    transform: translateY(-1px);
+}
+
+.audio-source-btn.active {
+    background: #3498db;
+    border-color: #3498db;
+    color: white;
+}
+
+.audio-source-btn.active svg {
+    stroke: white;
+}
+
+.audio-source-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.audio-source-btn:disabled:hover {
+    transform: none;
+    border-color: #e0e0e0;
 }
 
 .audio-source-selector select:disabled {

@@ -400,10 +400,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const autoCopyToggle = document.getElementById('autoCopyToggle');
     const autoRecordToggle = document.getElementById('autoRecordToggle');
     const autoNotifyToggle = document.getElementById('autoNotifyToggle');
-    const audioSourceSelect = document.getElementById('audioSource');
+    const audioSourceBtns = document.querySelectorAll('.audio-source-btn');
     const historyBtn = document.getElementById('historyBtn');
     const historyModal = document.getElementById('historyModal');
     const closeHistoryBtn = document.getElementById('closeHistoryBtn');
+    
+    // 当前选择的音频源
+    let selectedAudioSource = 'microphone'; // 默认麦克风
     const clearHistoryBtn = document.getElementById('clearHistoryBtn');
     const historyList = document.getElementById('historyList');
     
@@ -442,12 +445,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 3000);
     }
     
-    // 监听音频源变化，切换时清理现有流
-    audioSourceSelect.addEventListener('change', () => {
-        if (audioStreamsReady && !isRecording) {
-            console.log('[INFO] 音频源已切换，强制清理现有音频流');
-            cleanupAudioStreams(true);
-        }
+    // 处理音频源按钮点击
+    audioSourceBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // 如果正在录音，不允许切换
+            if (isRecording) {
+                console.log('[WARNING] 录音期间无法切换音频源');
+                return;
+            }
+            
+            // 移除所有按钮的active类
+            audioSourceBtns.forEach(b => b.classList.remove('active'));
+            
+            // 添加active类到当前按钮
+            btn.classList.add('active');
+            
+            // 更新选择的音频源
+            selectedAudioSource = btn.dataset.source;
+            console.log('[INFO] 音频源已切换:', selectedAudioSource);
+            
+            // 清理现有流
+            if (audioStreamsReady) {
+                console.log('[INFO] 清理现有音频流');
+                cleanupAudioStreams(true);
+                audioStreamsReady = false;
+            }
+        });
     });
     
     // 处理默认转录时长的 checkbox
@@ -541,7 +564,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             cancelRecordBtn.style.display = 'none';
             
             // 恢复音频源选择器
-            audioSourceSelect.disabled = false;
+            audioSourceBtns.forEach(btn => btn.disabled = false);
             
             console.log('[SUCCESS] 录音已取消，数据已清空');
             
@@ -597,7 +620,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 获取音频流（复用已有流或创建新流）
     async function getAudioStreams() {
-        const audioSource = audioSourceSelect.value;
+        const audioSource = selectedAudioSource;
         
         // 检查流是否真正可用（不仅存在，而且处于活跃状态）
         const isMicStreamActive = micStream && micStream.getAudioTracks().length > 0 && 
@@ -841,7 +864,7 @@ function cleanupAudioStreams(force = false) {
             mediaRecorder = new MediaRecorder(stream, options);
             recordedMimeType = options.mimeType;
             
-            const audioSource = audioSourceSelect.value;
+            const audioSource = selectedAudioSource;
             const sourceText = audioSource === 'microphone' ? '麦克风' : 
                              audioSource === 'system' ? '系统音频' : 
                              '麦克风+系统音频';
@@ -935,7 +958,7 @@ function cleanupAudioStreams(force = false) {
             cancelRecordBtn.style.display = 'block';
             
             // 🔥 录音期间禁用音频源选择器，防止用户修改
-            audioSourceSelect.disabled = true;
+            audioSourceBtns.forEach(btn => btn.disabled = true);
             console.log('[INFO] 录音期间禁用音频源选择器');
             
             // 禁用复制按钮
@@ -1040,7 +1063,7 @@ function cleanupAudioStreams(force = false) {
         cancelRecordBtn.style.display = 'none';
         
         // 🔥 录音停止后重新启用音频源选择器
-        audioSourceSelect.disabled = false;
+        audioSourceBtns.forEach(btn => btn.disabled = false);
         console.log('[INFO] 录音停止，重新启用音频源选择器');
         
         // 检查是否需要自动转录和自动录音
