@@ -19,6 +19,13 @@ let currentAudioSource = null; // 当前选择的音频源
 let audioStreamsReady = false; // 音频流是否已准备好
 let pendingStorageClear = null; // 待清空IndexedDB的回调
 
+// Waveform visualization variables
+let waveformCanvas = null;
+let waveformCtx = null;
+let waveformAnalyser = null;
+let waveformAnimationId = null;
+let waveformDataArray = null;
+
 // 页面关闭/刷新时清理音频流
 window.addEventListener('beforeunload', () => {
     console.log('[INFO] 页面即将关闭，清理音频流');
@@ -486,12 +493,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const historyModal = document.getElementById('historyModal');
     const closeHistoryBtn = document.getElementById('closeHistoryBtn');
     
-    // Waveform visualization
-    const waveformCanvas = document.getElementById('waveformCanvas');
-    const waveformCtx = waveformCanvas ? waveformCanvas.getContext('2d') : null;
-    let waveformAnalyser = null;
-    let waveformAnimationId = null;
-    let waveformDataArray = null;
+    // Initialize waveform visualization variables
+    waveformCanvas = document.getElementById('waveformCanvas');
+    waveformCtx = waveformCanvas ? waveformCanvas.getContext('2d') : null;
     
     // 当前选择的音频源
     let selectedAudioSource = 'microphone'; // 默认麦克风
