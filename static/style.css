@@ -191,7 +191,8 @@ h1 {
 }
 
 .record-btn.recording {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    background: #2d3436;
+    border-color: #2d3436;
     animation: pulse 1.5s ease-in-out infinite;
 }
 
@@ -210,9 +211,11 @@ h1 {
 @keyframes pulse {
     0%, 100% {
         transform: scale(1);
+        box-shadow: 0 2px 8px rgba(45, 52, 54, 0.15);
     }
     50% {
-        transform: scale(1.1);
+        transform: scale(1.05);
+        box-shadow: 0 4px 16px rgba(45, 52, 54, 0.3);
     }
 }
 
