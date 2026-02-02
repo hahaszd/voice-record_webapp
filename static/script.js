@@ -121,10 +121,10 @@ function showNotificationPermissionDialog() {
         
         dialog.innerHTML = `
             <div style="font-size: 48px; margin-bottom: 15px;">🔔</div>
-            <h3 style="margin: 0 0 15px 0; color: #333; font-size: 1.3em;">开启转录完成提醒？</h3>
+            <h3 style="margin: 0 0 15px 0; color: #333; font-size: 1.3em;">Enable Completion Notifications?</h3>
             <p style="margin: 0 0 25px 0; color: #666; line-height: 1.6; font-size: 0.95em;">
-                当您切换到其他标签页时，我们会在转录完成后<br>
-                发送浏览器通知提醒您，避免您错过转录结果。
+                Receive browser notifications when transcription completes,<br>
+                even when you're on another tab.
             </p>
             <div style="display: flex; gap: 10px; justify-content: center;">
                 <button id="notifyDecline" style="
@@ -136,7 +136,7 @@ function showNotificationPermissionDialog() {
                     cursor: pointer;
                     font-size: 0.95em;
                     transition: all 0.3s ease;
-                ">暂不需要</button>
+                ">Not Now</button>
                 <button id="notifyAccept" style="
                     padding: 10px 24px;
                     border: none;
@@ -147,7 +147,7 @@ function showNotificationPermissionDialog() {
                     font-size: 0.95em;
                     font-weight: 500;
                     transition: all 0.3s ease;
-                ">开启提醒</button>
+                ">Enable</button>
             </div>
         `;
         
@@ -221,7 +221,7 @@ function sendTranscriptionNotification(text) {
         // 截取前50个字符作为预览
         const preview = text.length > 50 ? text.substring(0, 50) + '...' : text;
         
-        const notification = new Notification('🎤 转录完成', {
+        const notification = new Notification('🎤 Transcription Complete', {
             body: preview,
             icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🎤</text></svg>',
             badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">✓</text></svg>',
@@ -416,7 +416,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const warning = document.createElement('div');
             warning.id = 'transcriptionInProgressWarning';
             warning.className = 'transcription-in-progress-warning show';
-            warning.textContent = '💡 转录任务进行中，请稍等转录完成再点击转录';
+            warning.textContent = '💡 Transcription in progress. Please wait...';
             recordingStatus.parentNode.insertBefore(warning, recordingStatus.nextSibling);
         }
         
@@ -522,7 +522,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // 更新UI
             recordBtn.classList.remove('recording');
-            recordBtnText.textContent = '开始录音';
+            recordBtnText.textContent = 'Record';
             recordingTime.textContent = '00:00';
             recordingStatus.textContent = '已取消录音';
             cancelRecordBtn.style.display = 'none';
@@ -535,7 +535,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // 3秒后恢复状态提示
             setTimeout(() => {
                 if (!isRecording) {
-                    recordingStatus.textContent = '准备就绪';
+                    recordingStatus.textContent = 'Ready';
                 }
             }, 3000);
         }
@@ -890,8 +890,8 @@ function cleanupAudioStreams(force = false) {
             
             // 更新UI
             recordBtn.classList.add('recording');
-            recordBtnText.textContent = '转录';
-            recordingStatus.textContent = '正在录音中...';
+            recordBtnText.textContent = 'Transcribe';
+            recordingStatus.textContent = 'Recording...';
             
             // 🔥 显示取消录音按钮
             cancelRecordBtn.style.display = 'block';
@@ -916,7 +916,7 @@ function cleanupAudioStreams(force = false) {
                 
                 // 🔥 新增：超过5分钟显示警告
                 if (elapsed > 300000) { // 5分钟 = 300000毫秒
-                    recordingStatus.textContent = '录音中（仅保留最后5分钟）...';
+                    recordingStatus.textContent = 'Recording (5min max)...';
                 }
                 
                 // 🔥 新增：超过12小时自动停止录音（防止长时间录音导致崩溃）
@@ -1045,7 +1045,7 @@ function cleanupAudioStreams(force = false) {
         // 🔥 设置转录状态（禁用转录按钮）
         isTranscribing = true;
         recordBtn.disabled = true;
-        recordingStatus.textContent = '正在转录中... ⏳';
+        recordingStatus.textContent = 'Transcribing... ⏳';
         console.log('[INFO] 转录开始，禁用转录按钮');
         
         // 显示加载指示器
@@ -1063,7 +1063,7 @@ function cleanupAudioStreams(force = false) {
             console.log(`[PERF] IndexedDB读取耗时: ${dbReadTime}ms`);
             
             if (allChunksFromDB.length === 0) {
-                alert('没有可用的音频数据');
+                alert('No audio data available');
                 return;
             }
             
@@ -1107,7 +1107,7 @@ function cleanupAudioStreams(force = false) {
             }
             
             if (chunksToUse.length === 0) {
-                alert('没有符合条件的音频数据');
+                alert('No matching audio data');
                 return;
             }
             
@@ -1231,14 +1231,14 @@ function cleanupAudioStreams(force = false) {
                     
                     // 如果压缩后仍然太大，提示用户
                     if (compressedSize > MAX_FILE_SIZE) {
-                        const errorMsg = `音频文件太大 (${(compressedSize / 1024 / 1024).toFixed(2)} MB)，超过限制 (25 MB)。请尝试转录更短的片段。`;
+                        const errorMsg = `Audio file too large (${(compressedSize / 1024 / 1024).toFixed(2)}MB). Limit: 25MB. Try shorter duration.`;
                         console.error(`[ERROR] ${errorMsg}`);
                         transcriptionResult.value = `错误: ${errorMsg}`;
                         return;
                     }
                 } catch (compressionError) {
                     console.error('[ERROR] 压缩失败:', compressionError.message);
-                    const errorMsg = `音频文件太大 (${(originalSize / 1024 / 1024).toFixed(2)} MB)，超过限制 (25 MB)。请尝试转录更短的片段。`;
+                    const errorMsg = `Audio file too large (${(originalSize / 1024 / 1024).toFixed(2)}MB). Limit: 25MB. Try shorter duration.`;
                     transcriptionResult.value = `错误: ${errorMsg}`;
                     return;
                 }
@@ -1363,7 +1363,7 @@ function cleanupAudioStreams(force = false) {
                     // 这里不再需要启动录音，因为录音已经在后台进行
                 }
             } else {
-                transcriptionResult.value = `错误: ${result.message || '转录失败'}`;
+                transcriptionResult.value = `Error: ${result.message || 'Transcription failed'}`;
                 console.error(`[ERROR] 转录失败: ${result.message}`);
             }
             
@@ -1396,7 +1396,7 @@ function cleanupAudioStreams(force = false) {
             recordBtn.disabled = false;
             // 如果仍在录音，恢复录音状态显示
             if (isRecording) {
-                recordingStatus.textContent = '正在录音中...';
+                recordingStatus.textContent = 'Recording...';
             } else {
                 recordingStatus.textContent = '录音已停止';
             }

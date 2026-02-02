@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-75D37JVX99"></script>
@@ -13,72 +13,72 @@
     
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>语音录制与转录</title>
+    <title>Voice Recorder & Transcription</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎤</text></svg>">
-    <link rel="stylesheet" href="/static/style.css?v=20">
+    <link rel="stylesheet" href="/static/style.css?v=21">
 </head>
 <body>
     <div class="container">
-        <h1>🎤 语音录制与转录</h1>
+        <h1>🎤 Voice Transcription</h1>
         
         <div class="main-layout">
-            <!-- 左侧：转录结果区域 -->
+            <!-- Left: Transcript Result -->
             <div id="resultSection" class="result-section">
                 <div class="result-header">
-                    <h3>转录结果：</h3>
-                <label class="auto-copy-switch">
+                    <h3>Transcript</h3>
+                <label class="auto-copy-switch" title="Auto-copy transcript to clipboard">
                     <input type="checkbox" id="autoCopyToggle" checked>
                     <span class="slider"></span>
-                    <span class="label-text">自动复制</span>
+                    <span class="icon-label">📋</span>
                 </label>
-                <label class="auto-notify-switch">
+                <label class="auto-notify-switch" title="Notify when transcription completes">
                     <input type="checkbox" id="autoNotifyToggle" checked>
                     <span class="slider"></span>
-                    <span class="label-text">转录完成提醒</span>
+                    <span class="icon-label">🔔</span>
                 </label>
                 </div>
                 <div class="result-box">
-                    <textarea id="transcriptionResult" readonly placeholder="录音完成后，点击右侧按钮进行转录..."></textarea>
-                    <button id="copyBtn" class="copy-btn" title="复制到剪贴板" disabled>
-                        <span>📋</span> 复制
+                    <textarea id="transcriptionResult" readonly placeholder="Start recording, then click Transcribe..."></textarea>
+                    <button id="copyBtn" class="copy-btn" title="Copy to clipboard" disabled>
+                        <span>📋</span>
                     </button>
                 </div>
                 <div id="loadingIndicator" class="loading" style="visibility: hidden;">
                     <div class="spinner"></div>
-                    <span>正在转录...</span>
+                    <span>Transcribing...</span>
                 </div>
             </div>
 
-            <!-- 右侧：录音控制区域 -->
+            <!-- Right: Controls -->
             <div class="control-panel">
-                <!-- 1. 音频源 -->
-                <div class="audio-source-selector">
-                    <label for="audioSource">音频源：</label>
+                <!-- 1. Audio Source -->
+                <div class="audio-source-selector" title="Select audio input source">
+                    <label for="audioSource">🎙️</label>
                     <select id="audioSource">
-                        <option value="microphone" selected>仅麦克风</option>
-                        <option value="system">仅系统音频</option>
-                        <option value="both">麦克风+系统音频</option>
+                        <option value="microphone" selected>🎤 Mic</option>
+                        <option value="system">🔊 System</option>
+                        <option value="both">🎵 Both</option>
                     </select>
                 </div>
 
-                <!-- 2. 转录时长 -->
+                <!-- 2. Duration -->
                 <div id="playbackSection" class="playback-section">
-                    <h4>转录时长：</h4>
+                    <h4 title="Select transcription duration">⏱️ Duration</h4>
                     <div class="button-group">
-                        <div class="duration-option">
-                            <span class="duration-label">30秒</span>
+                        <div class="duration-option" title="30 seconds">
+                            <span class="duration-label">30s</span>
                             <label class="default-duration-checkbox">
                                 <input type="checkbox" class="default-duration-check" data-duration="30">
                             </label>
                         </div>
-                        <div class="duration-option">
-                            <span class="duration-label">1分钟</span>
+                        <div class="duration-option" title="1 minute">
+                            <span class="duration-label">1m</span>
                             <label class="default-duration-checkbox">
                                 <input type="checkbox" class="default-duration-check" data-duration="60">
                             </label>
                         </div>
-                        <div class="duration-option">
-                            <span class="duration-label">5分钟</span>
+                        <div class="duration-option" title="5 minutes">
+                            <span class="duration-label">5m</span>
                             <label class="default-duration-checkbox">
                                 <input type="checkbox" class="default-duration-check" data-duration="300" checked>
                             </label>
@@ -86,31 +86,31 @@
                     </div>
                 </div>
 
-                <!-- 3. 自动录音 + 4. 转录按钮 -->
+                <!-- 3. Recording Controls -->
                 <div class="recording-section">
                     <div class="recording-controls">
-                        <label class="auto-record-switch">
+                        <label class="auto-record-switch" title="Auto-start recording after transcription">
                             <input type="checkbox" id="autoRecordToggle" checked>
                             <span class="slider"></span>
-                            <span class="label-text">自动录音</span>
+                            <span class="icon-label">🔁</span>
                         </label>
-                        <button id="recordBtn" class="record-btn">
+                        <button id="recordBtn" class="record-btn" title="Start recording">
                             <span class="mic-icon">🎤</span>
-                            <span id="recordBtnText">开始录音</span>
+                            <span id="recordBtnText">Record</span>
                         </button>
                     </div>
                     <div id="recordingTime" class="recording-time">00:00</div>
-                    <!-- 5. 取消录音 -->
-                    <button id="cancelRecordBtn" class="cancel-record-btn" style="display: none;">
-                        <span>✕</span> 取消录音
+                    <!-- Cancel Button -->
+                    <button id="cancelRecordBtn" class="cancel-record-btn" style="display: none;" title="Cancel recording">
+                        <span>✕</span>
                     </button>
-                    <div id="recordingStatus" class="recording-status">准备就绪</div>
+                    <div id="recordingStatus" class="recording-status">Ready</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="/static/audio-storage.js?v=20"></script>
-    <script src="/static/script.js?v=20"></script>
+    <script src="/static/audio-storage.js?v=21"></script>
+    <script src="/static/script.js?v=21"></script>
 </body>
 </html>

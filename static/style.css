@@ -496,9 +496,18 @@ h1 {
     transform: translateX(20px);
 }
 
-.auto-copy-switch .label-text {
-    font-size: 0.9em;
+.auto-copy-switch .label-text,
+.auto-notify-switch .label-text,
+.auto-record-switch .label-text {
+    font-size: 1em;
     color: #666;
+}
+
+.auto-copy-switch .icon-label,
+.auto-notify-switch .icon-label,
+.auto-record-switch .icon-label {
+    font-size: 1.2em;
+    margin-left: 4px;
 }
 
 .auto-notify-switch {
