@@ -371,13 +371,13 @@ function drawWaveform() {
     
     const sliceWidth = width / maxPoints;
     const centerY = height / 2;
-    const amplitudeScale = height / 3; // Scale factor for wave height
+    const amplitudeScale = height * 0.8; // Scale factor for wave height (increased 2-3x for visibility)
     
     // Draw from left (oldest) to right (newest)
     for (let i = 0; i < waveformHistory.length; i++) {
         const x = i * sliceWidth;
         const amplitude = waveformHistory[i];
-        const y = centerY + (amplitude * amplitudeScale / 128) * Math.sin(i * 0.1); // Smooth wave effect
+        const y = centerY + (amplitude * amplitudeScale / 128); // More visible amplitude
         
         if (i === 0) {
             waveformCtx.moveTo(x, y);
