@@ -440,52 +440,45 @@ h1.header-with-icon .header-text {
     box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
 }
 
-.button-group {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 12px;
+.duration-selector {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
 }
 
-.duration-option {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 15px;
+.duration-btn {
+    flex: 1;
+    padding: 12px 8px;
     background: white;
     border: 2px solid #e0e0e0;
     border-radius: 8px;
+    cursor: pointer;
     transition: all 0.3s ease;
-}
-
-.duration-option:hover {
-    border-color: #667eea;
-    background: #f8f9ff;
-}
-
-.duration-label {
     font-size: 1em;
-    color: #333;
     font-weight: 500;
+    color: #333;
 }
 
-.duration-option .action-btn {
-    flex: 1;
+.duration-btn:hover {
+    background: #f8f9fa;
+    border-color: #bdc3c7;
+    transform: translateY(-1px);
 }
 
-.default-duration-checkbox {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    user-select: none;
-    flex-shrink: 0;
+.duration-btn.active {
+    background: #3498db;
+    border-color: #3498db;
+    color: white;
 }
 
-.default-duration-checkbox input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-    margin: 0;
-    accent-color: #667eea;
+.duration-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.duration-btn:disabled:hover {
+    transform: none;
+    border-color: #e0e0e0;
 }
 
 .transcribe-btn {

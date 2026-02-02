@@ -109,31 +109,10 @@
 
                 <!-- 2. Duration -->
                 <div id="playbackSection" class="playback-section">
-                    <h4 title="Select capture duration (perfect for quick ideas and learning snippets)">
-                        <svg class="icon-small" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"/>
-                            <polyline points="12 6 12 12 16 14"/>
-                        </svg>
-                    </h4>
-                    <div class="button-group">
-                        <div class="duration-option" title="30 seconds">
-                            <span class="duration-label">30s</span>
-                            <label class="default-duration-checkbox">
-                                <input type="checkbox" class="default-duration-check" data-duration="30">
-                            </label>
-                        </div>
-                        <div class="duration-option" title="1 minute">
-                            <span class="duration-label">1m</span>
-                            <label class="default-duration-checkbox">
-                                <input type="checkbox" class="default-duration-check" data-duration="60">
-                            </label>
-                        </div>
-                        <div class="duration-option" title="5 minutes">
-                            <span class="duration-label">5m</span>
-                            <label class="default-duration-checkbox">
-                                <input type="checkbox" class="default-duration-check" data-duration="300" checked>
-                            </label>
-                        </div>
+                    <div class="duration-selector">
+                        <button class="duration-btn" data-duration="30" title="30 seconds - Quick thoughts and ideas">30s</button>
+                        <button class="duration-btn" data-duration="60" title="1 minute - Short explanations and notes">1m</button>
+                        <button class="duration-btn active" data-duration="300" title="5 minutes - Perfect for learning and detailed ideas">5m</button>
                     </div>
                 </div>
 

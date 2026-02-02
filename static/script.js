@@ -401,6 +401,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const autoRecordToggle = document.getElementById('autoRecordToggle');
     const autoNotifyToggle = document.getElementById('autoNotifyToggle');
     const audioSourceBtns = document.querySelectorAll('.audio-source-btn');
+    const durationBtns = document.querySelectorAll('.duration-btn');
     const historyBtn = document.getElementById('historyBtn');
     const historyModal = document.getElementById('historyModal');
     const closeHistoryBtn = document.getElementById('closeHistoryBtn');
@@ -473,21 +474,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
     
-    // 处理默认转录时长的 checkbox
-    const defaultDurationCheckboxes = document.querySelectorAll('.default-duration-check');
-    defaultDurationCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', (e) => {
-            if (checkbox.checked) {
-                // 取消其他 checkbox 的选中状态，保持只有一个被选中
-                defaultDurationCheckboxes.forEach(cb => {
-                    if (cb !== checkbox) {
-                        cb.checked = false;
-                    }
-                });
-                console.log(`[INFO] 设置默认转录时长: ${checkbox.dataset.duration}秒`);
-            } else {
-                console.log('[INFO] 取消默认转录时长');
+    // 处理转录时长按钮点击
+    durationBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // 如果正在录音，不允许切换（虽然按钮会被禁用，但多一层保护）
+            if (isRecording) {
+                console.log('[WARNING] 录音期间无法切换时长');
+                return;
             }
+            
+            // 移除所有按钮的active类
+            durationBtns.forEach(b => b.classList.remove('active'));
+            
+            // 添加active类到当前按钮
+            btn.classList.add('active');
+            
+            console.log(`[INFO] 设置转录时长: ${btn.dataset.duration}秒`);
         });
     });
 
@@ -563,8 +565,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             recordingStatus.textContent = 'Recording cancelled';
             cancelRecordBtn.style.display = 'none';
             
-            // 恢复音频源选择器
+            // 恢复音频源和时长选择器
             audioSourceBtns.forEach(btn => btn.disabled = false);
+            durationBtns.forEach(btn => btn.disabled = false);
             
             console.log('[SUCCESS] 录音已取消，数据已清空');
             
@@ -957,9 +960,10 @@ function cleanupAudioStreams(force = false) {
             // 🔥 显示取消录音按钮
             cancelRecordBtn.style.display = 'block';
             
-            // 🔥 录音期间禁用音频源选择器，防止用户修改
+            // 🔥 录音期间禁用音频源选择器和时长选择器，防止用户修改
             audioSourceBtns.forEach(btn => btn.disabled = true);
-            console.log('[INFO] 录音期间禁用音频源选择器');
+            durationBtns.forEach(btn => btn.disabled = true);
+            console.log('[INFO] 录音期间禁用音频源和时长选择器');
             
             // 禁用复制按钮
             copyBtn.disabled = true;
@@ -1062,17 +1066,18 @@ function cleanupAudioStreams(force = false) {
         // 🔥 隐藏取消录音按钮
         cancelRecordBtn.style.display = 'none';
         
-        // 🔥 录音停止后重新启用音频源选择器
+        // 🔥 录音停止后重新启用音频源和时长选择器
         audioSourceBtns.forEach(btn => btn.disabled = false);
-        console.log('[INFO] 录音停止，重新启用音频源选择器');
+        durationBtns.forEach(btn => btn.disabled = false);
+        console.log('[INFO] 录音停止，重新启用音频源和时长选择器');
         
         // 检查是否需要自动转录和自动录音
         const shouldAutoRecord = autoRecordToggle.checked;
-        const defaultDurationCheckbox = document.querySelector('.default-duration-check:checked');
+        const activeDurationBtn = document.querySelector('.duration-btn.active');
         
-        if (defaultDurationCheckbox) {
-            const defaultDuration = parseInt(defaultDurationCheckbox.dataset.duration);
-            console.log(`[INFO] 检测到默认转录时长: ${defaultDuration}秒，自动开始转录`);
+        if (activeDurationBtn) {
+            const defaultDuration = parseInt(activeDurationBtn.dataset.duration);
+            console.log(`[INFO] 检测到转录时长: ${defaultDuration}秒，自动开始转录`);
             
             // 立即开始转录
             generateAndPlayAudio(defaultDuration);
