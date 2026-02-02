@@ -194,11 +194,17 @@ h1.header-icon-only svg {
     box-shadow: 0 2px 8px rgba(52, 152, 219, 0.25);
     margin: 0;
     padding: 0;
+    position: relative;
 }
 
 .record-btn .btn-icon {
     flex-shrink: 0;
     display: block;
+    margin: 0;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
 .record-btn:hover {
