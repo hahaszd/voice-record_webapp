@@ -529,7 +529,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             recordBtn.classList.remove('recording');
             // 恢复麦克风图标
             recordBtn.innerHTML = `
-                <svg class="btn-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg class="btn-icon" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
                     <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
                     <line x1="12" y1="19" x2="12" y2="23"/>
@@ -911,7 +911,7 @@ function cleanupAudioStreams(force = false) {
             recordBtn.classList.add('recording');
             // 切换图标为转换图标（麦克风→文字）
             recordBtn.innerHTML = `
-                <svg class="btn-icon" width="40" height="40" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <svg class="btn-icon" width="60" height="60" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <!-- 左侧：麦克风 -->
                     <rect x="8" y="12" width="8" height="12" rx="4" />
                     <line x1="12" y1="24" x2="12" y2="28" />
@@ -1027,7 +1027,7 @@ function cleanupAudioStreams(force = false) {
         recordBtn.classList.remove('recording');
         // 恢复麦克风图标
         recordBtn.innerHTML = `
-            <svg class="btn-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg class="btn-icon" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
                 <line x1="12" y1="19" x2="12" y2="23"/>

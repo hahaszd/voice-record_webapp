@@ -15,25 +15,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voice Recorder & Transcription</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232d3436' stroke-width='2'><path d='M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z'/><path d='M19 10v2a7 7 0 0 1-14 0v-2'/></svg>">
-    <link rel="stylesheet" href="/static/style.css?v=43">
+    <link rel="stylesheet" href="/static/style.css?v=44">
 </head>
 <body>
     <div class="container">
-        <h1>
-            <svg class="icon-inline" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                <line x1="12" y1="19" x2="12" y2="23"/>
-                <line x1="8" y1="23" x2="16" y2="23"/>
+        <h1 class="header-icon-only">
+            <svg width="48" height="48" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <!-- 麦克风 -->
+                <rect x="8" y="12" width="8" height="12" rx="4" />
+                <line x1="12" y1="24" x2="12" y2="28" />
+                <path d="M6 20 Q6 28 12 28 Q18 28 18 20" />
+                
+                <!-- 箭头 -->
+                <line x1="22" y1="20" x2="36" y2="20" />
+                <polyline points="32,16 36,20 32,24" />
+                
+                <!-- 文档/文字 -->
+                <rect x="40" y="12" width="16" height="20" rx="2" />
+                <line x1="44" y1="18" x2="52" y2="18" />
+                <line x1="44" y1="22" x2="52" y2="22" />
+                <line x1="44" y1="26" x2="52" y2="26" />
             </svg>
-            Voice Transcription
         </h1>
         
         <div class="main-layout">
             <!-- Left: Transcript Result -->
             <div id="resultSection" class="result-section">
                 <div class="result-header">
-                    <h3>Transcript</h3>
                 <label class="auto-copy-switch" title="Auto-copy transcript to clipboard">
                     <input type="checkbox" id="autoCopyToggle" checked>
                     <span class="slider"></span>
@@ -142,7 +150,7 @@
                             </span>
                         </label>
                         <button id="recordBtn" class="record-btn" title="Start recording">
-                            <svg class="btn-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <svg class="btn-icon" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
                                 <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
                                 <line x1="12" y1="19" x2="12" y2="23"/>
@@ -200,7 +208,7 @@
         </div>
     </div>
 
-    <script src="/static/audio-storage.js?v=43"></script>
-    <script src="/static/script.js?v=43"></script>
+    <script src="/static/audio-storage.js?v=44"></script>
+    <script src="/static/script.js?v=44"></script>
 </body>
 </html>
