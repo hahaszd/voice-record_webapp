@@ -389,7 +389,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     
 
     const recordBtn = document.getElementById('recordBtn');
-    const recordBtnText = document.getElementById('recordBtnText');
     const recordingStatus = document.getElementById('recordingStatus');
     const recordingTime = document.getElementById('recordingTime');
     const cancelRecordBtn = document.getElementById('cancelRecordBtn');
@@ -528,7 +527,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // 更新UI
             recordBtn.classList.remove('recording');
-            recordBtnText.textContent = 'Record';
+            // 恢复麦克风图标
+            recordBtn.innerHTML = `
+                <svg class="btn-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="23"/>
+                </svg>
+            `;
+            recordBtn.title = 'Start recording';
             recordingTime.textContent = '00:00';
             recordingStatus.textContent = 'Recording cancelled';
             cancelRecordBtn.style.display = 'none';
@@ -902,7 +909,24 @@ function cleanupAudioStreams(force = false) {
             
             // 更新UI
             recordBtn.classList.add('recording');
-            recordBtnText.textContent = 'Transcribe';
+            // 切换图标为转换图标（音频→文字）
+            recordBtn.innerHTML = `
+                <svg class="btn-icon" width="40" height="40" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- 左侧：音频波形 -->
+                    <line x1="4" y1="24" x2="4" y2="24" />
+                    <line x1="8" y1="20" x2="8" y2="28" />
+                    <line x1="12" y1="16" x2="12" y2="32" />
+                    <line x1="16" y1="22" x2="16" y2="26" />
+                    <!-- 中间：箭头 -->
+                    <line x1="20" y1="24" x2="28" y2="24" />
+                    <polyline points="25,20 29,24 25,28" />
+                    <!-- 右侧：文本行 -->
+                    <line x1="32" y1="18" x2="44" y2="18" />
+                    <line x1="32" y1="24" x2="44" y2="24" />
+                    <line x1="32" y1="30" x2="44" y2="30" />
+                </svg>
+            `;
+            recordBtn.title = 'Click to transcribe';
             recordingStatus.textContent = 'Recording...';
             
             // 🔥 显示取消录音按钮
@@ -999,7 +1023,15 @@ function cleanupAudioStreams(force = false) {
         
         // 更新UI
         recordBtn.classList.remove('recording');
-        recordBtnText.textContent = 'Record';
+        // 恢复麦克风图标
+        recordBtn.innerHTML = `
+            <svg class="btn-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+            </svg>
+        `;
+        recordBtn.title = 'Start recording';
         recordingStatus.textContent = 'Recording stopped';
         
         // 🔥 隐藏取消录音按钮
