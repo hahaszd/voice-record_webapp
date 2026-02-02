@@ -156,8 +156,8 @@ h1 {
     transition: transform 0.3s ease;
 }
 
-.auto-record-switch input[type="checkbox"]:checked + .slider {
-    background-color: #667eea;
+:auto-record-switch input[type="checkbox"]:checked + .slider {
+    background-color: #2d3436;
 }
 
 .auto-record-switch input[type="checkbox"]:checked + .slider::before {
@@ -195,9 +195,9 @@ h1 {
 }
 
 .record-btn.recording {
-    background: #2d3436;
-    border-color: #2d3436;
-    animation: pulse 1.5s ease-in-out infinite;
+    background: #e67e22;
+    border-color: #e67e22;
+    animation: pulse-transcribe 1.5s ease-in-out infinite;
 }
 
 .record-btn:disabled {
@@ -220,6 +220,17 @@ h1 {
     50% {
         transform: scale(1.05);
         box-shadow: 0 4px 16px rgba(45, 52, 54, 0.3);
+    }
+}
+
+@keyframes pulse-transcribe {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 2px 8px rgba(230, 126, 34, 0.3);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 4px 20px rgba(230, 126, 34, 0.6);
     }
 }
 
@@ -501,7 +512,7 @@ h1 {
 }
 
 .auto-copy-switch input[type="checkbox"]:checked + .slider {
-    background-color: #667eea;
+    background-color: #2d3436;
 }
 
 .auto-copy-switch input[type="checkbox"]:checked + .slider::before {
@@ -556,7 +567,7 @@ h1 {
 }
 
 .auto-notify-switch input[type="checkbox"]:checked + .slider {
-    background-color: #667eea;
+    background-color: #2d3436;
 }
 
 .auto-notify-switch input[type="checkbox"]:checked + .slider::before {
