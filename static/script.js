@@ -477,11 +477,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 处理转录时长按钮点击
     durationBtns.forEach(btn => {
         btn.addEventListener('click', () => {
-            // 如果正在录音，不允许切换（虽然按钮会被禁用，但多一层保护）
-            if (isRecording) {
-                console.log('[WARNING] 录音期间无法切换时长');
-                return;
-            }
+            // 允许录音期间切换时长（用户体验优化）
             
             // 移除所有按钮的active类
             durationBtns.forEach(b => b.classList.remove('active'));
@@ -489,7 +485,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             // 添加active类到当前按钮
             btn.classList.add('active');
             
-            console.log(`[INFO] 设置转录时长: ${btn.dataset.duration}秒`);
+            const statusText = isRecording ? '（录音中）' : '';
+            console.log(`[INFO] 设置转录时长: ${btn.dataset.duration}秒 ${statusText}`);
         });
     });
 
