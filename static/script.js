@@ -909,21 +909,23 @@ function cleanupAudioStreams(force = false) {
             
             // 更新UI
             recordBtn.classList.add('recording');
-            // 切换图标为转换图标（音频→文字）
+            // 切换图标为转换图标（麦克风→文字）
             recordBtn.innerHTML = `
-                <svg class="btn-icon" width="40" height="40" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <!-- 左侧：音频波形 -->
-                    <line x1="4" y1="24" x2="4" y2="24" />
-                    <line x1="8" y1="20" x2="8" y2="28" />
-                    <line x1="12" y1="16" x2="12" y2="32" />
-                    <line x1="16" y1="22" x2="16" y2="26" />
+                <svg class="btn-icon" width="40" height="40" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- 左侧：麦克风 -->
+                    <rect x="8" y="12" width="8" height="12" rx="4" />
+                    <line x1="12" y1="24" x2="12" y2="28" />
+                    <path d="M6 20 Q6 28 12 28 Q18 28 18 20" />
+                    
                     <!-- 中间：箭头 -->
-                    <line x1="20" y1="24" x2="28" y2="24" />
-                    <polyline points="25,20 29,24 25,28" />
-                    <!-- 右侧：文本行 -->
-                    <line x1="32" y1="18" x2="44" y2="18" />
-                    <line x1="32" y1="24" x2="44" y2="24" />
-                    <line x1="32" y1="30" x2="44" y2="30" />
+                    <line x1="22" y1="20" x2="36" y2="20" />
+                    <polyline points="32,16 36,20 32,24" />
+                    
+                    <!-- 右侧：文档/文字 -->
+                    <rect x="40" y="12" width="16" height="20" rx="2" />
+                    <line x1="44" y1="18" x2="52" y2="18" />
+                    <line x1="44" y1="22" x2="52" y2="22" />
+                    <line x1="44" y1="26" x2="52" y2="26" />
                 </svg>
             `;
             recordBtn.title = 'Click to transcribe';
