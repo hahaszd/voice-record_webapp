@@ -1671,3 +1671,15 @@ button svg {
         font-size: 1.1em;
     }
 }
+
+/* Animation for slideUp */
+@keyframes slideUp {
+    from {
+        transform: translateX(-50%) translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+    }
+}

@@ -27,6 +27,11 @@ let waveformAnimationId = null;
 let waveformDataArray = null;
 let waveformHistory = []; // Store historical waveform data for scrolling effect
 
+// iOS Detection
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+let hasShownIOSWarning = false; // 避免重复提示
+
 // 页面关闭/刷新时清理音频流
 window.addEventListener('beforeunload', () => {
     console.log('[INFO] 页面即将关闭，清理音频流');
@@ -43,6 +48,68 @@ window.addEventListener('beforeunload', () => {
         audioContext.close();
     }
 });
+
+// 页面可见性监测（iOS 后台检测）
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden && isRecording) {
+        console.warn('[iOS WARNING] Page hidden during recording - iOS Safari may pause recording');
+        if (isIOS && isSafari) {
+            console.warn('[iOS] 页面进入后台，录音可能会被 iOS Safari 暂停');
+            // 可以选择显示一个提示或保存当前状态
+        }
+    } else if (!document.hidden && isRecording) {
+        console.log('[INFO] Page visible again, recording should resume');
+    }
+});
+
+// 显示 iOS 使用提示
+function showIOSWarning() {
+    if (!isIOS || !isSafari || hasShownIOSWarning) return;
+    
+    const warning = document.createElement('div');
+    warning.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+        border-radius: 12px;
+        padding: 15px 20px;
+        max-width: 90%;
+        width: 400px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1001;
+        font-size: 0.9em;
+        line-height: 1.5;
+        animation: slideUp 0.3s ease;
+    `;
+    
+    warning.innerHTML = `
+        <div style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="font-size: 1.5em; flex-shrink: 0;">📱</span>
+            <div style="flex: 1;">
+                <strong style="color: #856404;">iOS Safari Tips:</strong><br>
+                <span style="color: #856404;">Keep screen on and stay in this tab to ensure recording continues.</span>
+            </div>
+            <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; font-size: 1.2em; cursor: pointer; color: #856404; padding: 0; margin-left: 5px;">×</button>
+        </div>
+    `;
+    
+    document.body.appendChild(warning);
+    hasShownIOSWarning = true;
+    
+    // 8秒后自动消失
+    setTimeout(() => {
+        if (warning.parentElement) {
+            warning.style.opacity = '0';
+            warning.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => warning.remove(), 300);
+        }
+    }, 8000);
+    
+    console.log('[iOS] 已显示 iOS 使用提示');
+}
 
 // 检查并请求通知权限（带友好提示）
 async function checkNotificationPermission() {
@@ -550,6 +617,23 @@ const helpContent = {
             <h4>Q: Can I edit the transcribed text?</h4>
             <p>Yes! Click on the text area to edit directly. Your changes will be copied when you click the copy button.</p>
 
+            <h4>📱 Q: Recording stops on iPhone/iPad Safari?</h4>
+            <p><strong>This is an iOS Safari limitation, not a VoiceSpark issue.</strong></p>
+            <p>iOS Safari automatically pauses audio recording when:</p>
+            <ul>
+                <li>❌ You switch to another app</li>
+                <li>❌ You lock the screen</li>
+                <li>❌ The page is in the background for too long</li>
+            </ul>
+            <p><strong>How to ensure continuous recording on iOS:</strong></p>
+            <ul>
+                <li>✅ <strong>Keep the screen on</strong> - Don't lock your device</li>
+                <li>✅ <strong>Stay in Safari</strong> - Keep VoiceSpark tab active</li>
+                <li>✅ <strong>Use shorter durations</strong> - 30s or 1m recommended</li>
+                <li>✅ <strong>Transcribe promptly</strong> - Convert to text right after recording</li>
+            </ul>
+            <p><em>Note: This limitation applies to all web apps on iOS Safari due to Apple's power-saving policies.</em></p>
+
             <h3>🔒 Privacy Promise</h3>
             <ul>
                 <li>✅ Data stored only in local browser</li>
@@ -626,6 +710,23 @@ const helpContent = {
 
             <h4>Q: 可以编辑转录的文字吗？</h4>
             <p>可以！点击文本框直接编辑。修改后的内容会在您点击复制按钮时被复制。</p>
+
+            <h4>📱 Q: iPhone/iPad Safari 上录音会中断？</h4>
+            <p><strong>这是 iOS Safari 的系统限制，不是 VoiceSpark 的问题。</strong></p>
+            <p>iOS Safari 会在以下情况自动暂停音频录制：</p>
+            <ul>
+                <li>❌ 切换到其他应用</li>
+                <li>❌ 锁定屏幕</li>
+                <li>❌ 页面在后台时间过长</li>
+            </ul>
+            <p><strong>iOS 上确保录音不中断的方法：</strong></p>
+            <ul>
+                <li>✅ <strong>保持屏幕开启</strong> - 不要锁屏或休眠</li>
+                <li>✅ <strong>停留在 Safari</strong> - 保持 VoiceSpark 标签页激活</li>
+                <li>✅ <strong>使用较短时长</strong> - 建议 30秒 或 1分钟</li>
+                <li>✅ <strong>及时转录</strong> - 录音完成后立即转换为文字</li>
+            </ul>
+            <p><em>注意：由于苹果的省电策略，所有 iOS Safari 网页应用都有此限制。</em></p>
 
             <h3>🔒 隐私承诺</h3>
             <ul>
@@ -1111,6 +1212,11 @@ function cleanupAudioStreams(force = false) {
     async function startRecording(waitForStorageClear = false) {
         let stream = null;
         try {
+            // 🔥 iOS 用户提示（仅首次显示）
+            if (isIOS && isSafari && autoRecordToggle.checked) {
+                showIOSWarning();
+            }
+            
             // 🔥 关键修复：无论是否等待转录，都要立即清空 IndexedDB
             // 因为新的录音会立即开始写入chunks，不能和旧数据混在一起
             console.log('[INFO] 开始新录音，立即清空 IndexedDB');
