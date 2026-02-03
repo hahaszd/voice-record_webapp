@@ -836,8 +836,7 @@ h1.header-with-icon .header-text {
 @media (max-width: 900px) {
     .main-layout {
         flex-direction: column-reverse;
-        gap: 15px;
-        position: relative;
+        gap: 20px; /* Increased gap */
     }
     
     .control-panel {
@@ -845,7 +844,6 @@ h1.header-with-icon .header-text {
         flex-direction: row;
         gap: 20px;
         position: relative;
-        z-index: 1; /* Lower z-index than header */
     }
     
     .recording-section {
@@ -877,33 +875,29 @@ h1.header-with-icon .header-text {
     
     h1 {
         font-size: 1.4em;
-        margin-bottom: 6px;
+        margin-bottom: 8px;
         flex-shrink: 0;
-        position: relative;
-        z-index: 10; /* Ensure title stays on top */
     }
     
     .tagline {
         font-size: 0.9em;
-        margin-bottom: 15px; /* Reduced from 25px */
+        margin-bottom: 35px; /* Increased significantly to create space */
         flex-shrink: 0;
-        position: relative;
-        z-index: 10; /* Ensure tagline stays on top */
     }
     
     /* Add spacing between header and content */
     .main-layout {
-        margin-top: 10px; /* Add top margin to create space */
+        margin-top: 0;
         padding-top: 0;
         overflow: visible;
         min-height: 0;
+        gap: 20px; /* Increased gap between elements */
     }
     
     .control-panel {
         flex-direction: column;
         max-height: none;
-        position: relative;
-        z-index: 1; /* Lower z-index than header */
+        padding-top: 10px; /* Add padding at top of control panel */
     }
     
     .button-group {
@@ -951,12 +945,10 @@ h1.header-with-icon .header-text {
     
     /* Fix: Audio source selector visibility and positioning */
     .audio-source-selector {
-        margin-bottom: 8px;
-        margin-top: 15px; /* Increased from 5px to create more space */
+        margin-bottom: 12px;
+        margin-top: 0; /* Remove top margin, use control-panel padding instead */
         padding: 8px;
         gap: 6px;
-        position: relative;
-        z-index: 1; /* Lower z-index than header */
     }
     
     .audio-source-btn {
