@@ -881,13 +881,13 @@ h1.header-with-icon .header-text {
     
     .tagline {
         font-size: 0.9em;
-        margin-bottom: 35px; /* Increased significantly to create space */
+        margin-bottom: 40px; /* Increased more to push content down */
         flex-shrink: 0;
     }
     
     /* Add spacing between header and content */
     .main-layout {
-        margin-top: 0;
+        margin-top: 15px; /* Add top margin to push control panel down */
         padding-top: 0;
         overflow: visible;
         min-height: 0;
@@ -897,7 +897,7 @@ h1.header-with-icon .header-text {
     .control-panel {
         flex-direction: column;
         max-height: none;
-        padding-top: 10px; /* Add padding at top of control panel */
+        /* Remove padding-top - it was pushing content up */
     }
     
     .button-group {
@@ -946,7 +946,7 @@ h1.header-with-icon .header-text {
     /* Fix: Audio source selector visibility and positioning */
     .audio-source-selector {
         margin-bottom: 12px;
-        margin-top: 0; /* Remove top margin, use control-panel padding instead */
+        margin-top: 20px; /* Increased to push buttons down, away from title */
         padding: 8px;
         gap: 6px;
     }
