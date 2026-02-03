@@ -309,7 +309,7 @@ h1.header-with-icon .header-text {
     margin: 0;
     background: transparent;
     position: absolute;
-    left: calc(50% - 120px); /* Position to left of button (button width ~80px, waveform 150px, gap 40px) */
+    left: calc(50% - 220px); /* Position to left: 50% - button_radius(50px) - gap(20px) - waveform_width(150px) */
     top: 50%;
     transform: translateY(-50%);
     flex-shrink: 0;
@@ -352,7 +352,7 @@ h1.header-with-icon .header-text {
     justify-content: center;
     flex-shrink: 0;
     position: absolute;
-    right: calc(50% - 120px); /* Position to right of button (mirror of waveform) */
+    right: calc(50% - 82px); /* Position to right: 50% - button_radius(50px) - gap(32px) */
     top: 50%;
     transform: translateY(-50%);
 }
