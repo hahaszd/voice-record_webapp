@@ -861,17 +861,24 @@ h1.header-with-icon .header-text {
 @media (max-width: 600px) {
     .container {
         padding: 15px;
+        padding-top: 10px;
         height: 95vh;
     }
     
     h1 {
         font-size: 1.4em;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
     }
     
     .tagline {
         font-size: 0.9em;
-        margin-bottom: 20px;
+        margin-bottom: 25px;
+    }
+    
+    /* Add spacing between header and content */
+    .main-layout {
+        margin-top: 0;
+        padding-top: 15px;
     }
     
     .control-panel {
@@ -921,9 +928,10 @@ h1.header-with-icon .header-text {
         height: 14px;
     }
     
-    /* Fix: Audio source selector visibility */
+    /* Fix: Audio source selector visibility and positioning */
     .audio-source-selector {
         margin-bottom: 12px;
+        margin-top: 5px;
         padding: 8px;
         gap: 6px;
     }
