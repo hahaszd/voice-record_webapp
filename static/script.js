@@ -111,6 +111,52 @@ function showIOSWarning() {
     console.log('[iOS] 已显示 iOS 使用提示');
 }
 
+// 显示 iOS 系统音频不可用提示
+function showIOSSystemAudioWarning() {
+    const warning = document.createElement('div');
+    warning.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #f8d7da;
+        border: 2px solid #f5c6cb;
+        border-radius: 12px;
+        padding: 15px 20px;
+        max-width: 90%;
+        width: 450px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1001;
+        font-size: 0.9em;
+        line-height: 1.6;
+        animation: slideUp 0.3s ease;
+    `;
+    
+    warning.innerHTML = `
+        <div style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="font-size: 1.5em; flex-shrink: 0;">🚫</span>
+            <div style="flex: 1;">
+                <strong style="color: #721c24;">System Audio Not Available on iOS</strong><br>
+                <span style="color: #721c24; font-size: 0.95em;">iOS does not allow web apps to capture system audio. Please use a desktop browser (Chrome/Edge/Safari on Mac/PC) for this feature.</span>
+            </div>
+            <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; font-size: 1.2em; cursor: pointer; color: #721c24; padding: 0; margin-left: 5px;">×</button>
+        </div>
+    `;
+    
+    document.body.appendChild(warning);
+    
+    // 10秒后自动消失
+    setTimeout(() => {
+        if (warning.parentElement) {
+            warning.style.opacity = '0';
+            warning.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => warning.remove(), 300);
+        }
+    }, 10000);
+    
+    console.log('[iOS] 已显示系统音频不可用提示');
+}
+
 // 检查并请求通知权限（带友好提示）
 async function checkNotificationPermission() {
     console.log('[INFO] 检查通知权限');
@@ -634,6 +680,26 @@ const helpContent = {
             </ul>
             <p><em>Note: This limitation applies to all web apps on iOS Safari due to Apple's power-saving policies.</em></p>
 
+            <h4>🚫 Q: System Audio not working on iOS?</h4>
+            <p><strong>iOS does not support system audio capture - this is an Apple restriction.</strong></p>
+            <p><strong>Why?</strong></p>
+            <ul>
+                <li>🔒 Privacy protection - Prevents unauthorized audio recording</li>
+                <li>🛡️ Security - Blocks malicious websites from capturing system sounds</li>
+                <li>🍎 iOS policy - All browsers on iOS use Safari's engine with the same limitations</li>
+            </ul>
+            <p><strong>What works on iOS:</strong></p>
+            <ul>
+                <li>✅ Microphone recording (your voice)</li>
+                <li>❌ System audio (videos, music, apps)</li>
+                <li>❌ Microphone + System audio</li>
+            </ul>
+            <p><strong>To capture system audio, use:</strong></p>
+            <ul>
+                <li>💻 Desktop browser (Chrome/Edge/Safari on Mac/PC)</li>
+                <li>📱 Native iOS recording apps (with proper permissions)</li>
+            </ul>
+
             <h3>🔒 Privacy Promise</h3>
             <ul>
                 <li>✅ Data stored only in local browser</li>
@@ -727,6 +793,26 @@ const helpContent = {
                 <li>✅ <strong>及时转录</strong> - 录音完成后立即转换为文字</li>
             </ul>
             <p><em>注意：由于苹果的省电策略，所有 iOS Safari 网页应用都有此限制。</em></p>
+
+            <h4>🚫 Q: iOS 上系统音频不可用？</h4>
+            <p><strong>iOS 不支持系统音频捕获 - 这是苹果的系统限制。</strong></p>
+            <p><strong>为什么？</strong></p>
+            <ul>
+                <li>🔒 隐私保护 - 防止未经授权的音频录制</li>
+                <li>🛡️ 安全考虑 - 阻止恶意网站捕获系统声音</li>
+                <li>🍎 iOS 政策 - 所有 iOS 浏览器都使用 Safari 引擎，受相同限制</li>
+            </ul>
+            <p><strong>iOS 上可用功能：</strong></p>
+            <ul>
+                <li>✅ 麦克风录音（你的声音）</li>
+                <li>❌ 系统音频（视频、音乐、应用声音）</li>
+                <li>❌ 麦克风+系统音频</li>
+            </ul>
+            <p><strong>要捕获系统音频，请使用：</strong></p>
+            <ul>
+                <li>💻 桌面浏览器（Mac/PC 上的 Chrome/Edge/Safari）</li>
+                <li>📱 原生 iOS 录音应用（需要相应权限）</li>
+            </ul>
 
             <h3>🔒 隐私承诺</h3>
             <ul>
@@ -832,9 +918,46 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 3000);
     }
     
+    // 🔥 iOS 限制：禁用系统音频选项
+    if (isIOS) {
+        console.log('[iOS] 检测到 iOS 设备，禁用系统音频选项');
+        
+        audioSourceBtns.forEach(btn => {
+            const source = btn.dataset.source;
+            if (source === 'system' || source === 'both') {
+                // 禁用按钮
+                btn.disabled = true;
+                btn.style.opacity = '0.4';
+                btn.style.cursor = 'not-allowed';
+                
+                // 更新 tooltip
+                const originalTitle = btn.getAttribute('title');
+                btn.setAttribute('title', 'Not available on iOS - iOS does not support system audio capture');
+                
+                console.log(`[iOS] 已禁用音频源: ${source}`);
+            }
+        });
+        
+        // 确保麦克风是选中状态
+        const micBtn = document.querySelector('.audio-source-btn[data-source="microphone"]');
+        if (micBtn && !micBtn.classList.contains('active')) {
+            audioSourceBtns.forEach(b => b.classList.remove('active'));
+            micBtn.classList.add('active');
+            selectedAudioSource = 'microphone';
+            console.log('[iOS] 已自动选择麦克风作为音频源');
+        }
+    }
+    
     // 处理音频源按钮点击
     audioSourceBtns.forEach(btn => {
         btn.addEventListener('click', () => {
+            // iOS 上禁止选择系统音频
+            if (isIOS && (btn.dataset.source === 'system' || btn.dataset.source === 'both')) {
+                console.warn('[iOS] iOS 不支持系统音频捕获');
+                showIOSSystemAudioWarning();
+                return;
+            }
+            
             // 如果正在录音，不允许切换
             if (isRecording) {
                 console.log('[WARNING] 录音期间无法切换音频源');
