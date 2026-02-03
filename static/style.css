@@ -319,9 +319,10 @@ h1.header-with-icon .header-text {
 
 .recording-status-wrapper {
     display: flex;
-    flex-direction: row; /* Changed from column to row - horizontal layout */
+    flex-direction: row; /* Horizontal layout */
     align-items: center;
-    gap: 10px; /* Horizontal gap between time and cancel button */
+    justify-content: center; /* Center the time */
+    gap: 10px;
 }
 
 .cancel-record-btn {
@@ -1037,11 +1038,21 @@ h1.header-with-icon .header-text {
         flex-direction: column;
         align-items: center;
         gap: 10px;
+        position: relative; /* For absolute positioning of cancel button */
     }
     
     /* Horizontal row for button, waveform, and time */
     .recording-controls .record-btn {
         order: 0; /* Button in middle */
+    }
+    
+    /* Cancel button positioned to the right of record button */
+    .recording-controls .cancel-record-btn {
+        position: absolute;
+        right: 10px; /* Distance from right edge */
+        top: 50%; /* Vertically center relative to record button */
+        transform: translateY(-50%);
+        order: 1;
     }
     
     .recording-controls .waveform-canvas {

@@ -146,17 +146,17 @@
                                 <line x1="12" y1="19" x2="12" y2="23"/>
                             </svg>
                         </button>
+                        <!-- Cancel Button (next to record/transcribe button) -->
+                        <button id="cancelRecordBtn" class="cancel-record-btn" style="display: none;" title="Cancel capture">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="4" y1="4" x2="12" y2="12"/>
+                                <line x1="12" y1="4" x2="4" y2="12"/>
+                            </svg>
+                        </button>
                         <!-- Audio Waveform Visualization (between record button and time) -->
                         <canvas id="waveformCanvas" class="waveform-canvas" style="display: none;"></canvas>
                         <div class="recording-status-wrapper">
                             <div id="recordingTime" class="recording-time">00:00</div>
-                            <!-- Cancel Button (shown during recording) -->
-                            <button id="cancelRecordBtn" class="cancel-record-btn" style="display: none;" title="Cancel capture">
-                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <line x1="4" y1="4" x2="12" y2="12"/>
-                                    <line x1="12" y1="4" x2="4" y2="12"/>
-                                </svg>
-                            </button>
                         </div>
                     </div>
                 </div>
