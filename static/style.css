@@ -169,6 +169,7 @@ h1.header-with-icon .header-text {
     flex-direction: column;
     align-items: center;
     gap: 12px;
+    position: relative; /* For absolute positioning of waveform and cancel button */
 }
 
 .auto-record-switch {
@@ -301,13 +302,22 @@ h1.header-with-icon .header-text {
     }
 }
 
-/* Waveform Canvas */
+/* Waveform Canvas - positioned to left of record button */
 .waveform-canvas {
-    width: 100%;
-    max-width: 400px;
-    height: 50px;
-    margin: 12px auto 8px;
+    width: 150px; /* Desktop: wider than mobile */
+    height: 80px; /* Desktop: taller than mobile */
+    margin: 0;
     background: transparent;
+    position: absolute;
+    left: calc(50% - 120px); /* Position to left of button (button width ~80px, waveform 150px, gap 40px) */
+    top: 50%;
+    transform: translateY(-50%);
+    flex-shrink: 0;
+}
+
+.recording-section {
+    position: relative; /* For absolute positioning of waveform and cancel button */
+    min-height: 120px; /* Ensure enough space for horizontal layout */
 }
 
 .recording-time {
@@ -325,6 +335,7 @@ h1.header-with-icon .header-text {
     gap: 10px;
 }
 
+/* Cancel button - positioned to right of record button */
 .cancel-record-btn {
     width: 32px;
     height: 32px;
@@ -340,6 +351,10 @@ h1.header-with-icon .header-text {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    position: absolute;
+    right: calc(50% - 120px); /* Position to right of button (mirror of waveform) */
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 .cancel-record-btn:hover {
@@ -985,10 +1000,14 @@ h1.header-with-icon .header-text {
     
     /* Waveform canvas mobile sizing - horizontal layout next to button */
     .waveform-canvas {
-        width: 100px; /* Fixed width */
-        height: 70px; /* Slightly smaller than button */
-        margin: 0; /* Remove margins */
+        width: 100px; /* Mobile: narrower */
+        height: 70px; /* Mobile: shorter */
+        margin: 0;
         flex-shrink: 0;
+        position: absolute;
+        left: 10px; /* Mobile: closer to edge */
+        top: 50%;
+        transform: translateY(-50%);
     }
     
     /* Result section sizing */
@@ -1049,8 +1068,8 @@ h1.header-with-icon .header-text {
     /* Cancel button positioned to the right of record button */
     .recording-controls .cancel-record-btn {
         position: absolute;
-        right: 10px; /* Distance from right edge */
-        top: 50%; /* Vertically center relative to record button */
+        right: 10px; /* Mobile: closer to edge */
+        top: 50%;
         transform: translateY(-50%);
         order: 1;
     }
