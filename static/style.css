@@ -982,18 +982,19 @@ h1.header-with-icon .header-text {
         min-width: 0;
     }
     
-    /* Waveform canvas mobile sizing - more compact */
+    /* Waveform canvas mobile sizing - horizontal layout next to button */
     .waveform-canvas {
-        max-width: 280px;
-        height: 35px;
-        margin: 6px auto 4px;
+        width: 100px; /* Fixed width */
+        height: 70px; /* Slightly smaller than button */
+        margin: 0; /* Remove margins */
+        flex-shrink: 0;
     }
     
     /* Result section sizing */
     .result-section {
-        min-height: 250px; /* Reduced from 300px to allow more space for controls */
+        min-height: 250px;
         flex: 1;
-        flex-shrink: 1; /* Allow shrinking when needed (during recording) */
+        flex-shrink: 1;
         overflow: hidden;
     }
     
@@ -1019,13 +1020,33 @@ h1.header-with-icon .header-text {
         height: 16px;
     }
     
-    /* Recording controls - compact spacing */
+    /* Recording controls - horizontal layout on mobile when recording */
     .recording-controls {
-        gap: 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
     }
     
-    .recording-status-wrapper {
-        gap: 6px;
+    /* Horizontal row for button, waveform, and time */
+    .recording-controls .record-btn {
+        order: 0; /* Button in middle */
+    }
+    
+    .recording-controls .waveform-canvas {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+    
+    .recording-controls .recording-status-wrapper {
+        order: 2; /* Time below button */
+    }
+    
+    .recording-section {
+        position: relative; /* For absolute positioning of waveform */
+        min-height: 120px; /* Ensure enough space */
     }
 }
 
