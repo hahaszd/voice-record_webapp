@@ -319,9 +319,9 @@ h1.header-with-icon .header-text {
 
 .recording-status-wrapper {
     display: flex;
-    flex-direction: column;
+    flex-direction: row; /* Changed from column to row - horizontal layout */
     align-items: center;
-    gap: 8px;
+    gap: 10px; /* Horizontal gap between time and cancel button */
 }
 
 .cancel-record-btn {
