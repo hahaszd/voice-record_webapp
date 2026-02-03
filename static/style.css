@@ -165,11 +165,20 @@ h1.header-with-icon .header-text {
 }
 
 .recording-controls {
-    position: relative; /* This is the positioning context for waveform and cancel button */
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 12px;
+}
+
+/* Horizontal button row container for waveform + button + cancel */
+.recording-controls-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    position: relative;
 }
 
 .auto-record-switch {
@@ -234,6 +243,8 @@ h1.header-with-icon .header-text {
     margin: 0;
     padding: 0;
     position: relative;
+    flex-shrink: 0;
+    order: 2; /* Center: button */
 }
 
 .record-btn .btn-icon {
@@ -302,17 +313,14 @@ h1.header-with-icon .header-text {
     }
 }
 
-/* Waveform Canvas - positioned to left of record button */
+/* Waveform Canvas - in flex row, no absolute positioning on desktop */
 .waveform-canvas {
     width: 150px; /* Desktop: wider than mobile */
     height: 80px; /* Desktop: taller than mobile */
     margin: 0;
     background: transparent;
-    position: absolute;
-    left: -170px; /* Position to left: waveform width (150px) + gap (20px) */
-    top: 50%;
-    transform: translateY(-50%);
     flex-shrink: 0;
+    order: 1; /* Left: waveform */
 }
 
 .recording-section {
@@ -338,7 +346,7 @@ h1.header-with-icon .header-text {
     gap: 10px;
 }
 
-/* Cancel button - positioned to right of record button */
+/* Cancel button - in flex row, no absolute positioning on desktop */
 .cancel-record-btn {
     width: 32px;
     height: 32px;
@@ -354,10 +362,7 @@ h1.header-with-icon .header-text {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    position: absolute;
-    right: -52px; /* Position to right: button_radius(50px) + gap(20px) - half_cancel_button(16px) */
-    top: 50%;
-    transform: translateY(-50%);
+    order: 3; /* Right: cancel button */
 }
 
 .cancel-record-btn:hover {
@@ -1060,7 +1065,13 @@ h1.header-with-icon .header-text {
         flex-direction: column;
         align-items: center;
         gap: 10px;
-        position: relative; /* For absolute positioning of cancel button */
+    }
+    
+    /* Mobile: use absolute positioning for waveform and cancel within the row */
+    .recording-controls-row {
+        position: relative; /* Positioning context for mobile */
+        width: 100%;
+        min-height: 80px;
     }
     
     /* Horizontal row for button, waveform, and time */
@@ -1069,15 +1080,14 @@ h1.header-with-icon .header-text {
     }
     
     /* Cancel button positioned to the right of record button */
-    .recording-controls .cancel-record-btn {
+    .recording-controls-row .cancel-record-btn {
         position: absolute;
         right: 10px; /* Mobile: closer to edge */
         top: 50%;
         transform: translateY(-50%);
-        order: 1;
     }
     
-    .recording-controls .waveform-canvas {
+    .recording-controls-row .waveform-canvas {
         position: absolute;
         left: 10px;
         top: 50%;
