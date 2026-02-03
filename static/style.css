@@ -955,7 +955,12 @@ h1.header-with-icon .header-text {
     }
     
     .audio-source-btn svg {
-        width: 24px !important;
+        height: 24px !important;
+    }
+    
+    /* Both button needs more width for 3 icons */
+    .audio-source-btn[data-source="both"] svg {
+        width: auto !important;
         height: 24px !important;
     }
     
