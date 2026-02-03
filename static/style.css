@@ -832,12 +832,14 @@ h1.header-with-icon .header-text {
 @media (max-width: 900px) {
     .main-layout {
         flex-direction: column-reverse;
+        gap: 15px;
     }
     
     .control-panel {
         width: 100%;
         flex-direction: row;
         gap: 20px;
+        position: relative;
     }
     
     .recording-section {
@@ -855,6 +857,7 @@ h1.header-with-icon .header-text {
     
     .result-section {
         min-height: 400px;
+        flex-shrink: 0;
     }
 }
 
@@ -863,26 +866,32 @@ h1.header-with-icon .header-text {
         padding: 15px;
         padding-top: 10px;
         height: 95vh;
+        overflow-y: auto;
     }
     
     h1 {
         font-size: 1.4em;
         margin-bottom: 6px;
+        flex-shrink: 0;
     }
     
     .tagline {
         font-size: 0.9em;
         margin-bottom: 25px;
+        flex-shrink: 0;
     }
     
     /* Add spacing between header and content */
     .main-layout {
         margin-top: 0;
         padding-top: 15px;
+        overflow: visible;
+        min-height: 0;
     }
     
     .control-panel {
         flex-direction: column;
+        max-height: none;
     }
     
     .button-group {
@@ -962,20 +971,23 @@ h1.header-with-icon .header-text {
         min-width: 0;
     }
     
-    /* Waveform canvas mobile sizing */
+    /* Waveform canvas mobile sizing - more compact */
     .waveform-canvas {
         max-width: 280px;
-        height: 40px;
-        margin: 8px auto 6px;
+        height: 35px;
+        margin: 6px auto 4px;
     }
     
     /* Result section sizing */
     .result-section {
         min-height: 300px;
+        flex: 1;
+        overflow: hidden;
     }
     
     .result-header {
         gap: 10px;
+        flex-shrink: 0;
     }
     
     .auto-copy-switch,
@@ -993,6 +1005,15 @@ h1.header-with-icon .header-text {
     .auto-notify-switch .icon-label svg {
         width: 16px;
         height: 16px;
+    }
+    
+    /* Recording controls - compact spacing */
+    .recording-controls {
+        gap: 8px;
+    }
+    
+    .recording-status-wrapper {
+        gap: 6px;
     }
 }
 
