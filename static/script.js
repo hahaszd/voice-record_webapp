@@ -27,10 +27,13 @@ let waveformAnimationId = null;
 let waveformDataArray = null;
 let waveformHistory = []; // Store historical waveform data for scrolling effect
 
-// iOS Detection
+// Mobile Device Detection
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const isAndroid = /Android/.test(navigator.userAgent);
 const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
 let hasShownIOSWarning = false; // 避免重复提示
+let hasShownAndroidWarning = false; // 避免重复提示
 
 // 页面关闭/刷新时清理音频流
 window.addEventListener('beforeunload', () => {
@@ -155,6 +158,58 @@ function showIOSSystemAudioWarning() {
     }, 10000);
     
     console.log('[iOS] 已显示系统音频不可用提示');
+}
+
+// 显示 Android 系统音频使用提示
+function showAndroidSystemAudioTip() {
+    if (hasShownAndroidWarning) {
+        console.log('[Android] 已显示过提示，跳过');
+        return;
+    }
+    
+    const warning = document.createElement('div');
+    warning.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #d1ecf1;
+        border: 2px solid #bee5eb;
+        border-radius: 12px;
+        padding: 15px 20px;
+        max-width: 90%;
+        width: 450px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1001;
+        font-size: 0.9em;
+        line-height: 1.6;
+        animation: slideUp 0.3s ease;
+    `;
+    
+    warning.innerHTML = `
+        <div style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="font-size: 1.5em; flex-shrink: 0;">💡</span>
+            <div style="flex: 1;">
+                <strong style="color: #0c5460;">Android System Audio Tip</strong><br>
+                <span style="color: #0c5460; font-size: 0.95em;">When selecting system audio, remember to check "Share system audio" in the permission dialog. For best results, use Chrome browser.</span>
+            </div>
+            <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; font-size: 1.2em; cursor: pointer; color: #0c5460; padding: 0; margin-left: 5px;">×</button>
+        </div>
+    `;
+    
+    document.body.appendChild(warning);
+    hasShownAndroidWarning = true;
+    
+    // 8秒后自动消失
+    setTimeout(() => {
+        if (warning.parentElement) {
+            warning.style.opacity = '0';
+            warning.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => warning.remove(), 300);
+        }
+    }, 8000);
+    
+    console.log('[Android] 已显示系统音频使用提示');
 }
 
 // 检查并请求通知权限（带友好提示）
@@ -700,6 +755,28 @@ const helpContent = {
                 <li>📱 Native iOS recording apps (with proper permissions)</li>
             </ul>
 
+            <h4>📱 Q: How to use System Audio on Android?</h4>
+            <p><strong>Android supports system audio capture, but requires specific steps:</strong></p>
+            <p><strong>Recommended Setup:</strong></p>
+            <ul>
+                <li>✅ Use <strong>Chrome</strong> or <strong>Edge</strong> browser (Chrome 74+)</li>
+                <li>✅ When permission dialog appears, check <strong>"Share system audio"</strong></li>
+                <li>✅ Select the <strong>entire screen</strong> or <strong>specific app</strong> to share</li>
+            </ul>
+            <p><strong>Common Issues:</strong></p>
+            <ul>
+                <li>❌ <strong>Firefox/Samsung Browser</strong> - Limited support, use Chrome instead</li>
+                <li>❌ <strong>Forgot to check "Share system audio"</strong> - Only screen will be shared, no audio</li>
+                <li>❌ <strong>Permission denied</strong> - Try again and allow all permissions</li>
+            </ul>
+            <p><strong>What works on Android:</strong></p>
+            <ul>
+                <li>✅ Microphone recording (your voice) - All browsers</li>
+                <li>✅ System audio - Chrome/Edge only, with "Share system audio" checked</li>
+                <li>✅ Microphone + System audio - Chrome/Edge only</li>
+            </ul>
+            <p><em>Note: System audio capture on Android uses screen sharing API. You don't need to actually share your screen - just the audio.</em></p>
+
             <h3>🔒 Privacy Promise</h3>
             <ul>
                 <li>✅ Data stored only in local browser</li>
@@ -814,6 +891,28 @@ const helpContent = {
                 <li>📱 原生 iOS 录音应用（需要相应权限）</li>
             </ul>
 
+            <h4>📱 Q: Android 上如何使用系统音频？</h4>
+            <p><strong>Android 支持系统音频捕获，但需要正确的操作步骤：</strong></p>
+            <p><strong>推荐设置：</strong></p>
+            <ul>
+                <li>✅ 使用 <strong>Chrome</strong> 或 <strong>Edge</strong> 浏览器（Chrome 74+）</li>
+                <li>✅ 权限弹窗出现时，勾选 <strong>"共享系统音频"</strong></li>
+                <li>✅ 选择 <strong>整个屏幕</strong> 或 <strong>特定应用</strong> 进行共享</li>
+            </ul>
+            <p><strong>常见问题：</strong></p>
+            <ul>
+                <li>❌ <strong>使用 Firefox/三星浏览器</strong> - 支持有限，建议改用 Chrome</li>
+                <li>❌ <strong>忘记勾选"共享系统音频"</strong> - 只会共享屏幕，没有声音</li>
+                <li>❌ <strong>权限被拒绝</strong> - 重新尝试，并允许所有权限</li>
+            </ul>
+            <p><strong>Android 上可用功能：</strong></p>
+            <ul>
+                <li>✅ 麦克风录音（你的声音）- 所有浏览器</li>
+                <li>✅ 系统音频 - 仅 Chrome/Edge，需勾选"共享系统音频"</li>
+                <li>✅ 麦克风+系统音频 - 仅 Chrome/Edge</li>
+            </ul>
+            <p><em>注意：Android 系统音频捕获使用屏幕共享 API。你不需要真的共享屏幕 - 只需要音频。</em></p>
+
             <h3>🔒 隐私承诺</h3>
             <ul>
                 <li>✅ 数据仅存储在本地浏览器</li>
@@ -918,7 +1017,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 3000);
     }
     
-    // 🔥 iOS 限制：禁用系统音频选项
+    // 🔥 移动设备限制：处理系统音频选项
     if (isIOS) {
         console.log('[iOS] 检测到 iOS 设备，禁用系统音频选项');
         
@@ -946,6 +1045,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             selectedAudioSource = 'microphone';
             console.log('[iOS] 已自动选择麦克风作为音频源');
         }
+    } else if (isAndroid && !isChrome) {
+        // Android 非 Chrome 浏览器：部分支持，添加警告提示
+        console.log('[Android] 检测到 Android 非 Chrome 浏览器，系统音频可能不可用');
+        
+        audioSourceBtns.forEach(btn => {
+            const source = btn.dataset.source;
+            if (source === 'system' || source === 'both') {
+                // 不禁用，但更新 tooltip 提示
+                const originalTitle = btn.getAttribute('title');
+                btn.setAttribute('title', originalTitle + ' - Recommended: Use Chrome for best system audio support');
+                console.log(`[Android] 已更新音频源提示: ${source}`);
+            }
+        });
     }
     
     // 处理音频源按钮点击
@@ -956,6 +1068,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.warn('[iOS] iOS 不支持系统音频捕获');
                 showIOSSystemAudioWarning();
                 return;
+            }
+            
+            // Android 上选择系统音频时显示使用提示
+            if (isAndroid && (btn.dataset.source === 'system' || btn.dataset.source === 'both')) {
+                console.log('[Android] Android 用户选择系统音频，显示使用提示');
+                showAndroidSystemAudioTip();
             }
             
             // 如果正在录音，不允许切换
