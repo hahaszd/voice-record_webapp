@@ -930,7 +930,7 @@ h1.header-with-icon .header-text {
     
     /* Fix: Audio source selector visibility and positioning */
     .audio-source-selector {
-        margin-bottom: 12px;
+        margin-bottom: 8px;
         margin-top: 5px;
         padding: 8px;
         gap: 6px;
@@ -947,6 +947,11 @@ h1.header-with-icon .header-text {
     }
     
     /* Fix: Duration buttons going off screen */
+    .playback-section {
+        padding: 8px;
+        margin-bottom: 10px;
+    }
+    
     .duration-selector {
         gap: 6px;
     }

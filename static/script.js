@@ -1497,45 +1497,40 @@ function cleanupAudioStreams(force = false) {
                                 copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
                             }, 2000);
                         } catch (err) {
-                            // 🔥 改进：区分不同的错误类型
-                            if (err.name === 'NotAllowedError' && err.message.includes('not focused')) {
-                                console.warn('[WARNING] ⚠️ Auto-copy failed: document not focused');
-                                console.log('[INFO] Will retry when user returns to page');
+                            // Safari fallback: 使用 textarea 选择+复制方法
+                            console.warn('[WARNING] Clipboard API failed, trying fallback method:', err.message);
+                            
+                            try {
+                                // 创建临时 textarea
+                                const textArea = document.createElement('textarea');
+                                textArea.value = result.text;
+                                textArea.style.position = 'fixed';
+                                textArea.style.top = '-9999px';
+                                textArea.style.left = '-9999px';
+                                textArea.setAttribute('readonly', '');
+                                document.body.appendChild(textArea);
                                 
-                                // 显示温和的提示，不显示为错误
-                                copyBtn.classList.add('pending');
-                                copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2v4m0 4v4m0 4v2"/></svg>';
+                                // 选择并复制
+                                textArea.select();
+                                textArea.setSelectionRange(0, 99999); // For mobile devices
                                 
-                                // 监听文档重新获得焦点，自动尝试复制
-                                const autoRetry = async () => {
-                                    try {
-                                        await navigator.clipboard.writeText(result.text);
-                                        console.log('[INFO] ✅ Auto-copy successful after refocus');
-                                        copyBtn.classList.remove('pending');
-                                        copyBtn.classList.add('success');
-                                        copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-                                        setTimeout(() => {
-                                            copyBtn.classList.remove('success');
-                                            copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-                                        }, 2000);
-                                        // 移除监听器
-                                        window.removeEventListener('focus', autoRetry);
-                                    } catch (retryErr) {
-                                        console.log('[INFO] Retry copy failed, user needs to click manually');
-                                    }
-                                };
+                                const successful = document.execCommand('copy');
+                                document.body.removeChild(textArea);
                                 
-                                // 当用户返回页面时自动重试
-                                window.addEventListener('focus', autoRetry, { once: true });
-                                
-                                // 10秒后恢复按钮样式
-                                setTimeout(() => {
-                                    copyBtn.classList.remove('pending');
-                                    copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-                                }, 10000);
-                            } else {
-                                // 其他类型的错误
-                                console.error('[ERROR] Auto-copy failed:', err.name, '-', err.message);
+                                if (successful) {
+                                    console.log('[INFO] ✅ Auto-copy successful (fallback method)');
+                                    copyBtn.classList.add('success');
+                                    copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+                                    setTimeout(() => {
+                                        copyBtn.classList.remove('success');
+                                        copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+                                    }, 2000);
+                                } else {
+                                    throw new Error('execCommand failed');
+                                }
+                            } catch (fallbackErr) {
+                                console.error('[ERROR] Auto-copy failed (all methods):', fallbackErr);
+                                // 显示错误状态
                                 copyBtn.classList.add('error');
                                 copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
                                 setTimeout(() => {
