@@ -44,6 +44,10 @@ h1 {
     font-weight: 600;
     flex-shrink: 0;
     letter-spacing: -0.5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
 }
 
 .tagline {
@@ -1362,35 +1366,37 @@ button svg {
 
 /* Help Button */
 .help-btn {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: white;
-    border: 2px solid #e67e22;
-    color: #e67e22;
-    font-size: 20px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    z-index: 100;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 8px rgba(230, 126, 34, 0.2);
+    width: 22px;
+    height: 22px;
+    margin-left: 8px;
+    padding: 0;
+    border-radius: 50%;
+    background: transparent;
+    border: 1.5px solid #3498db;
+    color: #3498db;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    vertical-align: middle;
+    flex-shrink: 0;
 }
 
 .help-btn:hover {
-    background: #e67e22;
+    background: #3498db;
     color: white;
-    transform: scale(1.1);
-    box-shadow: 0 4px 12px rgba(230, 126, 34, 0.4);
+    transform: scale(1.15);
 }
 
 .help-btn:active {
     transform: scale(1.05);
+}
+
+.help-btn svg {
+    width: 12px;
+    height: 12px;
+    stroke: currentColor;
 }
 
 /* Help Modal */
@@ -1623,11 +1629,19 @@ button svg {
 /* Mobile Responsive for Help */
 @media (max-width: 600px) {
     .help-btn {
-        top: 10px;
-        right: 10px;
-        width: 32px;
-        height: 32px;
-        font-size: 18px;
+        width: 20px;
+        height: 20px;
+        margin-left: 6px;
+        border-width: 1.5px;
+    }
+    
+    .help-btn svg {
+        width: 11px;
+        height: 11px;
+    }
+    
+    h1 {
+        font-size: 1.4em;
     }
     
     .help-modal-content {
