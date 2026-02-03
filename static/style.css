@@ -177,7 +177,7 @@ h1.header-with-icon .header-text {
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 20px;
+    gap: 10px; /* Reduced gap to make elements appear connected */
     position: relative;
 }
 
@@ -315,8 +315,8 @@ h1.header-with-icon .header-text {
 
 /* Waveform Canvas - in flex row, no absolute positioning on desktop */
 .waveform-canvas {
-    width: 100px; /* Desktop: reduced width to save space */
-    height: 70px; /* Desktop: reduced height */
+    width: 80px; /* Desktop: even shorter for better centering */
+    height: 60px; /* Desktop: smaller height */
     margin: 0;
     background: transparent;
     flex-shrink: 0;
@@ -1055,38 +1055,41 @@ h1.header-with-icon .header-text {
         gap: 10px;
     }
     
-    /* Mobile: use absolute positioning for waveform and cancel within the row */
+    /* Mobile: CRITICAL - disable flexbox, use pure absolute positioning */
     .recording-controls-row {
-        position: relative; /* Positioning context for mobile */
+        position: relative; /* Positioning context for absolute children */
         width: 100%;
         min-height: 80px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
+        display: block !important; /* ✅ Override flexbox - use block layout */
+        /* Remove flex properties that cause overlap */
     }
     
-    /* Mobile: waveform sizing */
+    /* Mobile: waveform at left edge */
     .recording-controls-row .waveform-canvas {
-        width: 80px; /* Mobile: smaller width */
-        height: 60px; /* Mobile: smaller height */
+        width: 70px; /* Mobile: smaller width */
+        height: 50px; /* Mobile: smaller height */
         position: absolute;
-        left: 10px; /* Mobile: at left edge */
+        left: 5px; /* Mobile: very close to left edge */
         top: 50%;
         transform: translateY(-50%);
+        display: block; /* Ensure it's visible */
     }
     
-    /* Mobile: cancel button positioning */
+    /* Mobile: record button centered via margin auto */
+    .recording-controls-row .record-btn {
+        position: relative; /* Normal flow for centering */
+        margin: 0 auto; /* Center horizontally */
+        display: block;
+        z-index: 2; /* Above waveform */
+    }
+    
+    /* Mobile: cancel button at right edge */
     .recording-controls-row .cancel-record-btn {
         position: absolute;
-        right: 10px; /* Mobile: at right edge */
+        right: 5px; /* Mobile: very close to right edge */
         top: 50%;
         transform: translateY(-50%);
-    }
-    
-    /* Mobile: record button stays centered */
-    .recording-controls-row .record-btn {
-        position: relative; /* Keep in normal flow for centering */
-        z-index: 1; /* Above waveform */
+        z-index: 2; /* Above waveform */
     }
     
     .recording-controls .recording-status-wrapper {
