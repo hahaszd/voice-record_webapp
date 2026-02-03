@@ -165,11 +165,11 @@ h1.header-with-icon .header-text {
 }
 
 .recording-controls {
+    position: relative; /* This is the positioning context for waveform and cancel button */
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 12px;
-    position: relative; /* For absolute positioning of waveform and cancel button */
 }
 
 .auto-record-switch {
@@ -309,15 +309,18 @@ h1.header-with-icon .header-text {
     margin: 0;
     background: transparent;
     position: absolute;
-    left: calc(50% - 220px); /* Position to left: 50% - button_radius(50px) - gap(20px) - waveform_width(150px) */
+    left: -170px; /* Position to left: waveform width (150px) + gap (20px) */
     top: 50%;
     transform: translateY(-50%);
     flex-shrink: 0;
 }
 
 .recording-section {
-    position: relative; /* For absolute positioning of waveform and cancel button */
-    min-height: 120px; /* Ensure enough space for horizontal layout */
+    position: relative;
+    min-height: 120px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .recording-time {
@@ -352,7 +355,7 @@ h1.header-with-icon .header-text {
     justify-content: center;
     flex-shrink: 0;
     position: absolute;
-    right: calc(50% - 82px); /* Position to right: 50% - button_radius(50px) - gap(32px) */
+    right: -52px; /* Position to right: button_radius(50px) + gap(20px) - half_cancel_button(16px) */
     top: 50%;
     transform: translateY(-50%);
 }
