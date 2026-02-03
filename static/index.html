@@ -15,10 +15,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VoiceSpark - Voice Your Spark</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232d3436' stroke-width='2'><path d='M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z'/><path d='M19 10v2a7 7 0 0 1-14 0v-2'/></svg>">
-    <link rel="stylesheet" href="/static/style.css?v=48">
+    <link rel="stylesheet" href="/static/style.css?v=49">
 </head>
 <body>
     <div class="container">
+        <!-- Help Button -->
+        <button id="helpBtn" class="help-btn" title="Quick Start Guide">!</button>
+        
         <h1>VoiceSpark</h1>
         <p class="tagline">Voice Your Spark</p>
         
@@ -190,7 +193,38 @@
         </div>
     </div>
 
-    <script src="/static/audio-storage.js?v=48"></script>
-    <script src="/static/script.js?v=48"></script>
+    <!-- Help Modal -->
+    <div id="helpModal" class="help-modal">
+        <div class="help-modal-content">
+            <div class="help-modal-header">
+                <h2 id="helpModalTitle">
+                    <svg class="icon-inline" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="16" x2="12" y2="12"/>
+                        <line x1="12" y1="8" x2="12.01" y2="8"/>
+                    </svg>
+                    Welcome to VoiceSpark
+                </h2>
+                <div class="help-controls">
+                    <div class="language-switch">
+                        <button class="lang-btn active" data-lang="en">EN</button>
+                        <button class="lang-btn" data-lang="zh">中文</button>
+                    </div>
+                    <button id="closeHelpBtn" class="close-help-btn" title="Close">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div id="helpContent" class="help-content">
+                <!-- Content will be dynamically loaded based on language -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/audio-storage.js?v=49"></script>
+    <script src="/static/script.js?v=49"></script>
 </body>
 </html>

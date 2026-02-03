@@ -482,6 +482,166 @@ function showPermissionWarning(permissionType, message) {
     console.warn(`[PERMISSION WARNING] ${permissionType}: ${message}`);
 }
 
+// ================================
+// Help Content (Bilingual)
+// ================================
+const helpContent = {
+    en: {
+        title: 'Welcome to VoiceSpark',
+        content: `
+            <div class="help-highlight">
+                <strong>✨ Hang it, it always listens, one-click to text.</strong>
+            </div>
+            
+            <h3>⚡ Quick Start (30 seconds)</h3>
+            <div class="help-steps">
+                <ol>
+                    <li>Select audio source (Microphone / System Audio / Both)</li>
+                    <li>Choose recording duration (30s / 1m / 5m)</li>
+                    <li>Click the <strong style="color: #3498db;">blue Record button</strong></li>
+                    <li>Speak or play content</li>
+                    <li>Click the <strong style="color: #e67e22;">orange Transcribe button</strong> to get text</li>
+                </ol>
+            </div>
+
+            <h3>🎤 Core Features</h3>
+            
+            <h4>🔄 Continuous Listening</h4>
+            <ul>
+                <li><strong>Open once, stays in background</strong> - No need to prepare each time</li>
+                <li><strong>Return when needed</strong> - What you just said is already recorded</li>
+                <li><strong>Skip the "preparation" process</strong> - Always ready to capture</li>
+            </ul>
+
+            <h4>🎧 Audio Source Selection</h4>
+            <ul>
+                <li><strong>🎤 Microphone:</strong> Record your voice</li>
+                <li><strong>🖥️ System Audio:</strong> Capture computer sound (videos, podcasts, music)</li>
+                <li><strong>🎤+🖥️ Both:</strong> Record microphone + system audio simultaneously (perfect for online meetings, discussions)</li>
+            </ul>
+
+            <h4>♻️ Auto Recording</h4>
+            <ul>
+                <li>When enabled, automatically starts the next recording after transcription</li>
+                <li>Seamless connection, perfect for long study sessions</li>
+                <li>Toggle the <code>Auto Record</code> switch to enable/disable</li>
+            </ul>
+
+            <h3>💡 Pro Tips</h3>
+            <ul>
+                <li>✅ Keep it open while watching videos - capture golden quotes anytime</li>
+                <li>✅ Listen to podcasts and grab inspiration instantly</li>
+                <li>✅ Record sudden ideas immediately</li>
+                <li>✅ Take real-time notes while learning</li>
+                <li>✅ Switch recording duration anytime during recording</li>
+            </ul>
+
+            <h3>❓ FAQ</h3>
+            
+            <h4>Q: Where is my recording data stored?</h4>
+            <p>All data is saved <strong>locally in your browser</strong>. Nothing is uploaded to any server.</p>
+
+            <h4>Q: Why is the maximum recording only 5 minutes?</h4>
+            <p>VoiceSpark focuses on <strong>capturing inspiration</strong>, not long meeting recordings. Short bursts keep you focused on ideas that matter.</p>
+
+            <h4>Q: How do I record system audio?</h4>
+            <p>Select "System Audio", then your browser will ask you to choose which tab or window to share. Select the tab playing audio (e.g., YouTube, Spotify).</p>
+
+            <h4>Q: Can I edit the transcribed text?</h4>
+            <p>Yes! Click on the text area to edit directly. Your changes will be copied when you click the copy button.</p>
+
+            <h3>🔒 Privacy Promise</h3>
+            <ul>
+                <li>✅ Data stored only in local browser</li>
+                <li>✅ No personal information collected</li>
+                <li>✅ Clear history anytime you want</li>
+            </ul>
+
+            <div class="help-footer">
+                <strong>VoiceSpark</strong> - Never miss your spark<br>
+                <a href="https://voicespark.app" class="help-link" target="_blank">voicespark.app</a>
+            </div>
+        `
+    },
+    zh: {
+        title: '欢迎使用 VoiceSpark',
+        content: `
+            <div class="help-highlight">
+                <strong>✨ 挂着就行，它一直听，一键成文。</strong>
+            </div>
+            
+            <h3>⚡ 30秒快速开始</h3>
+            <div class="help-steps">
+                <ol>
+                    <li>选择音频源（麦克风 / 系统音频 / 两者都要）</li>
+                    <li>选择录音时长（30秒 / 1分钟 / 5分钟）</li>
+                    <li>点击<strong style="color: #3498db;">蓝色录音按钮</strong></li>
+                    <li>开始说话或播放内容</li>
+                    <li>点击<strong style="color: #e67e22;">橙色转录按钮</strong>获取文字</li>
+                </ol>
+            </div>
+
+            <h3>🎤 核心功能</h3>
+            
+            <h4>🔄 持续倾听</h4>
+            <ul>
+                <li><strong>打开一次，常驻后台</strong> - 不用每次都准备</li>
+                <li><strong>需要时返回</strong> - 刚才说的话已经录好了</li>
+                <li><strong>省掉「准备」流程</strong> - 随时可以开始记录</li>
+            </ul>
+
+            <h4>🎧 音频源选择</h4>
+            <ul>
+                <li><strong>🎤 麦克风：</strong>录制你的声音</li>
+                <li><strong>🖥️ 系统音频：</strong>捕捉电脑播放的内容（视频、播客、音乐）</li>
+                <li><strong>🎤+🖥️ 两者都要：</strong>同时录制麦克风和系统音频（适合在线会议、讨论）</li>
+            </ul>
+
+            <h4>♻️ 自动录音</h4>
+            <ul>
+                <li>开启后，转录完成自动开始下一段录音</li>
+                <li>无缝连接，适合长时间学习</li>
+                <li>切换 <code>Auto Record</code> 开关来启用/禁用</li>
+            </ul>
+
+            <h3>💡 使用技巧</h3>
+            <ul>
+                <li>✅ 看视频时打开，随时记录金句</li>
+                <li>✅ 听播客时捕捉灵感</li>
+                <li>✅ 突然有想法时，立即记录</li>
+                <li>✅ 学习时做实时笔记</li>
+                <li>✅ 录音过程中可随时切换时长</li>
+            </ul>
+
+            <h3>❓ 常见问题</h3>
+            
+            <h4>Q: 录音数据保存在哪里？</h4>
+            <p>所有数据仅保存在<strong>您的浏览器本地</strong>，不会上传到任何服务器。</p>
+
+            <h4>Q: 为什么最长只有5分钟？</h4>
+            <p>VoiceSpark 专注于<strong>灵感捕捉</strong>，而非长篇会议记录。短时录音让您专注于真正重要的想法。</p>
+
+            <h4>Q: 如何录制系统音频？</h4>
+            <p>选择"系统音频"后，浏览器会要求您选择要共享的标签页或窗口。选择正在播放音频的标签页（如 YouTube、Spotify）。</p>
+
+            <h4>Q: 可以编辑转录的文字吗？</h4>
+            <p>可以！点击文本框直接编辑。修改后的内容会在您点击复制按钮时被复制。</p>
+
+            <h3>🔒 隐私承诺</h3>
+            <ul>
+                <li>✅ 数据仅存储在本地浏览器</li>
+                <li>✅ 不收集任何个人信息</li>
+                <li>✅ 随时可以清除历史记录</li>
+            </ul>
+
+            <div class="help-footer">
+                <strong>VoiceSpark</strong> - 让灵感不再溜走<br>
+                <a href="https://voicespark.app" class="help-link" target="_blank">voicespark.app</a>
+            </div>
+        `
+    }
+};
+
 // 初始化
 document.addEventListener('DOMContentLoaded', async () => {
     // 初始化IndexedDB存储
@@ -519,6 +679,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const historyBtn = document.getElementById('historyBtn');
     const historyModal = document.getElementById('historyModal');
     const closeHistoryBtn = document.getElementById('closeHistoryBtn');
+    const helpBtn = document.getElementById('helpBtn');
+    const helpModal = document.getElementById('helpModal');
+    const closeHelpBtn = document.getElementById('closeHelpBtn');
+    const langBtns = document.querySelectorAll('.lang-btn');
     
     // Initialize waveform visualization variables
     waveformCanvas = document.getElementById('waveformCanvas');
@@ -1924,11 +2088,77 @@ function cleanupAudioStreams(force = false) {
         }
     });
     
+    // ================================
+    // Help Modal Functions
+    // ================================
+    
+    let currentLang = 'en'; // Default language
+    
+    // Load help content
+    function loadHelpContent(lang) {
+        const helpModalTitle = document.getElementById('helpModalTitle');
+        const helpContentDiv = document.getElementById('helpContent');
+        const content = helpContent[lang];
+        
+        if (content) {
+            // Update title
+            const iconSvg = helpModalTitle.querySelector('svg').outerHTML;
+            helpModalTitle.innerHTML = iconSvg + content.title;
+            
+            // Update content
+            helpContentDiv.innerHTML = content.content;
+            
+            currentLang = lang;
+            console.log(`[INFO] 加载帮助内容: ${lang}`);
+        }
+    }
+    
+    // Open help modal
+    helpBtn.addEventListener('click', () => {
+        loadHelpContent(currentLang);
+        helpModal.classList.add('show');
+        console.log('[INFO] 打开帮助指南');
+    });
+    
+    // Close help modal
+    closeHelpBtn.addEventListener('click', () => {
+        helpModal.classList.remove('show');
+        console.log('[INFO] 关闭帮助指南');
+    });
+    
+    // Click modal background to close
+    helpModal.addEventListener('click', (e) => {
+        if (e.target === helpModal) {
+            helpModal.classList.remove('show');
+            console.log('[INFO] 点击背景关闭帮助指南');
+        }
+    });
+    
+    // Language switch
+    langBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const lang = btn.dataset.lang;
+            
+            // Update active state
+            langBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // Load content
+            loadHelpContent(lang);
+        });
+    });
+    
     // ESC键关闭Modal
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && historyModal.classList.contains('show')) {
-            historyModal.classList.remove('show');
-            console.log('[INFO] ESC键关闭转录历史记录');
+        if (e.key === 'Escape') {
+            if (historyModal.classList.contains('show')) {
+                historyModal.classList.remove('show');
+                console.log('[INFO] ESC键关闭转录历史记录');
+            }
+            if (helpModal.classList.contains('show')) {
+                helpModal.classList.remove('show');
+                console.log('[INFO] ESC键关闭帮助指南');
+            }
         }
     });
 });
