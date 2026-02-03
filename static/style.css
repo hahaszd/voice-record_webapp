@@ -992,10 +992,21 @@ h1.header-with-icon .header-text {
     
     /* Result section sizing */
     .result-section {
-        min-height: 250px;
+        min-height: 280px; /* Increased to ensure textarea is visible */
         flex: 1;
         flex-shrink: 1;
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .result-box {
+        flex: 1;
+        min-height: 180px; /* Ensure textarea container has minimum height */
+    }
+    
+    .result-box textarea {
+        min-height: 180px !important; /* Ensure textarea itself has minimum height */
     }
     
     .result-header {
