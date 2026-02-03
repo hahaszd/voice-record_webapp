@@ -315,8 +315,8 @@ h1.header-with-icon .header-text {
 
 /* Waveform Canvas - in flex row, no absolute positioning on desktop */
 .waveform-canvas {
-    width: 150px; /* Desktop: wider than mobile */
-    height: 80px; /* Desktop: taller than mobile */
+    width: 100px; /* Desktop: reduced width to save space */
+    height: 70px; /* Desktop: reduced height */
     margin: 0;
     background: transparent;
     flex-shrink: 0;
@@ -1006,18 +1006,6 @@ h1.header-with-icon .header-text {
         min-width: 0;
     }
     
-    /* Waveform canvas mobile sizing - horizontal layout next to button */
-    .waveform-canvas {
-        width: 100px; /* Mobile: narrower */
-        height: 70px; /* Mobile: shorter */
-        margin: 0;
-        flex-shrink: 0;
-        position: absolute;
-        left: 10px; /* Mobile: closer to edge */
-        top: 50%;
-        transform: translateY(-50%);
-    }
-    
     /* Result section sizing */
     .result-section {
         min-height: 280px; /* Increased to ensure textarea is visible */
@@ -1072,26 +1060,33 @@ h1.header-with-icon .header-text {
         position: relative; /* Positioning context for mobile */
         width: 100%;
         min-height: 80px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
     
-    /* Horizontal row for button, waveform, and time */
-    .recording-controls .record-btn {
-        order: 0; /* Button in middle */
+    /* Mobile: waveform sizing */
+    .recording-controls-row .waveform-canvas {
+        width: 80px; /* Mobile: smaller width */
+        height: 60px; /* Mobile: smaller height */
+        position: absolute;
+        left: 10px; /* Mobile: at left edge */
+        top: 50%;
+        transform: translateY(-50%);
     }
     
-    /* Cancel button positioned to the right of record button */
+    /* Mobile: cancel button positioning */
     .recording-controls-row .cancel-record-btn {
         position: absolute;
-        right: 10px; /* Mobile: closer to edge */
+        right: 10px; /* Mobile: at right edge */
         top: 50%;
         transform: translateY(-50%);
     }
     
-    .recording-controls-row .waveform-canvas {
-        position: absolute;
-        left: 10px;
-        top: 50%;
-        transform: translateY(-50%);
+    /* Mobile: record button stays centered */
+    .recording-controls-row .record-btn {
+        position: relative; /* Keep in normal flow for centering */
+        z-index: 1; /* Above waveform */
     }
     
     .recording-controls .recording-status-wrapper {
