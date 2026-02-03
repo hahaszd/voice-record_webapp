@@ -866,7 +866,12 @@ h1.header-with-icon .header-text {
     
     h1 {
         font-size: 1.4em;
-        margin-bottom: 15px;
+        margin-bottom: 8px;
+    }
+    
+    .tagline {
+        font-size: 0.9em;
+        margin-bottom: 20px;
     }
     
     .control-panel {
@@ -889,6 +894,92 @@ h1.header-with-icon .header-text {
     
     .recording-time {
         font-size: 1.2em;
+    }
+    
+    /* Fix: Auto-record switch covering title */
+    .auto-record-switch {
+        font-size: 0.75em;
+        margin-bottom: 10px;
+    }
+    
+    .auto-record-switch .slider {
+        width: 36px;
+        height: 20px;
+    }
+    
+    .auto-record-switch .slider::before {
+        width: 14px;
+        height: 14px;
+    }
+    
+    .auto-record-switch input[type="checkbox"]:checked + .slider::before {
+        transform: translateX(16px);
+    }
+    
+    .auto-record-switch .icon-label svg {
+        width: 14px;
+        height: 14px;
+    }
+    
+    /* Fix: Audio source selector visibility */
+    .audio-source-selector {
+        margin-bottom: 12px;
+        padding: 8px;
+        gap: 6px;
+    }
+    
+    .audio-source-btn {
+        padding: 10px 6px;
+        min-width: 0;
+    }
+    
+    .audio-source-btn svg {
+        width: 24px !important;
+        height: 24px !important;
+    }
+    
+    /* Fix: Duration buttons going off screen */
+    .duration-selector {
+        gap: 6px;
+    }
+    
+    .duration-btn {
+        padding: 10px 6px;
+        font-size: 0.9em;
+        min-width: 0;
+    }
+    
+    /* Waveform canvas mobile sizing */
+    .waveform-canvas {
+        max-width: 280px;
+        height: 40px;
+        margin: 8px auto 6px;
+    }
+    
+    /* Result section sizing */
+    .result-section {
+        min-height: 300px;
+    }
+    
+    .result-header {
+        gap: 10px;
+    }
+    
+    .auto-copy-switch,
+    .auto-notify-switch {
+        font-size: 0.85em;
+    }
+    
+    .auto-copy-switch .slider,
+    .auto-notify-switch .slider {
+        width: 38px;
+        height: 22px;
+    }
+    
+    .auto-copy-switch .icon-label svg,
+    .auto-notify-switch .icon-label svg {
+        width: 16px;
+        height: 16px;
     }
 }
 
