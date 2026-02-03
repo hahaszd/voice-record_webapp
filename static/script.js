@@ -658,7 +658,7 @@ const helpContent = {
         title: 'Welcome to VoiceSpark',
         content: `
             <div class="help-highlight">
-                <strong>✨ Hang it, it always listens, one-click to text.</strong>
+                <strong>✨ Keep it open, always listening, instant transcription.</strong>
             </div>
             
             <h3>⚡ Quick Start (30 seconds)</h3>
@@ -676,9 +676,9 @@ const helpContent = {
             
             <h4>🔄 Continuous Listening</h4>
             <ul>
-                <li><strong>Open once, stays in background</strong> - No need to prepare each time</li>
-                <li><strong>Return when needed</strong> - What you just said is already recorded</li>
-                <li><strong>Skip the "preparation" process</strong> - Always ready to capture</li>
+                <li><strong>Open once, runs in background</strong> - No setup needed</li>
+                <li><strong>Come back anytime</strong> - What you said is already captured</li>
+                <li><strong>Skip the "prep time"</strong> - Always ready to record</li>
             </ul>
 
             <h4>🎧 Audio Source Selection</h4>
@@ -697,11 +697,11 @@ const helpContent = {
 
             <h3>💡 Pro Tips</h3>
             <ul>
-                <li>✅ Keep it open while watching videos - capture golden quotes anytime</li>
-                <li>✅ Listen to podcasts and grab inspiration instantly</li>
-                <li>✅ Record sudden ideas immediately</li>
-                <li>✅ Take real-time notes while learning</li>
-                <li>✅ Switch recording duration anytime during recording</li>
+                <li>✅ Keep it running while watching videos - capture key moments instantly</li>
+                <li>✅ Listen to podcasts and save inspiring quotes on the fly</li>
+                <li>✅ Capture sudden ideas without breaking your flow</li>
+                <li>✅ Take live notes while learning</li>
+                <li>✅ Change recording duration even while recording</li>
             </ul>
 
             <h3>❓ FAQ</h3>
@@ -709,7 +709,7 @@ const helpContent = {
             <h4>Q: Where is my recording data stored?</h4>
             <p>All data is saved <strong>locally in your browser</strong>. Nothing is uploaded to any server.</p>
 
-            <h4>Q: Why is the maximum recording only 5 minutes?</h4>
+            <h4>Q: Why limit recordings to 5 minutes?</h4>
             <p>VoiceSpark focuses on <strong>capturing inspiration</strong>, not long meeting recordings. Short bursts keep you focused on ideas that matter.</p>
 
             <h4>Q: How do I record system audio?</h4>
@@ -719,7 +719,7 @@ const helpContent = {
             <p>Yes! Click on the text area to edit directly. Your changes will be copied when you click the copy button.</p>
 
             <h4>📱 Q: Recording stops on iPhone/iPad Safari?</h4>
-            <p><strong>This is an iOS Safari limitation, not a VoiceSpark issue.</strong></p>
+            <p><strong>This is a Safari/iOS limitation, not a VoiceSpark bug.</strong></p>
             <p>iOS Safari automatically pauses audio recording when:</p>
             <ul>
                 <li>❌ You switch to another app</li>
@@ -766,7 +766,7 @@ const helpContent = {
             <p><strong>Common Issues:</strong></p>
             <ul>
                 <li>❌ <strong>Firefox/Samsung Browser</strong> - Limited support, use Chrome instead</li>
-                <li>❌ <strong>Forgot to check "Share system audio"</strong> - Only screen will be shared, no audio</li>
+                <li>❌ <strong>Forgot to check "Share system audio"</strong> - You'll get video only, no sound</li>
                 <li>❌ <strong>Permission denied</strong> - Try again and allow all permissions</li>
             </ul>
             <p><strong>What works on Android:</strong></p>
@@ -779,9 +779,9 @@ const helpContent = {
 
             <h3>🔒 Privacy Promise</h3>
             <ul>
-                <li>✅ Data stored only in local browser</li>
-                <li>✅ No personal information collected</li>
-                <li>✅ Clear history anytime you want</li>
+                <li>✅ All data stays in your browser</li>
+                <li>✅ No personal info collected</li>
+                <li>✅ Clear your history anytime</li>
             </ul>
 
             <div class="help-footer">
