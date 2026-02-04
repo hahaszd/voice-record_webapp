@@ -57,6 +57,9 @@ let pendingAutoCopyText = null;
 
 // 页面可见性监测（iOS 后台检测 + 自动复制）
 document.addEventListener('visibilitychange', () => {
+    console.log(`[VISIBILITY] Page visibility changed: ${document.hidden ? 'HIDDEN' : 'VISIBLE'}`);
+    console.log(`[VISIBILITY] Current pendingAutoCopyText: ${pendingAutoCopyText ? pendingAutoCopyText.substring(0, 50) + '...' : 'null'}`);
+    
     if (document.hidden && isRecording) {
         console.warn('[iOS WARNING] Page hidden during recording - iOS Safari may pause recording');
         if (isIOS && isSafari) {
@@ -69,14 +72,15 @@ document.addEventListener('visibilitychange', () => {
     
     // 🔥 页面重新激活时，如果有待复制的文本，自动复制
     if (!document.hidden && pendingAutoCopyText) {
-        console.log('[INFO] Page became visible, attempting pending auto-copy');
+        console.log('[INFO] ✨ Page became visible, attempting pending auto-copy');
         console.log('[INFO] Pending text length:', pendingAutoCopyText.length);
+        console.log('[INFO] Auto-copy toggle checked:', autoCopyToggle.checked);
         const textToCopy = pendingAutoCopyText;
         pendingAutoCopyText = null; // Clear pending text
         
         // Try to copy
         navigator.clipboard.writeText(textToCopy).then(() => {
-            console.log('[INFO] ✅ Pending auto-copy successful after page became visible');
+            console.log('[INFO] ✅✅✅ Pending auto-copy successful after page became visible');
             
             // 📊 Google Analytics - 页面激活自动复制
             if (typeof gtag !== 'undefined') {
@@ -87,10 +91,12 @@ document.addEventListener('visibilitychange', () => {
                 });
             }
         }).catch(err => {
-            console.warn('[WARNING] Pending auto-copy failed:', err.message);
+            console.error('[ERROR] ❌ Pending auto-copy failed:', err.message);
             // Set it back if failed
             pendingAutoCopyText = textToCopy;
         });
+    } else if (!document.hidden && !pendingAutoCopyText) {
+        console.log('[INFO] Page became visible, but no pending auto-copy text');
     }
 });
 
