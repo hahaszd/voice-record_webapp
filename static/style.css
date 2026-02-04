@@ -171,15 +171,15 @@ h1.header-with-icon .header-text {
     gap: 12px;
 }
 
-/* Horizontal button row container for waveform + button + cancel */
-/* 使用 flexbox 让三个元素保持相对位置关系 */
+/* Horizontal button row container */
+/* 让录音按钮作为唯一的flex子元素，自然居中 */
 .recording-controls-row {
     display: flex;
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 0; /* 间距由各元素的 margin 控制 */
-    position: relative;
+    gap: 0;
+    position: relative; /* 为绝对定位的子元素提供定位上下文 */
     min-height: 100px;
     width: 100%;
 }
@@ -232,7 +232,7 @@ h1.header-with-icon .header-text {
     color: #666;
 }
 
-/* Record button - 在中间 */
+/* Record button - 作为唯一flex子元素，自然居中 */
 .record-btn {
     width: 100px;
     height: 100px;
@@ -248,7 +248,7 @@ h1.header-with-icon .header-text {
     padding: 0;
     position: relative;
     flex-shrink: 0;
-    order: 2; /* 显示在中间 */
+    /* 按钮是唯一的flex子元素，自动居中，无需order */
 }
 
 .record-btn .btn-icon {
@@ -317,21 +317,26 @@ h1.header-with-icon .header-text {
     }
 }
 
-/* Waveform Canvas - 使用固定占位空间，避免按钮晃动 */
+/* Waveform Canvas - 绝对定位在按钮左侧 */
+/* 不参与flex布局，不影响按钮居中 */
 .waveform-canvas {
-    width: 70px; /* 固定占位70px */
+    width: 70px;
     height: 55px;
     margin: 0;
-    margin-right: 0px;
     background: transparent;
     flex-shrink: 0;
-    opacity: 0; /* 使用 opacity 而不是 visibility，保持空间 */
-    order: 1;
+    position: absolute;
+    right: calc(50% + 50px); /* 定位到按钮左侧：中心 + 按钮半径 */
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0; /* 初始透明 */
+    pointer-events: none; /* 隐藏时不响应鼠标事件 */
 }
 
 /* 录音时显示波形图 */
 .waveform-canvas.recording {
-    opacity: 1; /* 显示，但不改变宽度 */
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .recording-section {
@@ -357,7 +362,8 @@ h1.header-with-icon .header-text {
     gap: 10px;
 }
 
-/* Cancel button - 使用相对定位，在录音按钮右侧 */
+/* Cancel button - 绝对定位在按钮右侧 */
+/* 不参与flex布局，不影响按钮居中 */
 .cancel-record-btn {
     width: 32px;
     height: 32px;
@@ -368,13 +374,15 @@ h1.header-with-icon .header-text {
     border-radius: 50%;
     cursor: pointer;
     margin: 0;
-    margin-left: 30px; /* 距离录音按钮 30px（减少间距） */
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    order: 3; /* 显示在最右边 */
+    position: absolute;
+    left: calc(50% + 80px); /* 定位到按钮右侧：中心 + 按钮半径 + 间距 */
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 .cancel-record-btn:hover {
