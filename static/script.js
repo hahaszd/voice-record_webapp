@@ -75,6 +75,89 @@ window.addEventListener('beforeunload', () => {
 // Pending auto-copy text (when user was away)
 let pendingAutoCopyText = null;
 
+// 🎯 统一的复制函数（包含视觉反馈和多种fallback方法）
+async function copyToClipboardWithFeedback(text, isAutomatic = false) {
+    if (!text) {
+        console.warn('[WARNING] No text to copy');
+        return false;
+    }
+    
+    console.log(`[COPY] Attempting to copy ${text.length} characters (automatic: ${isAutomatic})`);
+    
+    let success = false;
+    let method = '';
+    
+    // 方法1: Clipboard API (现代浏览器)
+    try {
+        await navigator.clipboard.writeText(text);
+        success = true;
+        method = 'clipboard_api';
+        console.log('[COPY] ✅ Success with Clipboard API');
+    } catch (err) {
+        console.warn('[COPY] Clipboard API failed:', err.message);
+        
+        // 方法2: 创建临时textarea（兼容性更好）
+        try {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.top = '0';
+            textarea.style.left = '-9999px';
+            textarea.setAttribute('readonly', '');
+            document.body.appendChild(textarea);
+            
+            // 在iOS上，需要先focus才能select
+            textarea.focus();
+            textarea.select();
+            textarea.setSelectionRange(0, text.length);
+            
+            // 尝试使用execCommand
+            const result = document.execCommand('copy');
+            document.body.removeChild(textarea);
+            
+            if (result) {
+                success = true;
+                method = 'exec_command';
+                console.log('[COPY] ✅ Success with execCommand');
+            } else {
+                throw new Error('execCommand returned false');
+            }
+        } catch (fallbackErr) {
+            console.error('[COPY] ❌ All copy methods failed:', fallbackErr);
+        }
+    }
+    
+    if (success) {
+        // ✨ 显示复制成功的视觉反馈
+        if (copyBtn) {
+            copyBtn.classList.add('success');
+            copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+            
+            // 2秒后恢复原状
+            setTimeout(() => {
+                copyBtn.classList.remove('success');
+                copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+            }, 2000);
+        }
+        
+        // 📊 Google Analytics
+        if (typeof gtag !== 'undefined') {
+            const eventName = isAutomatic ? 'auto_copy_on_visible' : 'copy_button_clicked';
+            const eventLabel = isAutomatic ? 'Auto-copied when page became visible' : 'User copied text manually';
+            
+            gtag('event', eventName, {
+                'event_category': isAutomatic ? 'AutoCopy' : 'Interaction',
+                'event_label': eventLabel,
+                'text_length': text.length,
+                'copy_method': method,
+                'environment': gaEnvironment
+            });
+        }
+    }
+    
+    return success;
+}
+
 // 页面可见性监测（iOS 后台检测 + 自动复制）
 document.addEventListener('visibilitychange', () => {
     console.log(`[VISIBILITY] Page visibility changed: ${document.hidden ? 'HIDDEN' : 'VISIBLE'}`);
@@ -93,7 +176,7 @@ document.addEventListener('visibilitychange', () => {
     // 🔥 页面重新激活时，自动复制转录内容到剪贴板
     if (!document.hidden) {
         // 延迟复制，等待页面完全获得焦点（移动端需要更长时间）
-        setTimeout(() => {
+        setTimeout(async () => {
             // 再次检查页面是否仍然可见
             if (document.hidden) {
                 console.log('[INFO] Page hidden again, skipping auto-copy');
@@ -113,25 +196,12 @@ document.addEventListener('visibilitychange', () => {
             }
             
             if (textToCopy) {
-                console.log('[INFO] Text to copy length:', textToCopy.length);
-                
-                // Try to copy
-                navigator.clipboard.writeText(textToCopy).then(() => {
+                const success = await copyToClipboardWithFeedback(textToCopy, true);
+                if (success) {
                     console.log('[INFO] ✅✅✅ Auto-copy successful after page became visible');
-                    
-                    // 📊 Google Analytics - 页面激活自动复制
-                    if (typeof gtag !== 'undefined') {
-                        gtag('event', 'auto_copy_on_visible', {
-                            'event_category': 'AutoCopy',
-                            'event_label': 'Auto-copied when page became visible',
-                            'text_length': textToCopy.length,
-                            'environment': gaEnvironment
-                        });
-                    }
-                }).catch(err => {
-                    console.warn('[WARNING] ⚠️ Auto-copy failed (document may not be focused):', err.message);
-                    // 用户可以手动点击复制按钮
-                });
+                } else {
+                    console.warn('[WARNING] ⚠️ Auto-copy failed - user can click copy button manually');
+                }
             } else {
                 console.log('[INFO] Page became visible, but no text to copy');
             }
@@ -1323,51 +1393,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     copyBtn.addEventListener('click', async () => {
         const text = transcriptionResult.value;
         if (text) {
-            try {
-                await navigator.clipboard.writeText(text);
-                
-                // 📊 Google Analytics - 手动复制
-                if (typeof gtag !== 'undefined') {
-                    gtag('event', 'copy_button_clicked', {
-                        'event_category': 'Interaction',
-                        'event_label': 'User copied text manually',
-                        'text_length': text.length,
-                        'environment': gaEnvironment
-                    });
-                }
-                
-                // 成功状态 - 改变图标为勾选
-                copyBtn.classList.add('success');
-                copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-                setTimeout(() => {
-                    copyBtn.classList.remove('success');
-                    copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-                }, 2000);
-            } catch (err) {
-                console.error('[ERROR] Copy failed:', err);
-                // 降级方案：使用 execCommand
-                try {
-                    transcriptionResult.select();
-                    document.execCommand('copy');
-                    copyBtn.classList.add('success');
-                    copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-                    setTimeout(() => {
-                        copyBtn.classList.remove('success');
-                        copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-                    }, 2000);
-                } catch (execErr) {
-                    console.error('[ERROR] execCommand copy also failed:', execErr);
-                    copyBtn.classList.add('error');
-                    copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
-                    setTimeout(() => {
-                        copyBtn.classList.remove('error');
-                        copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-                    }, 2000);
-                    
-                    // 请求剪贴板权限
-                    await checkClipboardPermission();
-                }
-            }
+            await copyToClipboardWithFeedback(text, false);
         }
     });
 
