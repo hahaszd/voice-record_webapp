@@ -1063,8 +1063,26 @@ h1.header-with-icon .header-text {
         gap: 10px;
     }
     
-    /* Mobile: use same flexbox layout as desktop - no special positioning */
-    /* Remove all mobile-specific overrides to use desktop layout */
+    /* Mobile: adjust positioning to prevent overlap on small screens */
+    .recording-controls-row {
+        width: 100%;
+        max-width: 400px; /* Limit width on mobile */
+    }
+    
+    /* Mobile: waveform - move further left */
+    .recording-controls-row .waveform-canvas {
+        left: 5px; /* Fixed left position instead of calc */
+    }
+    
+    /* Mobile: cancel button - move further right */
+    .recording-controls-row .cancel-record-btn {
+        right: 5px; /* Fixed right position instead of calc */
+    }
+    
+    /* Mobile: ensure record button stays centered */
+    .recording-controls-row .record-btn {
+        margin: 0 auto; /* Center the button */
+    }
     
     .recording-controls .recording-status-wrapper {
         order: 2; /* Time below button */
