@@ -19,11 +19,11 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application files
 COPY . .
 
-# Make start script executable
-RUN chmod +x start.sh
+# Make startup scripts executable
+RUN chmod +x start.py start.sh
 
 # Expose port (Railway will set PORT env var)
 EXPOSE 8000
 
-# Start command using bash script
-CMD ["bash", "start.sh"]
+# Start command using Python script (more reliable than bash)
+CMD ["python", "start.py"]
