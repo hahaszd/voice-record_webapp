@@ -19,11 +19,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application files
 COPY . .
 
-# Make startup scripts executable
-RUN chmod +x start.py start.sh
-
 # Expose port (Railway will set PORT env var)
 EXPOSE 8000
 
-# Start command using Python script (more reliable than bash)
-CMD ["python", "start.py"]
+# Use a shell form CMD to properly expand environment variables
+# This is the most reliable way for Railway
+CMD uvicorn server2:app --host 0.0.0.0 --port ${PORT:-8000} --log-level info --access-log
