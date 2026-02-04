@@ -19,9 +19,12 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application files
 COPY . .
 
-# Expose port (Railway will set PORT env var)
+# Copy and make entrypoint executable
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Expose default port
 EXPOSE 8000
 
-# Use a shell form CMD to properly expand environment variables
-# This is the most reliable way for Railway
-CMD uvicorn server2:app --host 0.0.0.0 --port ${PORT:-8000} --log-level info --access-log
+# Use entrypoint script
+ENTRYPOINT ["/entrypoint.sh"]
