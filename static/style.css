@@ -177,8 +177,9 @@ h1.header-with-icon .header-text {
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 2px; /* Minimal gap - waveform touches button */
-    position: relative;
+    gap: 0; /* No gap - using absolute positioning */
+    position: relative; /* For absolute children */
+    min-height: 100px; /* Ensure space for button */
 }
 
 .auto-record-switch {
@@ -244,7 +245,7 @@ h1.header-with-icon .header-text {
     padding: 0;
     position: relative;
     flex-shrink: 0;
-    order: 2; /* Center: button */
+    /* Button stays in flex center - no order property */
 }
 
 .record-btn .btn-icon {
@@ -313,14 +314,17 @@ h1.header-with-icon .header-text {
     }
 }
 
-/* Waveform Canvas - in flex row, no absolute positioning on desktop */
+/* Waveform Canvas - absolute positioning to not affect button centering */
 .waveform-canvas {
-    width: 70px; /* Shorter to keep button centered */
-    height: 55px; /* Smaller height */
+    width: 70px;
+    height: 55px;
     margin: 0;
     background: transparent;
     flex-shrink: 0;
-    order: 1; /* Left: waveform */
+    position: absolute; /* Absolute - doesn't affect flex layout */
+    left: calc(50% - 85px); /* Position to left of button: center - button_radius(50px) - waveform_width(70px) - gap(15px) */
+    top: 50%;
+    transform: translateY(-50%);
     display: none; /* Hidden by default, shown when recording */
 }
 
@@ -347,7 +351,7 @@ h1.header-with-icon .header-text {
     gap: 10px;
 }
 
-/* Cancel button - in flex row, same as desktop */
+/* Cancel button - absolute positioning to not affect button centering */
 .cancel-record-btn {
     width: 32px;
     height: 32px;
@@ -363,7 +367,10 @@ h1.header-with-icon .header-text {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    order: 3; /* Right: cancel button */
+    position: absolute; /* Absolute - doesn't affect flex layout */
+    right: calc(50% - 82px); /* Position to right of button: center - button_radius(50px) - gap(32px) */
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 .cancel-record-btn:hover {
