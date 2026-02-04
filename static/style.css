@@ -322,7 +322,7 @@ h1.header-with-icon .header-text {
     background: transparent;
     flex-shrink: 0;
     position: absolute; /* Absolute - doesn't affect flex layout */
-    left: calc(50% - 85px); /* Position to left of button: center - button_radius(50px) - waveform_width(70px) - gap(15px) */
+    left: calc(50% - 130px); /* Position to left of button: center - button_radius(50px) - gap(10px) - waveform_width(70px) */
     top: 50%;
     transform: translateY(-50%);
     display: none; /* Hidden by default, shown when recording */
@@ -368,7 +368,7 @@ h1.header-with-icon .header-text {
     justify-content: center;
     flex-shrink: 0;
     position: absolute; /* Absolute - doesn't affect flex layout */
-    right: calc(50% - 82px); /* Position to right of button: center - button_radius(50px) - gap(32px) */
+    right: calc(50% - 70px); /* Position to right of button: center - button_radius(50px) - gap(20px) */
     top: 50%;
     transform: translateY(-50%);
 }
