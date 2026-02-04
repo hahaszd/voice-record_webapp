@@ -883,8 +883,15 @@ h1.header-with-icon .header-text {
     font-size: 0.95em;
     font-weight: 500;
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-    margin: 10px 0;
     animation: pulse 2s ease-in-out infinite;
+    /* 使用固定定位，不影响页面布局 */
+    position: fixed;
+    top: 120px; /* 在标题下方 */
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    width: auto;
+    max-width: 80%;
 }
 
 .mobile-spinner {

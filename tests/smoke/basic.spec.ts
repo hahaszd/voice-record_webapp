@@ -81,11 +81,17 @@ test.describe('冒烟测试 - 无错误检测', () => {
     console.log('✅ 没有 JavaScript 错误');
   });
 
-  test('不应该有网络请求失败', async ({ page }) => {
+  test('不应该有网络请求失败（关键资源）', async ({ page }) => {
     const failedRequests: string[] = [];
     
     page.on('requestfailed', request => {
-      failedRequests.push(`${request.method()} ${request.url()}`);
+      const url = request.url();
+      // 忽略 Google Analytics 等外部服务的失败（这是正常的）
+      if (!url.includes('google-analytics.com') && 
+          !url.includes('googletagmanager.com') &&
+          !url.includes('doubleclick.net')) {
+        failedRequests.push(`${request.method()} ${url}`);
+      }
     });
     
     await page.goto('/');
@@ -99,7 +105,7 @@ test.describe('冒烟测试 - 无错误检测', () => {
     
     expect(failedRequests).toHaveLength(0);
     
-    console.log('✅ 所有网络请求成功');
+    console.log('✅ 所有关键网络请求成功');
   });
 });
 
