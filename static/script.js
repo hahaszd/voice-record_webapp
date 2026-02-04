@@ -1046,6 +1046,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const transcriptionResult = document.getElementById('transcriptionResult');
     const copyBtn = document.getElementById('copyBtn');
     const loadingIndicator = document.getElementById('loadingIndicator');
+    const mobileTranscriptionIndicator = document.getElementById('mobileTranscriptionIndicator');
     const autoCopyToggle = document.getElementById('autoCopyToggle');
     const autoRecordToggle = document.getElementById('autoRecordToggle');
     const autoNotifyToggle = document.getElementById('autoNotifyToggle');
@@ -1064,6 +1065,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         recordBtn: !!recordBtn,
         copyBtn: !!copyBtn,
         transcriptionResult: !!transcriptionResult,
+        loadingIndicator: !!loadingIndicator,
+        mobileTranscriptionIndicator: !!mobileTranscriptionIndicator,
         audioSourceBtns: audioSourceBtns.length,
         durationBtns: durationBtns.length
     });
@@ -1897,8 +1900,11 @@ function cleanupAudioStreams(force = false) {
         recordBtn.disabled = true;
         console.log('[INFO] 转录开始，禁用转录按钮');
         
-        // 显示加载指示器
+        // 显示加载指示器（桌面端和移动端）
         loadingIndicator.style.visibility = 'visible';
+        if (mobileTranscriptionIndicator) {
+            mobileTranscriptionIndicator.style.display = 'flex';
+        }
         transcriptionResult.value = '';
         
         // 禁用复制按钮（防止重复点击）
@@ -2296,6 +2302,9 @@ function cleanupAudioStreams(force = false) {
             transcriptionResult.value = `错误: ${error.message}`;
         } finally {
             loadingIndicator.style.visibility = 'hidden';
+            if (mobileTranscriptionIndicator) {
+                mobileTranscriptionIndicator.style.display = 'none';
+            }
             
             // 🔥 恢复转录状态（启用转录按钮）
             isTranscribing = false;

@@ -870,6 +870,44 @@ h1.header-with-icon .header-text {
     100% { transform: rotate(360deg); }
 }
 
+/* Mobile Transcription Indicator */
+.mobile-transcription-indicator {
+    display: none; /* Hidden by default, shown only on mobile when transcribing */
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    color: white;
+    font-size: 0.95em;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    margin: 10px 0;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.mobile-spinner {
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top: 3px solid white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.9; transform: scale(0.98); }
+}
+
+/* Show mobile indicator only on mobile screens */
+@media (max-width: 900px) {
+    .mobile-transcription-indicator {
+        display: flex; /* Will be toggled by JavaScript */
+    }
+}
+
 .loading span {
     display: block;
     margin-top: 10px;
