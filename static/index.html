@@ -237,5 +237,46 @@
 
     <script src="/static/audio-storage.js?v=51"></script>
     <script src="/static/script.js?v=51"></script>
+    
+    <!-- Environment Indicator -->
+    <script>
+        // Show environment indicator for dev environment
+        if (window.location.hostname.includes('dev') || window.location.hostname.includes('localhost')) {
+            const envBanner = document.createElement('div');
+            envBanner.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+                color: white;
+                text-align: center;
+                padding: 4px 10px;
+                font-size: 12px;
+                font-weight: 600;
+                z-index: 9999;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                letter-spacing: 1px;
+            `;
+            envBanner.textContent = '🔧 DEVELOPMENT ENVIRONMENT';
+            envBanner.title = 'This is a development environment for testing';
+            document.body.appendChild(envBanner);
+            
+            // Adjust body padding to account for banner
+            document.body.style.paddingTop = '28px';
+            
+            console.log('%c🔧 Development Environment', 'background: #e74c3c; color: white; padding: 8px 12px; font-size: 14px; font-weight: bold;');
+            console.log('Branch: dev');
+            console.log('Auto-deploy: enabled');
+        } else {
+            console.log('%c✅ Production Environment', 'background: #27ae60; color: white; padding: 8px 12px; font-size: 14px; font-weight: bold;');
+            console.log('Branch: main');
+            console.log('Deploy: manual');
+        }
+        
+        // Version info
+        console.log('Version: 1.0.0');
+        console.log('Last updated: 2026-02-04');
+    </script>
 </body>
 </html>
