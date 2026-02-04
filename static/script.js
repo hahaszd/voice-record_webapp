@@ -90,44 +90,52 @@ document.addEventListener('visibilitychange', () => {
         console.log('[INFO] Page visible again, recording should resume');
     }
     
-    // 🔥 页面重新激活时，如果有待复制的文本，自动复制
-    if (!document.hidden && pendingAutoCopyText) {
-        console.log('[INFO] ✨ Page became visible, attempting pending auto-copy');
-        console.log('[INFO] Pending text length:', pendingAutoCopyText.length);
-        console.log('[INFO] Auto-copy toggle checked:', autoCopyToggle.checked);
-        const textToCopy = pendingAutoCopyText;
-        pendingAutoCopyText = null; // Clear pending text
-        
+    // 🔥 页面重新激活时，自动复制转录内容到剪贴板
+    if (!document.hidden) {
         // 延迟复制，等待页面完全获得焦点（移动端需要更长时间）
         setTimeout(() => {
             // 再次检查页面是否仍然可见
             if (document.hidden) {
-                console.log('[INFO] Page hidden again, restoring pending text');
-                pendingAutoCopyText = textToCopy;
+                console.log('[INFO] Page hidden again, skipping auto-copy');
                 return;
             }
             
-            // Try to copy
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                console.log('[INFO] ✅✅✅ Pending auto-copy successful after page became visible');
+            // 优先复制待复制文本，否则复制转录结果区域的内容
+            let textToCopy = null;
+            
+            if (pendingAutoCopyText) {
+                textToCopy = pendingAutoCopyText;
+                pendingAutoCopyText = null; // Clear pending text
+                console.log('[INFO] ✨ Page became visible, attempting pending auto-copy');
+            } else if (transcriptionResult && transcriptionResult.value.trim()) {
+                textToCopy = transcriptionResult.value.trim();
+                console.log('[INFO] ✨ Page became visible, attempting to copy existing transcription result');
+            }
+            
+            if (textToCopy) {
+                console.log('[INFO] Text to copy length:', textToCopy.length);
                 
-                // 📊 Google Analytics - 页面激活自动复制
-                if (typeof gtag !== 'undefined') {
-                    gtag('event', 'auto_copy_on_visible', {
-                        'event_category': 'AutoCopy',
-                        'event_label': 'Auto-copied when page became visible',
-                        'text_length': textToCopy.length,
-                        'environment': gaEnvironment
-                    });
-                }
-            }).catch(err => {
-                console.warn('[WARNING] ⚠️ Pending auto-copy failed (document may not be focused):', err.message);
-                // 不再恢复 pendingAutoCopyText，避免无限重试
-                // 用户可以手动点击复制按钮
-            });
+                // Try to copy
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    console.log('[INFO] ✅✅✅ Auto-copy successful after page became visible');
+                    
+                    // 📊 Google Analytics - 页面激活自动复制
+                    if (typeof gtag !== 'undefined') {
+                        gtag('event', 'auto_copy_on_visible', {
+                            'event_category': 'AutoCopy',
+                            'event_label': 'Auto-copied when page became visible',
+                            'text_length': textToCopy.length,
+                            'environment': gaEnvironment
+                        });
+                    }
+                }).catch(err => {
+                    console.warn('[WARNING] ⚠️ Auto-copy failed (document may not be focused):', err.message);
+                    // 用户可以手动点击复制按钮
+                });
+            } else {
+                console.log('[INFO] Page became visible, but no text to copy');
+            }
         }, 500); // 延迟500ms，等待页面完全激活
-    } else if (!document.hidden && !pendingAutoCopyText) {
-        console.log('[INFO] Page became visible, but no pending auto-copy text');
     }
 });
 

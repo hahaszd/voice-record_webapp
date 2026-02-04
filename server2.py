@@ -1142,8 +1142,9 @@ if __name__ == "__main__":
     # Get port from environment, default to 8000
     port = int(os.environ.get("PORT", 8000))
     
-    print(f"🚀 Starting VoiceSpark on 0.0.0.0:{port}")
-    print(f"📝 Environment: {os.environ.get('DEPLOY_ENVIRONMENT', 'unknown')}")
+    # 使用 ASCII 字符避免 Windows 编码问题
+    print(f"[START] Starting VoiceSpark on 0.0.0.0:{port}")
+    print(f"[ENV] Environment: {os.environ.get('DEPLOY_ENVIRONMENT', 'unknown')}")
     
     uvicorn.run(
         "server2:app",
