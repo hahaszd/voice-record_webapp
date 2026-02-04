@@ -19,6 +19,22 @@ let currentAudioSource = null; // 当前选择的音频源
 let audioStreamsReady = false; // 音频流是否已准备好
 let pendingStorageClear = null; // 待清空IndexedDB的回调
 
+// 🌍 GA Environment - 自动检测部署环境
+const currentHostname = window.location.hostname;
+let gaEnvironment = 'production';
+
+if (currentHostname === 'localhost' || currentHostname === '127.0.0.1') {
+    gaEnvironment = 'local';
+} else if (currentHostname.includes('railway.app') && currentHostname.includes('voicespark-dev')) {
+    gaEnvironment = 'development';
+} else if (currentHostname.includes('railway.app')) {
+    gaEnvironment = 'production';
+} else if (currentHostname.includes('voicespark.com')) {
+    gaEnvironment = 'production';
+}
+
+console.log(`[GA] Tracking environment: ${gaEnvironment}`);
+
 // Waveform visualization variables
 let waveformCanvas = null;
 let waveformCtx = null;
@@ -87,7 +103,8 @@ document.addEventListener('visibilitychange', () => {
                 gtag('event', 'auto_copy_on_visible', {
                     'event_category': 'AutoCopy',
                     'event_label': 'Auto-copied when page became visible',
-                    'text_length': textToCopy.length
+                    'text_length': textToCopy.length,
+                    'environment': gaEnvironment
                 });
             }
         }).catch(err => {
@@ -1144,7 +1161,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 gtag('event', 'audio_source_changed', {
                     'event_category': 'Settings',
                     'event_label': `Changed to ${selectedAudioSource}`,
-                    'audio_source': selectedAudioSource
+                    'audio_source': selectedAudioSource,
+                    'environment': gaEnvironment
                 });
             }
             
@@ -1203,7 +1221,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (typeof gtag !== 'undefined') {
                 gtag('event', 'recording_cancelled', {
                     'event_category': 'Recording',
-                    'event_label': 'User cancelled recording'
+                    'event_label': 'User cancelled recording',
+                    'environment': gaEnvironment
                 });
             }
             
@@ -1275,7 +1294,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     gtag('event', 'copy_button_clicked', {
                         'event_category': 'Interaction',
                         'event_label': 'User copied text manually',
-                        'text_length': text.length
+                        'text_length': text.length,
+                        'environment': gaEnvironment
                     });
                 }
                 
@@ -1532,7 +1552,8 @@ function cleanupAudioStreams(force = false) {
                 gtag('event', 'recording_started', {
                     'event_category': 'Recording',
                     'event_label': 'User started recording',
-                    'audio_source': currentAudioSource || 'microphone'
+                    'audio_source': currentAudioSource || 'microphone',
+                    'environment': gaEnvironment
                 });
             }
             
@@ -1832,7 +1853,8 @@ function cleanupAudioStreams(force = false) {
             gtag('event', 'transcription_started', {
                 'event_category': 'Transcription',
                 'event_label': 'User started transcription',
-                'requested_duration': requestedDuration
+                'requested_duration': requestedDuration,
+                'environment': gaEnvironment
             });
         }
         
@@ -2087,7 +2109,8 @@ function cleanupAudioStreams(force = false) {
                         'event_category': 'Transcription',
                         'event_label': 'Transcription successful',
                         'text_length': result.text ? result.text.length : 0,
-                        'duration': requestedDuration
+                        'duration': requestedDuration,
+                        'environment': gaEnvironment
                     });
                 }
                 
@@ -2123,7 +2146,8 @@ function cleanupAudioStreams(force = false) {
                                     gtag('event', 'auto_copy_success', {
                                         'event_category': 'AutoCopy',
                                         'event_label': 'Auto-copy successful (page visible)',
-                                        'text_length': result.text.length
+                                        'text_length': result.text.length,
+                                        'environment': gaEnvironment
                                     });
                                 }
                                 
@@ -2190,7 +2214,8 @@ function cleanupAudioStreams(force = false) {
                     gtag('event', 'transcription_failed', {
                         'event_category': 'Transcription',
                         'event_label': 'Transcription failed',
-                        'error_message': result.message || 'Unknown error'
+                        'error_message': result.message || 'Unknown error',
+                        'environment': gaEnvironment
                     });
                 }
             }
@@ -2220,7 +2245,8 @@ function cleanupAudioStreams(force = false) {
                     'event_category': 'Transcription',
                     'event_label': 'Transcription exception',
                     'error_type': error.name,
-                    'error_message': error.message
+                    'error_message': error.message,
+                    'environment': gaEnvironment
                 });
             }
             

@@ -8,7 +8,33 @@
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
 
-      gtag('config', 'G-75D37JVX99');
+      // 🌍 自动检测环境
+      const currentHostname = window.location.hostname;
+      let deployEnvironment = 'production';
+      
+      if (currentHostname === 'localhost' || currentHostname === '127.0.0.1') {
+        deployEnvironment = 'local';
+      } else if (currentHostname.includes('railway.app') && currentHostname.includes('voicespark-dev')) {
+        deployEnvironment = 'development';
+      } else if (currentHostname.includes('railway.app')) {
+        deployEnvironment = 'production';
+      } else if (currentHostname.includes('voicespark.com')) {
+        deployEnvironment = 'production';
+      }
+      
+      // 配置 GA 并设置默认的环境维度
+      gtag('config', 'G-75D37JVX99', {
+        'custom_map': {
+          'dimension1': 'environment'
+        }
+      });
+      
+      // 设置全局环境参数
+      gtag('set', 'user_properties', {
+        'environment': deployEnvironment
+      });
+      
+      console.log(`[GA] Environment detected: ${deployEnvironment}`);
     </script>
     
     <meta charset="UTF-8">
