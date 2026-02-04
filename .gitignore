@@ -70,6 +70,12 @@ Thumbs.db
 # Node modules (if using any frontend build tools)
 node_modules/
 
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/.playwright/
+
 # Test coverage
 htmlcov/
 .coverage
