@@ -70,12 +70,22 @@ document.addEventListener('visibilitychange', () => {
     // 🔥 页面重新激活时，如果有待复制的文本，自动复制
     if (!document.hidden && pendingAutoCopyText) {
         console.log('[INFO] Page became visible, attempting pending auto-copy');
+        console.log('[INFO] Pending text length:', pendingAutoCopyText.length);
         const textToCopy = pendingAutoCopyText;
         pendingAutoCopyText = null; // Clear pending text
         
         // Try to copy
         navigator.clipboard.writeText(textToCopy).then(() => {
             console.log('[INFO] ✅ Pending auto-copy successful after page became visible');
+            
+            // 📊 Google Analytics - 页面激活自动复制
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'auto_copy_on_visible', {
+                    'event_category': 'AutoCopy',
+                    'event_label': 'Auto-copied when page became visible',
+                    'text_length': textToCopy.length
+                });
+            }
         }).catch(err => {
             console.warn('[WARNING] Pending auto-copy failed:', err.message);
             // Set it back if failed
@@ -1123,6 +1133,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             selectedAudioSource = btn.dataset.source;
             console.log('[INFO] 音频源已切换:', selectedAudioSource);
             
+            // 📊 Google Analytics - 音频源切换
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'audio_source_changed', {
+                    'event_category': 'Settings',
+                    'event_label': `Changed to ${selectedAudioSource}`,
+                    'audio_source': selectedAudioSource
+                });
+            }
+            
             // 清理现有流
             if (audioStreamsReady) {
                 console.log('[INFO] 清理现有音频流');
@@ -1173,6 +1192,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     cancelRecordBtn.addEventListener('click', async () => {
         if (isRecording) {
             console.log('[INFO] 用户点击取消录音');
+            
+            // 📊 Google Analytics - 取消录音
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'recording_cancelled', {
+                    'event_category': 'Recording',
+                    'event_label': 'User cancelled recording'
+                });
+            }
             
             // 停止录音
             if (mediaRecorder && mediaRecorder.state !== 'inactive') {
@@ -1236,6 +1263,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (text) {
             try {
                 await navigator.clipboard.writeText(text);
+                
+                // 📊 Google Analytics - 手动复制
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'copy_button_clicked', {
+                        'event_category': 'Interaction',
+                        'event_label': 'User copied text manually',
+                        'text_length': text.length
+                    });
+                }
+                
                 // 成功状态 - 改变图标为勾选
                 copyBtn.classList.add('success');
                 copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
@@ -1484,6 +1521,15 @@ function cleanupAudioStreams(force = false) {
     async function startRecording(waitForStorageClear = false) {
         let stream = null;
         try {
+            // 📊 Google Analytics 事件跟踪
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'recording_started', {
+                    'event_category': 'Recording',
+                    'event_label': 'User started recording',
+                    'audio_source': currentAudioSource || 'microphone'
+                });
+            }
+            
             // 🔥 iOS 用户提示（仅首次显示）
             if (isIOS && isSafari && autoRecordToggle.checked) {
                 showIOSWarning();
@@ -1775,6 +1821,15 @@ function cleanupAudioStreams(force = false) {
         console.log(`[PERF] 总计时器开始: ${new Date().toISOString()}`);
         console.log(`${'='.repeat(80)}\n`);
         
+        // 📊 Google Analytics 事件跟踪
+        if (typeof gtag !== 'undefined') {
+            gtag('event', 'transcription_started', {
+                'event_category': 'Transcription',
+                'event_label': 'User started transcription',
+                'requested_duration': requestedDuration
+            });
+        }
+        
         // 🔥 设置转录状态（禁用转录按钮）
         isTranscribing = true;
         recordBtn.disabled = true;
@@ -2020,6 +2075,16 @@ function cleanupAudioStreams(force = false) {
                 transcriptionResult.value = result.text || '未识别到文字';
                 console.log(`[SUCCESS] 转录完成`);
                 
+                // 📊 Google Analytics - 转录成功
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'transcription_completed', {
+                        'event_category': 'Transcription',
+                        'event_label': 'Transcription successful',
+                        'text_length': result.text ? result.text.length : 0,
+                        'duration': requestedDuration
+                    });
+                }
+                
                 // 🔥 添加到历史记录
                 if (result.text) {
                     addToHistory(result.text);
@@ -2046,6 +2111,16 @@ function cleanupAudioStreams(force = false) {
                             try {
                                 await navigator.clipboard.writeText(result.text);
                                 console.log('[INFO] ✅ Auto-copy successful');
+                                
+                                // 📊 Google Analytics - 自动复制成功
+                                if (typeof gtag !== 'undefined') {
+                                    gtag('event', 'auto_copy_success', {
+                                        'event_category': 'AutoCopy',
+                                        'event_label': 'Auto-copy successful (page visible)',
+                                        'text_length': result.text.length
+                                    });
+                                }
+                                
                                 // 显示复制成功提示
                                 copyBtn.classList.add('success');
                                 copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
@@ -2103,6 +2178,15 @@ function cleanupAudioStreams(force = false) {
             } else {
                 transcriptionResult.value = `Error: ${result.message || 'Transcription failed'}`;
                 console.error(`[ERROR] 转录失败: ${result.message}`);
+                
+                // 📊 Google Analytics - 转录失败
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'transcription_failed', {
+                        'event_category': 'Transcription',
+                        'event_label': 'Transcription failed',
+                        'error_message': result.message || 'Unknown error'
+                    });
+                }
             }
             
             const totalTime = Date.now() - totalStartTime;
@@ -2123,6 +2207,16 @@ function cleanupAudioStreams(force = false) {
             console.error(`  - 错误消息: ${error.message}`);
             console.error(`  - 错误堆栈:`, error.stack);
             console.error(`${'='.repeat(80)}\n`);
+            
+            // 📊 Google Analytics - 转录异常
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'transcription_error', {
+                    'event_category': 'Transcription',
+                    'event_label': 'Transcription exception',
+                    'error_type': error.name,
+                    'error_message': error.message
+                });
+            }
             
             // 显示错误
             transcriptionResult.value = `错误: ${error.message}`;
