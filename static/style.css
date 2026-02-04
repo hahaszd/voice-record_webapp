@@ -318,6 +318,7 @@ h1.header-with-icon .header-text {
 }
 
 /* Waveform Canvas - 使用相对定位，紧贴录音按钮左侧 */
+/* 使用 visibility 而不是 display，保持占位，避免按钮位置跳动 */
 .waveform-canvas {
     width: 70px;
     height: 55px;
@@ -325,7 +326,7 @@ h1.header-with-icon .header-text {
     margin-right: 0px; /* 紧贴按钮，0px 间距 */
     background: transparent;
     flex-shrink: 0;
-    display: none; /* Hidden by default, shown when recording */
+    visibility: hidden; /* 隐藏但保留空间，避免布局跳动 */
     order: 1; /* 显示在最左边 */
 }
 
@@ -363,7 +364,7 @@ h1.header-with-icon .header-text {
     border-radius: 50%;
     cursor: pointer;
     margin: 0;
-    margin-left: 50px; /* 距离录音按钮 50px */
+    margin-left: 30px; /* 距离录音按钮 30px（减少间距） */
     transition: all 0.2s ease;
     display: flex;
     align-items: center;

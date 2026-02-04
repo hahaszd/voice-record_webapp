@@ -591,7 +591,7 @@ function startWaveform(stream) {
     if (!waveformCanvas) return;
     
     initWaveformAnalyser(stream);
-    waveformCanvas.style.display = 'block';
+    waveformCanvas.style.visibility = 'visible'; // 使用 visibility 而不是 display
     drawWaveform();
     console.log('[WAVEFORM] Visualization started');
 }
@@ -605,7 +605,7 @@ function stopWaveform() {
         waveformAnimationId = null;
     }
     
-    waveformCanvas.style.display = 'none';
+    waveformCanvas.style.visibility = 'hidden'; // 使用 visibility 而不是 display
     waveformAnalyser = null;
     waveformDataArray = null;
     console.log('[WAVEFORM] Visualization stopped');
