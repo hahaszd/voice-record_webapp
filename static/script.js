@@ -591,7 +591,7 @@ function startWaveform(stream) {
     if (!waveformCanvas) return;
     
     initWaveformAnalyser(stream);
-    waveformCanvas.style.visibility = 'visible'; // 使用 visibility 而不是 display
+    waveformCanvas.classList.add('recording'); // 添加 recording 类来显示
     drawWaveform();
     console.log('[WAVEFORM] Visualization started');
 }
@@ -605,7 +605,7 @@ function stopWaveform() {
         waveformAnimationId = null;
     }
     
-    waveformCanvas.style.visibility = 'hidden'; // 使用 visibility 而不是 display
+    waveformCanvas.classList.remove('recording'); // 移除 recording 类来隐藏
     waveformAnalyser = null;
     waveformDataArray = null;
     console.log('[WAVEFORM] Visualization stopped');

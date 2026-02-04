@@ -330,6 +330,11 @@ h1.header-with-icon .header-text {
     order: 1; /* 显示在最左边 */
 }
 
+/* 录音时显示波形图 */
+.waveform-canvas.recording {
+    visibility: visible !important;
+}
+
 .recording-section {
     position: relative;
     min-height: 120px;
