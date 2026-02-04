@@ -98,24 +98,34 @@ document.addEventListener('visibilitychange', () => {
         const textToCopy = pendingAutoCopyText;
         pendingAutoCopyText = null; // Clear pending text
         
-        // Try to copy
-        navigator.clipboard.writeText(textToCopy).then(() => {
-            console.log('[INFO] ✅✅✅ Pending auto-copy successful after page became visible');
-            
-            // 📊 Google Analytics - 页面激活自动复制
-            if (typeof gtag !== 'undefined') {
-                gtag('event', 'auto_copy_on_visible', {
-                    'event_category': 'AutoCopy',
-                    'event_label': 'Auto-copied when page became visible',
-                    'text_length': textToCopy.length,
-                    'environment': gaEnvironment
-                });
+        // 延迟复制，等待页面完全获得焦点（移动端需要更长时间）
+        setTimeout(() => {
+            // 再次检查页面是否仍然可见
+            if (document.hidden) {
+                console.log('[INFO] Page hidden again, restoring pending text');
+                pendingAutoCopyText = textToCopy;
+                return;
             }
-        }).catch(err => {
-            console.error('[ERROR] ❌ Pending auto-copy failed:', err.message);
-            // Set it back if failed
-            pendingAutoCopyText = textToCopy;
-        });
+            
+            // Try to copy
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                console.log('[INFO] ✅✅✅ Pending auto-copy successful after page became visible');
+                
+                // 📊 Google Analytics - 页面激活自动复制
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'auto_copy_on_visible', {
+                        'event_category': 'AutoCopy',
+                        'event_label': 'Auto-copied when page became visible',
+                        'text_length': textToCopy.length,
+                        'environment': gaEnvironment
+                    });
+                }
+            }).catch(err => {
+                console.warn('[WARNING] ⚠️ Pending auto-copy failed (document may not be focused):', err.message);
+                // 不再恢复 pendingAutoCopyText，避免无限重试
+                // 用户可以手动点击复制按钮
+            });
+        }, 500); // 延迟500ms，等待页面完全激活
     } else if (!document.hidden && !pendingAutoCopyText) {
         console.log('[INFO] Page became visible, but no pending auto-copy text');
     }
@@ -2152,68 +2162,76 @@ function cleanupAudioStreams(force = false) {
                             console.log('[INFO] Page hidden, storing text for pending auto-copy');
                             pendingAutoCopyText = result.text;
                         } else {
-                            // 页面可见，立即复制
-                            try {
-                                await navigator.clipboard.writeText(result.text);
-                                console.log('[INFO] ✅ Auto-copy successful');
-                                
-                                // 📊 Google Analytics - 自动复制成功
-                                if (typeof gtag !== 'undefined') {
-                                    gtag('event', 'auto_copy_success', {
-                                        'event_category': 'AutoCopy',
-                                        'event_label': 'Auto-copy successful (page visible)',
-                                        'text_length': result.text.length,
-                                        'environment': gaEnvironment
-                                    });
-                                }
-                                
-                                // 显示复制成功提示
-                                copyBtn.classList.add('success');
-                                copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-                                setTimeout(() => {
-                                    copyBtn.classList.remove('success');
-                                    copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-                                }, 2000);
-                            } catch (err) {
-                                // Safari fallback: 使用 textarea 选择+复制方法
-                                console.warn('[WARNING] Clipboard API failed, trying fallback method:', err.message);
-                                
+                            // 页面可见，延迟一下确保页面有焦点（特别是移动端）
+                            setTimeout(async () => {
                                 try {
-                                    // 创建临时 textarea
-                                    const textArea = document.createElement('textarea');
-                                    textArea.value = result.text;
-                                    textArea.style.position = 'fixed';
-                                    textArea.style.top = '-9999px';
-                                    textArea.style.left = '-9999px';
-                                    textArea.setAttribute('readonly', '');
-                                    document.body.appendChild(textArea);
+                                    await navigator.clipboard.writeText(result.text);
+                                    console.log('[INFO] ✅ Auto-copy successful');
                                     
-                                    // 选择并复制
-                                    textArea.select();
-                                    textArea.setSelectionRange(0, 99999); // For mobile devices
-                                    
-                                    const successful = document.execCommand('copy');
-                                    document.body.removeChild(textArea);
-                                    
-                                    if (successful) {
-                                        console.log('[INFO] ✅ Auto-copy successful (fallback method)');
-                                        copyBtn.classList.add('success');
-                                        copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-                                        setTimeout(() => {
-                                            copyBtn.classList.remove('success');
-                                            copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-                                        }, 2000);
-                                    } else {
-                                        console.error('[ERROR] Auto-copy fallback failed');
-                                        copyBtn.classList.add('error');
-                                        setTimeout(() => copyBtn.classList.remove('error'), 2000);
+                                    // 📊 Google Analytics - 自动复制成功
+                                    if (typeof gtag !== 'undefined') {
+                                        gtag('event', 'auto_copy_success', {
+                                            'event_category': 'AutoCopy',
+                                            'event_label': 'Auto-copy successful (page visible)',
+                                            'text_length': result.text.length,
+                                            'environment': gaEnvironment
+                                        });
                                     }
-                                } catch (fallbackErr) {
-                                    console.error('[ERROR] Auto-copy fallback exception:', fallbackErr.message);
-                                    copyBtn.classList.add('error');
-                                    setTimeout(() => copyBtn.classList.remove('error'), 2000);
+                                    
+                                    // 显示复制成功提示
+                                    copyBtn.classList.add('success');
+                                    copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+                                    setTimeout(() => {
+                                        copyBtn.classList.remove('success');
+                                        copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+                                    }, 2000);
+                                } catch (err) {
+                                    // 如果剪贴板API失败，可能是文档失去焦点
+                                    if (err.message.includes('Document is not focused')) {
+                                        console.warn('[WARNING] ⚠️ Auto-copy failed (document not focused), will retry when page gains focus');
+                                        // 存储为待复制文本，等用户下次激活页面时复制
+                                        pendingAutoCopyText = result.text;
+                                        return;
+                                    }
+                                    
+                                    // Safari fallback: 使用 textarea 选择+复制方法
+                                    console.warn('[WARNING] Clipboard API failed, trying fallback method:', err.message);
+                                    
+                                    try {
+                                        // 创建临时 textarea
+                                        const textArea = document.createElement('textarea');
+                                        textArea.value = result.text;
+                                        textArea.style.position = 'fixed';
+                                        textArea.style.top = '-9999px';
+                                        textArea.style.left = '-9999px';
+                                        textArea.setAttribute('readonly', '');
+                                        document.body.appendChild(textArea);
+                                        
+                                        // 选择并复制
+                                        textArea.select();
+                                        textArea.setSelectionRange(0, 99999); // For mobile devices
+                                        
+                                        const successful = document.execCommand('copy');
+                                        document.body.removeChild(textArea);
+                                        
+                                        if (successful) {
+                                            console.log('[INFO] ✅ Auto-copy successful (fallback method)');
+                                            copyBtn.classList.add('success');
+                                            copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+                                            setTimeout(() => {
+                                                copyBtn.classList.remove('success');
+                                                copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+                                            }, 2000);
+                                        } else {
+                                            console.warn('[WARNING] ⚠️ Auto-copy fallback failed (user can copy manually)');
+                                            // 不显示错误提示，用户可以手动复制
+                                        }
+                                    } catch (fallbackErr) {
+                                        console.warn('[WARNING] ⚠️ Auto-copy fallback exception:', fallbackErr.message);
+                                        // 不显示错误提示，用户可以手动复制
+                                    }
                                 }
-                            }
+                            }, 300); // 延迟300ms，确保页面有焦点
                         }
                     }
                     
