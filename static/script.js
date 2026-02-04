@@ -1729,6 +1729,10 @@ function cleanupAudioStreams(force = false) {
                         }
                     }
                 }, 200); // 快速启动新录音
+            } else {
+                // 🔥 如果自动录音关闭，重置计时显示为 00:00
+                recordingTime.textContent = '00:00';
+                console.log('[INFO] 自动录音已关闭，重置计时显示');
             }
         } else if (shouldAutoRecord) {
             // 如果没有默认转录时长，但自动录音开启，立即开始新录音
@@ -1744,6 +1748,10 @@ function cleanupAudioStreams(force = false) {
                     }
                 }
             }, 200);
+        } else {
+            // 🔥 如果既没有转录时长，也没有自动录音，重置计时显示
+            recordingTime.textContent = '00:00';
+            console.log('[INFO] 无自动转录/录音，重置计时显示');
         }
     }
 
