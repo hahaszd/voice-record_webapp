@@ -19,12 +19,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application files
 COPY . .
 
-# Copy and make entrypoint executable
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
 # Expose default port
 EXPOSE 8000
 
-# Use entrypoint script
-ENTRYPOINT ["/entrypoint.sh"]
+# Run Python directly - server2.py has __main__ block that handles PORT
+CMD ["python", "server2.py"]
