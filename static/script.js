@@ -158,6 +158,34 @@ async function copyToClipboardWithFeedback(text, isAutomatic = false) {
     return success;
 }
 
+// 🔥 执行自动复制的核心逻辑（可以被多个事件触发）
+async function performAutoCopy(triggerSource = 'unknown') {
+    console.log(`[AUTO_COPY] Triggered by: ${triggerSource}`);
+    
+    // 优先复制待复制文本，否则复制转录结果区域的内容
+    let textToCopy = null;
+    
+    if (pendingAutoCopyText) {
+        textToCopy = pendingAutoCopyText;
+        pendingAutoCopyText = null; // Clear pending text
+        console.log('[AUTO_COPY] ✨ Attempting pending auto-copy');
+    } else if (transcriptionResult && transcriptionResult.value.trim()) {
+        textToCopy = transcriptionResult.value.trim();
+        console.log('[AUTO_COPY] ✨ Attempting to copy existing transcription result');
+    }
+    
+    if (textToCopy) {
+        const success = await copyToClipboardWithFeedback(textToCopy, true);
+        if (success) {
+            console.log(`[AUTO_COPY] ✅✅✅ Auto-copy successful (triggered by: ${triggerSource})`);
+        } else {
+            console.warn(`[AUTO_COPY] ⚠️ Auto-copy failed (triggered by: ${triggerSource})`);
+        }
+    } else {
+        console.log('[AUTO_COPY] No text to copy');
+    }
+}
+
 // 页面可见性监测（iOS 后台检测 + 自动复制）
 document.addEventListener('visibilitychange', () => {
     console.log(`[VISIBILITY] Page visibility changed: ${document.hidden ? 'HIDDEN' : 'VISIBLE'}`);
@@ -183,30 +211,25 @@ document.addEventListener('visibilitychange', () => {
                 return;
             }
             
-            // 优先复制待复制文本，否则复制转录结果区域的内容
-            let textToCopy = null;
-            
-            if (pendingAutoCopyText) {
-                textToCopy = pendingAutoCopyText;
-                pendingAutoCopyText = null; // Clear pending text
-                console.log('[INFO] ✨ Page became visible, attempting pending auto-copy');
-            } else if (transcriptionResult && transcriptionResult.value.trim()) {
-                textToCopy = transcriptionResult.value.trim();
-                console.log('[INFO] ✨ Page became visible, attempting to copy existing transcription result');
-            }
-            
-            if (textToCopy) {
-                const success = await copyToClipboardWithFeedback(textToCopy, true);
-                if (success) {
-                    console.log('[INFO] ✅✅✅ Auto-copy successful after page became visible');
-                } else {
-                    console.warn('[WARNING] ⚠️ Auto-copy failed - user can click copy button manually');
-                }
-            } else {
-                console.log('[INFO] Page became visible, but no text to copy');
-            }
+            await performAutoCopy('visibilitychange');
         }, 500); // 延迟500ms，等待页面完全激活
     }
+});
+
+// 🔥 窗口获得焦点时自动复制（从其他APP切换回来）
+window.addEventListener('focus', () => {
+    console.log('[FOCUS] Window gained focus');
+    
+    // 延迟复制，等待窗口完全激活
+    setTimeout(async () => {
+        // 检查页面是否可见
+        if (document.hidden) {
+            console.log('[FOCUS] Page is hidden, skipping auto-copy');
+            return;
+        }
+        
+        await performAutoCopy('window_focus');
+    }, 500); // 延迟500ms，确保窗口完全激活
 });
 
 // 显示 iOS 使用提示
