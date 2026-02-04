@@ -1,16 +1,18 @@
 {
-  "name": "voice-record-web-test",
+  "name": "voicespark-tests",
   "version": "1.0.0",
-  "description": "Test suite for voice recording web application",
-  "main": "test_recording.js",
+  "description": "Automated tests for VoiceSpark",
   "scripts": {
-    "test": "node test_recording.js",
-    "test:watch": "node test_recording.js --watch"
+    "test": "playwright test smoke --reporter=list",
+    "test:all": "playwright test --reporter=html",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "test:smoke": "playwright test smoke",
+    "test:mobile": "playwright test mobile",
+    "precommit": "npm run test:smoke"
   },
-  "keywords": ["test", "puppeteer", "voice-recording"],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "puppeteer": "^24.15.0"
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@types/node": "^20.10.0"
   }
 }
