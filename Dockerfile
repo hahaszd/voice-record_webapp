@@ -19,8 +19,11 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application files
 COPY . .
 
+# Make start script executable
+RUN chmod +x start.sh
+
 # Expose port (Railway will set PORT env var)
 EXPOSE 8000
 
-# Start command
-CMD uvicorn server2:app --host 0.0.0.0 --port ${PORT:-8000}
+# Start command using bash script
+CMD ["bash", "start.sh"]
