@@ -172,14 +172,16 @@ h1.header-with-icon .header-text {
 }
 
 /* Horizontal button row container for waveform + button + cancel */
+/* 使用 flexbox 让三个元素保持相对位置关系 */
 .recording-controls-row {
     display: flex;
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 0; /* No gap - using absolute positioning */
-    position: relative; /* For absolute children */
-    min-height: 100px; /* Ensure space for button */
+    gap: 0; /* 间距由各元素的 margin 控制 */
+    position: relative;
+    min-height: 100px;
+    width: 100%;
 }
 
 .auto-record-switch {
@@ -230,6 +232,7 @@ h1.header-with-icon .header-text {
     color: #666;
 }
 
+/* Record button - 在中间 */
 .record-btn {
     width: 100px;
     height: 100px;
@@ -245,7 +248,7 @@ h1.header-with-icon .header-text {
     padding: 0;
     position: relative;
     flex-shrink: 0;
-    /* Button stays in flex center - no order property */
+    order: 2; /* 显示在中间 */
 }
 
 .record-btn .btn-icon {
@@ -314,18 +317,16 @@ h1.header-with-icon .header-text {
     }
 }
 
-/* Waveform Canvas - absolute positioning to not affect button centering */
+/* Waveform Canvas - 使用相对定位，紧贴录音按钮左侧 */
 .waveform-canvas {
     width: 70px;
     height: 55px;
     margin: 0;
+    margin-right: 0px; /* 紧贴按钮，0px 间距 */
     background: transparent;
     flex-shrink: 0;
-    position: absolute; /* Absolute - doesn't affect flex layout */
-    right: calc(50% + 50px); /* Position to left of button: center + button_radius(50px) */
-    top: 50%;
-    transform: translateY(-50%);
     display: none; /* Hidden by default, shown when recording */
+    order: 1; /* 显示在最左边 */
 }
 
 .recording-section {
@@ -351,7 +352,7 @@ h1.header-with-icon .header-text {
     gap: 10px;
 }
 
-/* Cancel button - absolute positioning to not affect button centering */
+/* Cancel button - 使用相对定位，在录音按钮右侧 */
 .cancel-record-btn {
     width: 32px;
     height: 32px;
@@ -362,15 +363,13 @@ h1.header-with-icon .header-text {
     border-radius: 50%;
     cursor: pointer;
     margin: 0;
+    margin-left: 50px; /* 距离录音按钮 50px */
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    position: absolute; /* Absolute - doesn't affect flex layout */
-    left: calc(50% + 100px); /* Position to right of button: center + button_radius(50px) + gap(50px) */
-    top: 50%;
-    transform: translateY(-50%);
+    order: 3; /* 显示在最右边 */
 }
 
 .cancel-record-btn:hover {
@@ -1063,25 +1062,10 @@ h1.header-with-icon .header-text {
         gap: 10px;
     }
     
-    /* Mobile: adjust positioning to prevent overlap on small screens */
+    /* Mobile: 使用相同的 flexbox 布局，无需特殊覆盖 */
     .recording-controls-row {
         width: 100%;
         max-width: 400px; /* Limit width on mobile */
-    }
-    
-    /* Mobile: waveform - move further left */
-    .recording-controls-row .waveform-canvas {
-        left: 5px; /* Fixed left position instead of calc */
-    }
-    
-    /* Mobile: cancel button - move further right */
-    .recording-controls-row .cancel-record-btn {
-        right: 5px; /* Fixed right position instead of calc */
-    }
-    
-    /* Mobile: ensure record button stays centered */
-    .recording-controls-row .record-btn {
-        margin: 0 auto; /* Center the button */
     }
     
     .recording-controls .recording-status-wrapper {
@@ -1089,7 +1073,6 @@ h1.header-with-icon .header-text {
     }
     
     .recording-section {
-        position: relative; /* For absolute positioning of waveform */
         min-height: 120px; /* Ensure enough space */
     }
 }
