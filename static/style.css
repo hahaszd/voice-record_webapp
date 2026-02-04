@@ -177,7 +177,7 @@ h1.header-with-icon .header-text {
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 10px; /* Reduced gap to make elements appear connected */
+    gap: 2px; /* Minimal gap - waveform touches button */
     position: relative;
 }
 
@@ -315,12 +315,13 @@ h1.header-with-icon .header-text {
 
 /* Waveform Canvas - in flex row, no absolute positioning on desktop */
 .waveform-canvas {
-    width: 80px; /* Desktop: even shorter for better centering */
-    height: 60px; /* Desktop: smaller height */
+    width: 70px; /* Shorter to keep button centered */
+    height: 55px; /* Smaller height */
     margin: 0;
     background: transparent;
     flex-shrink: 0;
     order: 1; /* Left: waveform */
+    display: none; /* Hidden by default, shown when recording */
 }
 
 .recording-section {
@@ -346,7 +347,7 @@ h1.header-with-icon .header-text {
     gap: 10px;
 }
 
-/* Cancel button - in flex row, no absolute positioning on desktop */
+/* Cancel button - in flex row, same as desktop */
 .cancel-record-btn {
     width: 32px;
     height: 32px;
@@ -1047,7 +1048,7 @@ h1.header-with-icon .header-text {
         height: 16px;
     }
     
-    /* Recording controls - horizontal layout on mobile when recording */
+    /* Recording controls - same layout as desktop */
     .recording-controls {
         display: flex;
         flex-direction: column;
@@ -1055,42 +1056,8 @@ h1.header-with-icon .header-text {
         gap: 10px;
     }
     
-    /* Mobile: CRITICAL - disable flexbox, use pure absolute positioning */
-    .recording-controls-row {
-        position: relative; /* Positioning context for absolute children */
-        width: 100%;
-        min-height: 80px;
-        display: block !important; /* ✅ Override flexbox - use block layout */
-        /* Remove flex properties that cause overlap */
-    }
-    
-    /* Mobile: waveform at left edge */
-    .recording-controls-row .waveform-canvas {
-        width: 70px; /* Mobile: smaller width */
-        height: 50px; /* Mobile: smaller height */
-        position: absolute;
-        left: 5px; /* Mobile: very close to left edge */
-        top: 50%;
-        transform: translateY(-50%);
-        display: block; /* Ensure it's visible */
-    }
-    
-    /* Mobile: record button centered via margin auto */
-    .recording-controls-row .record-btn {
-        position: relative; /* Normal flow for centering */
-        margin: 0 auto; /* Center horizontally */
-        display: block;
-        z-index: 2; /* Above waveform */
-    }
-    
-    /* Mobile: cancel button at right edge */
-    .recording-controls-row .cancel-record-btn {
-        position: absolute;
-        right: 5px; /* Mobile: very close to right edge */
-        top: 50%;
-        transform: translateY(-50%);
-        z-index: 2; /* Above waveform */
-    }
+    /* Mobile: use same flexbox layout as desktop - no special positioning */
+    /* Remove all mobile-specific overrides to use desktop layout */
     
     .recording-controls .recording-status-wrapper {
         order: 2; /* Time below button */
