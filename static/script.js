@@ -21,9 +21,23 @@ let pendingStorageClear = null; // 待清空IndexedDB的回调
 
 // 🌍 GA Environment - 从 index.html 中的全局变量获取（避免重复声明）
 // deployEnvironment 在 index.html 的 GA 初始化脚本中已定义
-const gaEnvironment = window.deployEnvironment || 'production';
+// 使用 try-catch 确保移动端也能正常工作
+let gaEnvironment = 'production';
+try {
+    // 添加详细日志帮助调试移动端问题
+    console.log('[DEBUG] window.deployEnvironment:', window.deployEnvironment);
+    console.log('[DEBUG] typeof window.deployEnvironment:', typeof window.deployEnvironment);
+    
+    gaEnvironment = window.deployEnvironment || 'production';
+    console.log(`[GA] Tracking environment: ${gaEnvironment}`);
+} catch (error) {
+    console.error('[GA] Failed to detect environment, using production as default:', error);
+    console.error('[GA] Error stack:', error.stack);
+    gaEnvironment = 'production';
+}
 
-console.log(`[GA] Tracking environment: ${gaEnvironment}`);
+// 添加脚本加载成功的标记
+console.log('[INFO] ✅ script.js loaded successfully');
 
 // Waveform visualization variables
 let waveformCanvas = null;
@@ -984,6 +998,9 @@ const helpContent = {
 
 // 初始化
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('[INFO] 🚀 DOMContentLoaded event fired');
+    console.log('[INFO] Starting app initialization...');
+    
     // 初始化IndexedDB存储
     try {
         await audioStorage.init();
@@ -1023,6 +1040,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const helpModal = document.getElementById('helpModal');
     const closeHelpBtn = document.getElementById('closeHelpBtn');
     const langBtns = document.querySelectorAll('.lang-btn');
+    
+    // 验证关键元素是否找到
+    console.log('[INFO] Key elements found:', {
+        recordBtn: !!recordBtn,
+        copyBtn: !!copyBtn,
+        transcriptionResult: !!transcriptionResult,
+        audioSourceBtns: audioSourceBtns.length,
+        durationBtns: durationBtns.length
+    });
     
     // Initialize waveform visualization variables
     waveformCanvas = document.getElementById('waveformCanvas');
@@ -2668,4 +2694,9 @@ function cleanupAudioStreams(force = false) {
             }
         }
     });
+    
+    // 初始化完成标记
+    console.log('[INFO] ✅ All event listeners registered successfully');
+    console.log('[INFO] ✅ App initialization complete');
+    console.log('[INFO] 📱 Device: iOS=' + isIOS + ', Android=' + isAndroid + ', Safari=' + isSafari);
 });
