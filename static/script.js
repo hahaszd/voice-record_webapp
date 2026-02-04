@@ -588,10 +588,22 @@ function drawWaveform() {
 
 // Start waveform visualization
 function startWaveform(stream) {
-    if (!waveformCanvas) return;
+    if (!waveformCanvas) {
+        console.error('[WAVEFORM] Canvas element not found!');
+        return;
+    }
+    
+    console.log('[WAVEFORM] Starting waveform visualization...');
+    console.log('[WAVEFORM] Canvas element:', waveformCanvas);
+    console.log('[WAVEFORM] Canvas current classes:', waveformCanvas.className);
     
     initWaveformAnalyser(stream);
     waveformCanvas.classList.add('recording'); // 添加 recording 类来显示
+    
+    console.log('[WAVEFORM] Added "recording" class');
+    console.log('[WAVEFORM] Canvas classes after add:', waveformCanvas.className);
+    console.log('[WAVEFORM] Canvas computed visibility:', window.getComputedStyle(waveformCanvas).visibility);
+    
     drawWaveform();
     console.log('[WAVEFORM] Visualization started');
 }
