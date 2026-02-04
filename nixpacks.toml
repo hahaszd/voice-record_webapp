@@ -1,5 +1,9 @@
+[providers]
+python = "3.11"
+
 [phases.setup]
 nixPkgs = ["python311", "nodejs-18_x"]
+nixpkgsArchive = "e05605ec414618eab4a7a6aea8b38f6fde053842"
 
 [phases.install]
 cmds = [
