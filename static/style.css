@@ -317,25 +317,21 @@ h1.header-with-icon .header-text {
     }
 }
 
-/* Waveform Canvas - 使用相对定位，紧贴录音按钮左侧 */
-/* 初始宽度为0不占空间，录音时展开 */
+/* Waveform Canvas - 使用固定占位空间，避免按钮晃动 */
 .waveform-canvas {
-    width: 0; /* 初始宽度为0，不占空间 */
+    width: 70px; /* 固定占位70px */
     height: 55px;
     margin: 0;
     margin-right: 0px;
     background: transparent;
     flex-shrink: 0;
-    visibility: hidden; /* 初始隐藏 */
+    opacity: 0; /* 使用 opacity 而不是 visibility，保持空间 */
     order: 1;
-    transition: width 0.2s ease; /* 平滑过渡 */
-    overflow: hidden; /* 隐藏溢出内容 */
 }
 
-/* 录音时显示波形图并展开宽度 */
+/* 录音时显示波形图 */
 .waveform-canvas.recording {
-    width: 70px; /* 录音时展开到70px */
-    visibility: visible !important;
+    opacity: 1; /* 显示，但不改变宽度 */
 }
 
 .recording-section {
