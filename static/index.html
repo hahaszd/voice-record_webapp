@@ -22,6 +22,9 @@
         deployEnvironment = 'production';
       }
       
+      // 设置为全局变量，供 script.js 使用
+      window.deployEnvironment = deployEnvironment;
+      
       // 配置 GA 并设置默认的环境维度
       gtag('config', 'G-75D37JVX99', {
         'custom_map': {

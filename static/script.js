@@ -19,19 +19,9 @@ let currentAudioSource = null; // 当前选择的音频源
 let audioStreamsReady = false; // 音频流是否已准备好
 let pendingStorageClear = null; // 待清空IndexedDB的回调
 
-// 🌍 GA Environment - 自动检测部署环境
-const currentHostname = window.location.hostname;
-let gaEnvironment = 'production';
-
-if (currentHostname === 'localhost' || currentHostname === '127.0.0.1') {
-    gaEnvironment = 'local';
-} else if (currentHostname.includes('railway.app') && currentHostname.includes('voicespark-dev')) {
-    gaEnvironment = 'development';
-} else if (currentHostname.includes('railway.app')) {
-    gaEnvironment = 'production';
-} else if (currentHostname.includes('voicespark.com')) {
-    gaEnvironment = 'production';
-}
+// 🌍 GA Environment - 从 index.html 中的全局变量获取（避免重复声明）
+// deployEnvironment 在 index.html 的 GA 初始化脚本中已定义
+const gaEnvironment = window.deployEnvironment || 'production';
 
 console.log(`[GA] Tracking environment: ${gaEnvironment}`);
 
