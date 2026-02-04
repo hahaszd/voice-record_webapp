@@ -368,7 +368,7 @@ h1.header-with-icon .header-text {
     justify-content: center;
     flex-shrink: 0;
     position: absolute; /* Absolute - doesn't affect flex layout */
-    right: calc(50% - 80px); /* Position to right of button: center - button_radius(50px) - gap(30px) */
+    right: calc(50% - 100px); /* Position to right of button: center - button_radius(50px) - gap(50px) */
     top: 50%;
     transform: translateY(-50%);
 }
