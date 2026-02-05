@@ -178,6 +178,16 @@ async function copyToClipboardWithFeedback(text, isAutomatic = false) {
 async function performAutoCopy(triggerSource = 'unknown') {
     console.log(`[AUTO_COPY] Triggered by: ${triggerSource}`);
     
+    // 🎯 自动focus到文本框，获取文档焦点以支持clipboard操作
+    if (transcriptionResult && transcriptionResult.value.trim()) {
+        try {
+            transcriptionResult.focus();
+            console.log('[AUTO_COPY] Focused on textarea to enable clipboard access');
+        } catch (e) {
+            console.warn('[AUTO_COPY] Failed to focus textarea:', e.message);
+        }
+    }
+    
     // 优先复制待复制文本，否则复制转录结果区域的内容
     let textToCopy = null;
     
