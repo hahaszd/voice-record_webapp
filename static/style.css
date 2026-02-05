@@ -52,12 +52,71 @@ h1 {
 
 .tagline {
     text-align: center;
-    font-size: 1em;
+    font-size: 1.1em;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 8px;
+    letter-spacing: 0.3px;
+}
+
+.hero-subtitle {
+    text-align: center;
+    font-size: 0.95em;
     font-weight: 400;
-    color: #e67e22;
-    margin-bottom: 30px;
-    letter-spacing: 0.5px;
-    font-style: italic;
+    color: #7f8c8d;
+    margin-bottom: 25px;
+    letter-spacing: 0.2px;
+}
+
+/* Value Propositions */
+.value-props {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-bottom: 35px;
+    flex-wrap: wrap;
+}
+
+.value-prop {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+    max-width: 280px;
+}
+
+.value-prop:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-color: #dee2e6;
+}
+
+.prop-icon {
+    font-size: 1.8em;
+    flex-shrink: 0;
+}
+
+.prop-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: left;
+}
+
+.prop-text strong {
+    font-size: 0.85em;
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.prop-text span {
+    font-size: 0.75em;
+    color: #7f8c8d;
+    font-weight: 400;
 }
 
 h1.header-with-icon {
@@ -883,6 +942,23 @@ h1.header-with-icon .header-text {
 
 /* 响应式设计 */
 @media (max-width: 900px) {
+    /* Hero Section - Mobile */
+    .tagline {
+        font-size: 1em;
+        margin-bottom: 6px;
+    }
+    
+    .hero-subtitle {
+        font-size: 0.85em;
+        margin-bottom: 15px; /* 减小底部间距 */
+        padding: 0 15px;
+    }
+    
+    /* 移动端隐藏场景卡片 - 节省空间 */
+    .value-props {
+        display: none;
+    }
+    
     /* v73改进：移动端隐藏通知开关 */
     /* 原因：iOS不支持Web Notifications API，Android支持不可靠 */
     /* 移动端用户页面就在眼前，不需要通知功能 */
