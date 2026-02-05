@@ -2832,6 +2832,41 @@ function cleanupAudioStreams(force = false) {
         });
     });
     
+    // ================================
+    // Email Signup Collapse/Expand
+    // ================================
+    const emailCollapsed = document.getElementById('emailCollapsed');
+    const emailExpanded = document.getElementById('emailExpanded');
+    const emailExpandBtn = document.getElementById('emailExpandBtn');
+    const emailCollapseBtn = document.getElementById('emailCollapseBtn');
+    
+    // Expand form
+    if (emailExpandBtn) {
+        emailExpandBtn.addEventListener('click', () => {
+            emailCollapsed.style.display = 'none';
+            emailExpanded.style.display = 'block';
+            console.log('[INFO] Email signup form expanded');
+        });
+    }
+    
+    // Click collapsed area to expand
+    if (emailCollapsed) {
+        emailCollapsed.addEventListener('click', () => {
+            emailCollapsed.style.display = 'none';
+            emailExpanded.style.display = 'block';
+            console.log('[INFO] Email signup form expanded');
+        });
+    }
+    
+    // Collapse form
+    if (emailCollapseBtn) {
+        emailCollapseBtn.addEventListener('click', () => {
+            emailExpanded.style.display = 'none';
+            emailCollapsed.style.display = 'flex';
+            console.log('[INFO] Email signup form collapsed');
+        });
+    }
+    
     // ESC键关闭Modal
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {

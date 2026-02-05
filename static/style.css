@@ -1706,6 +1706,113 @@ button svg {
     background: #999;
 }
 
+/* ================================
+   Email Signup in Help Modal (Compact)
+   ================================ */
+/* ================================
+   Email Signup in Help Modal (Collapsible)
+   ================================ */
+.help-email-signup {
+    padding: 0;
+    background: #f9f9f9;
+    border-top: 1px solid #e0e0e0;
+    margin-top: 15px;
+}
+
+.help-email-divider {
+    margin-bottom: 0;
+}
+
+/* Collapsed State - Single Line */
+.help-email-collapsed {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 30px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.help-email-collapsed:hover {
+    background: #f0f0f0;
+}
+
+.email-collapsed-text {
+    color: #666;
+    font-size: 0.85em;
+    font-weight: 500;
+}
+
+.email-expand-btn {
+    background: none;
+    border: none;
+    color: #e67e22;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.email-expand-btn:hover {
+    color: #d35400;
+    transform: scale(1.1);
+}
+
+/* Expanded State - Full Form */
+.help-email-expanded {
+    padding: 10px 30px 10px 50px;
+}
+
+.email-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 5px; /* 从8px减少到5px */
+}
+
+.help-email-expanded h4 {
+    color: #666;
+    font-size: 1.4em; /* 大幅增大，接近正文大小 */
+    margin: 0 0 8px 0; /* 增加下边距 */
+    font-weight: 600;
+    text-align: left;
+}
+
+.help-email-expanded p {
+    color: #888;
+    font-size: 1em; /* 从0.85em增大到1em，和正文一样 */
+    margin: 0 0 12px 0; /* 增加下边距 */
+    text-align: left;
+    line-height: 1.5;
+}
+
+.email-collapse-btn {
+    background: none;
+    border: none;
+    color: #e67e22;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.email-collapse-btn:hover {
+    color: #d35400;
+    transform: scale(1.1);
+}
+
+.help-email-expanded iframe {
+    width: 100%;
+    max-width: 100%;
+    transform: scale(0.9);
+    transform-origin: top left;
+    height: 130px;
+    margin-left: 0;
+}
+
 /* Mobile Responsive for Help */
 @media (max-width: 600px) {
     .help-btn {
@@ -1762,5 +1869,87 @@ button svg {
     to {
         transform: translateX(-50%) translateY(0);
         opacity: 1;
+    }
+}
+
+/* ================================
+   Email Signup Section (REMOVED - Now in Help Modal)
+   ================================ */
+/* Moved to Help Modal bottom */
+
+/* ================================
+   Feedback Button (Floating)
+   ================================ */
+/* ================================
+   Feedback Button (Inside Container - Icon Only)
+   ================================ */
+.feedback-button {
+    position: absolute; /* 相对于.container定位 */
+    bottom: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+    color: white;
+    padding: 12px;
+    border-radius: 50%; /* 圆形按钮 */
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 10px rgba(230, 126, 34, 0.25);
+    transition: all 0.3s ease;
+    z-index: 100;
+}
+
+.feedback-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(230, 126, 34, 0.35);
+    background: linear-gradient(135deg, #d35400 0%, #e67e22 100%);
+}
+
+.feedback-button svg {
+    width: 20px;
+    height: 20px;
+}
+
+.feedback-button span {
+    display: none; /* 隐藏文字，只显示图标 */
+}
+
+/* Ensure container has relative positioning */
+.container {
+    position: relative;
+}
+
+/* Mobile Responsive for Feedback */
+@media (max-width: 900px) {
+    .help-email-signup {
+        padding: 12px 15px;
+    }
+    
+    .help-email-signup h4 {
+        font-size: 0.85em;
+    }
+    
+    .help-email-signup p {
+        font-size: 0.7em;
+    }
+    
+    .feedback-button {
+        bottom: 20px;
+        right: 20px;
+        padding: 10px 16px;
+        font-size: 0.9em;
+    }
+    
+    .feedback-button span {
+        display: none; /* 移动端只显示图标 */
+    }
+    
+    .feedback-button {
+        width: 50px;
+        height: 50px;
+        padding: 0;
+        justify-content: center;
+        border-radius: 50%;
     }
 }
