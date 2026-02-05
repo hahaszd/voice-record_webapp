@@ -103,16 +103,32 @@ async function copyToClipboardWithFeedback(text, isAutomatic = false) {
             textarea.style.position = 'fixed';
             textarea.style.top = '0';
             textarea.style.left = '-9999px';
+            textarea.style.opacity = '0';
             textarea.setAttribute('readonly', '');
             document.body.appendChild(textarea);
             
             // 在iOS上，需要先focus才能select
+            // 使用contentEditable可能更可靠
+            textarea.contentEditable = true;
+            textarea.readOnly = false;
+            
+            // 确保元素可以被选中
+            const range = document.createRange();
+            range.selectNodeContents(textarea);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            
+            // 备选方法：直接select
             textarea.focus();
             textarea.select();
             textarea.setSelectionRange(0, text.length);
             
             // 尝试使用execCommand
             const result = document.execCommand('copy');
+            
+            // 清理
+            selection.removeAllRanges();
             document.body.removeChild(textarea);
             
             if (result) {
@@ -120,7 +136,7 @@ async function copyToClipboardWithFeedback(text, isAutomatic = false) {
                 method = 'exec_command';
                 console.log('[COPY] ✅ Success with execCommand');
             } else {
-                throw new Error('execCommand returned false');
+                console.warn('[COPY] execCommand returned false');
             }
         } catch (fallbackErr) {
             console.error('[COPY] ❌ All copy methods failed:', fallbackErr);
@@ -220,7 +236,7 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('focus', () => {
     console.log('[FOCUS] Window gained focus');
     
-    // 延迟复制，等待窗口完全激活
+    // 延迟复制，等待窗口完全激活（增加延迟以确保焦点完全获得）
     setTimeout(async () => {
         // 检查页面是否可见
         if (document.hidden) {
@@ -229,7 +245,7 @@ window.addEventListener('focus', () => {
         }
         
         await performAutoCopy('window_focus');
-    }, 500); // 延迟500ms，确保窗口完全激活
+    }, 800); // 增加到800ms，确保窗口完全激活并获得焦点
 });
 
 // 显示 iOS 使用提示
