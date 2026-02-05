@@ -1009,27 +1009,9 @@ h1.header-with-icon .header-text {
         height: 14px;
     }
     
-    /* Fix: Audio source selector visibility and positioning */
+    /* 🎯 移动端完全隐藏音频选择器 - 移动端只支持麦克风 */
     .audio-source-selector {
-        margin-bottom: 6px; /* 进一步优化：从8px降到6px */
-        margin-top: 10px; /* 进一步优化：从15px降到10px */
-        padding: 6px; /* 进一步优化：从8px降到6px */
-        gap: 6px;
-    }
-    
-    .audio-source-btn {
-        padding: 10px 6px;
-        min-width: 0;
-    }
-    
-    .audio-source-btn svg {
-        height: 24px !important;
-    }
-    
-    /* Both button needs more width for 3 icons */
-    .audio-source-btn[data-source="both"] svg {
-        width: auto !important;
-        height: 24px !important;
+        display: none; /* 移动端不显示，因为只能使用麦克风 */
     }
     
     /* Fix: Duration buttons going off screen */
