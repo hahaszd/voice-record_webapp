@@ -859,7 +859,7 @@ const helpContent = {
             <h3>⚡ Quick Start (30 seconds)</h3>
             <div class="help-steps">
                 <ol>
-                    <li>Select audio source (Microphone / System Audio / Both)</li>
+                    <li><strong>Desktop:</strong> Select audio source (Microphone / System Audio / Both) | <strong>Mobile:</strong> Uses microphone automatically</li>
                     <li>Choose recording duration (30s / 1m / 5m)</li>
                     <li>Click the <strong style="color: #3498db;">blue Record button</strong></li>
                     <li>Speak or play content</li>
@@ -889,7 +889,15 @@ const helpContent = {
             <p><strong>Mobile Devices (Phones & Tablets):</strong></p>
             <ul>
                 <li>✅ <strong>Microphone only</strong> - Audio source buttons are hidden on mobile</li>
-                <li>❌ System audio not available (browser limitation)</li>
+                <li>❌ <strong>System audio not available</strong> - Browser and OS limitation</li>
+                <li>ℹ️ <strong>Why?</strong> Mobile browsers don't provide APIs for system audio capture due to:
+                    <ul>
+                        <li>🔒 Privacy protection (prevents unauthorized audio recording)</li>
+                        <li>🛡️ Security considerations (blocks malicious websites)</li>
+                        <li>🔋 Battery optimization (reduces background audio processing)</li>
+                        <li>📱 Mobile OS restrictions (iOS/Android policies)</li>
+                    </ul>
+                </li>
                 <li>ℹ️ The interface automatically adapts - you'll only see what works</li>
             </ul>
             <p><strong>Desktop (PC & Mac):</strong></p>
@@ -908,11 +916,12 @@ const helpContent = {
 
             <h3>💡 Pro Tips</h3>
             <ul>
-                <li>✅ Keep it running while watching videos - capture key moments instantly</li>
-                <li>✅ Listen to podcasts and save inspiring quotes on the fly</li>
+                <li>✅ <strong>(Desktop)</strong> Keep it running while watching videos - capture key moments instantly</li>
+                <li>✅ <strong>(Desktop)</strong> Listen to podcasts and save inspiring quotes on the fly</li>
                 <li>✅ Capture sudden ideas without breaking your flow</li>
                 <li>✅ Take live notes while learning</li>
                 <li>✅ Change recording duration even while recording</li>
+                <li>✅ <strong>(Mobile)</strong> Use shorter durations (30s/1m) for better stability</li>
             </ul>
 
             <h3>❓ FAQ</h3>
@@ -924,7 +933,8 @@ const helpContent = {
             <p>VoiceSpark focuses on <strong>capturing inspiration</strong>, not long meeting recordings. Short bursts keep you focused on ideas that matter.</p>
 
             <h4>Q: How do I record system audio?</h4>
-            <p>Select "System Audio", then your browser will ask you to choose which tab or window to share. Select the tab playing audio (e.g., YouTube, Spotify).</p>
+            <p><strong>Desktop only:</strong> Select "System Audio", then your browser will ask you to choose which tab or window to share. Select the tab playing audio (e.g., YouTube, Spotify).</p>
+            <p><strong>Note:</strong> System audio is not available on mobile devices (phones/tablets) due to browser and OS limitations. Use a desktop browser (Chrome/Edge/Safari on PC/Mac) for system audio capture.</p>
 
             <h4>Q: Can I edit the transcribed text?</h4>
             <p>Yes! Click on the text area to edit directly. Your changes will be copied when you click the copy button.</p>
@@ -1011,7 +1021,7 @@ const helpContent = {
             <h3>⚡ 30秒快速开始</h3>
             <div class="help-steps">
                 <ol>
-                    <li>选择音频源（麦克风 / 系统音频 / 两者都要）</li>
+                    <li><strong>桌面端：</strong>选择音频源（麦克风 / 系统音频 / 两者都要）| <strong>移动端：</strong>自动使用麦克风</li>
                     <li>选择录音时长（30秒 / 1分钟 / 5分钟）</li>
                     <li>点击<strong style="color: #3498db;">蓝色录音按钮</strong></li>
                     <li>开始说话或播放内容</li>
@@ -1041,7 +1051,15 @@ const helpContent = {
             <p><strong>移动设备（手机和平板）：</strong></p>
             <ul>
                 <li>✅ <strong>仅支持麦克风</strong> - 移动端不显示音频源选择按钮</li>
-                <li>❌ 不支持系统音频（浏览器限制）</li>
+                <li>❌ <strong>不支持系统音频</strong> - 浏览器和操作系统限制</li>
+                <li>ℹ️ <strong>为什么？</strong>移动浏览器不提供系统音频捕获API，原因包括：
+                    <ul>
+                        <li>🔒 隐私保护（防止未经授权的音频录制）</li>
+                        <li>🛡️ 安全考虑（阻止恶意网站）</li>
+                        <li>🔋 电池优化（减少后台音频处理）</li>
+                        <li>📱 移动操作系统限制（iOS/Android政策）</li>
+                    </ul>
+                </li>
                 <li>ℹ️ 界面会自动适配 - 只显示可用的功能</li>
             </ul>
             <p><strong>桌面端（电脑和Mac）：</strong></p>
@@ -1060,11 +1078,12 @@ const helpContent = {
 
             <h3>💡 使用技巧</h3>
             <ul>
-                <li>✅ 看视频时打开，随时记录金句</li>
-                <li>✅ 听播客时捕捉灵感</li>
+                <li>✅ <strong>（桌面端）</strong>看视频时打开，随时记录金句</li>
+                <li>✅ <strong>（桌面端）</strong>听播客时捕捉灵感</li>
                 <li>✅ 突然有想法时，立即记录</li>
                 <li>✅ 学习时做实时笔记</li>
                 <li>✅ 录音过程中可随时切换时长</li>
+                <li>✅ <strong>（移动端）</strong>使用较短时长（30秒/1分钟）以获得更好的稳定性</li>
             </ul>
 
             <h3>❓ 常见问题</h3>
@@ -1076,7 +1095,8 @@ const helpContent = {
             <p>VoiceSpark 专注于<strong>灵感捕捉</strong>，而非长篇会议记录。短时录音让您专注于真正重要的想法。</p>
 
             <h4>Q: 如何录制系统音频？</h4>
-            <p>选择"系统音频"后，浏览器会要求您选择要共享的标签页或窗口。选择正在播放音频的标签页（如 YouTube、Spotify）。</p>
+            <p><strong>仅限桌面端：</strong>选择"系统音频"后，浏览器会要求您选择要共享的标签页或窗口。选择正在播放音频的标签页（如 YouTube、Spotify）。</p>
+            <p><strong>注意：</strong>由于浏览器和操作系统限制，移动设备（手机/平板）不支持系统音频。需要捕获系统音频请使用桌面浏览器（Mac/PC上的Chrome/Edge/Safari）。</p>
 
             <h4>Q: 可以编辑转录的文字吗？</h4>
             <p>可以！点击文本框直接编辑。修改后的内容会在您点击复制按钮时被复制。</p>
