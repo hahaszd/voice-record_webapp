@@ -232,20 +232,39 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-// 🔥 窗口获得焦点时自动复制（从其他APP切换回来）
+// 🔥 窗口获得焦点时自动复制（从其他APP切换回来）- 增强版
 window.addEventListener('focus', () => {
     console.log('[FOCUS] Window gained focus');
     
-    // 延迟复制，等待窗口完全激活（增加延迟以确保焦点完全获得）
-    setTimeout(async () => {
+    // 使用智能等待机制：检查焦点状态，最多重试3次
+    const attemptAutoCopy = async (attempt = 1, maxAttempts = 3) => {
         // 检查页面是否可见
         if (document.hidden) {
             console.log('[FOCUS] Page is hidden, skipping auto-copy');
             return;
         }
         
+        // 检查文档是否真正获得焦点
+        if (!document.hasFocus()) {
+            console.log(`[FOCUS] Document not focused yet (attempt ${attempt}/${maxAttempts})`);
+            
+            // 如果还有重试次数，等待后重试
+            if (attempt < maxAttempts) {
+                setTimeout(() => attemptAutoCopy(attempt + 1, maxAttempts), 500);
+                return;
+            } else {
+                console.warn('[FOCUS] Max attempts reached, document still not focused');
+                return;
+            }
+        }
+        
+        // 文档已获得焦点，执行复制
+        console.log(`[FOCUS] Document has focus, attempting auto-copy (attempt ${attempt})`);
         await performAutoCopy('window_focus');
-    }, 800); // 增加到800ms，确保窗口完全激活并获得焦点
+    };
+    
+    // 初始延迟800ms后开始第一次尝试
+    setTimeout(() => attemptAutoCopy(), 800);
 });
 
 // 显示 iOS 使用提示
