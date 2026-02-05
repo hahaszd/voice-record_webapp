@@ -252,9 +252,11 @@ window.addEventListener('focus', () => {
     }, 300); // 从800ms优化到300ms，响应更快
 });
 
-// 显示 iOS 使用提示
+// 显示 iOS 使用提示（所有iOS浏览器）
+// v72改进：覆盖所有iOS浏览器（Safari、Chrome、Firefox等）
+// 原因：iOS上所有浏览器都使用Safari的WebKit引擎，都有相同的后台录音限制
 function showIOSWarning() {
-    if (!isIOS || !isSafari || hasShownIOSWarning) return;
+    if (!isIOS || hasShownIOSWarning) return;  // 移除isSafari检查
     
     const warning = document.createElement('div');
     warning.style.cssText = `
@@ -279,7 +281,7 @@ function showIOSWarning() {
         <div style="display: flex; align-items: flex-start; gap: 10px;">
             <span style="font-size: 1.5em; flex-shrink: 0;">📱</span>
             <div style="flex: 1;">
-                <strong style="color: #856404;">iOS Safari Tips:</strong><br>
+                <strong style="color: #856404;">iOS Recording Tips:</strong><br>
                 <span style="color: #856404;">Keep screen on and stay in this tab to ensure recording continues.</span>
             </div>
             <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; font-size: 1.2em; cursor: pointer; color: #856404; padding: 0; margin-left: 5px;">×</button>
@@ -1713,8 +1715,9 @@ function cleanupAudioStreams(force = false) {
                 });
             }
             
-            // 🔥 iOS 用户提示（仅首次显示）
-            if (isIOS && isSafari && autoRecordToggle.checked) {
+            // 🔥 iOS 用户提示（所有iOS浏览器，仅首次显示）
+            // v72改进：覆盖所有iOS浏览器，不只是Safari
+            if (isIOS && autoRecordToggle.checked) {
                 showIOSWarning();
             }
             
