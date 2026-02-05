@@ -1012,8 +1012,8 @@ h1.header-with-icon .header-text {
     
     /* Fix: Audio source selector visibility and positioning */
     .audio-source-selector {
-        margin-bottom: 12px;
-        margin-top: 20px; /* Increased to push buttons down, away from title */
+        margin-bottom: 8px; /* 减少底部间距，从12px降到8px */
+        margin-top: 15px; /* 减少顶部间距，从20px降到15px */
         padding: 8px;
         gap: 6px;
     }
@@ -1036,7 +1036,8 @@ h1.header-with-icon .header-text {
     /* Fix: Duration buttons going off screen */
     .playback-section {
         padding: 8px;
-        margin-bottom: 10px;
+        margin-bottom: 8px; /* 减少底部间距，从10px降到8px */
+        margin-top: 0; /* 确保没有顶部间距 */
     }
     
     .duration-selector {
