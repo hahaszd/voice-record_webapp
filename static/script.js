@@ -242,39 +242,21 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-// 🔥 窗口获得焦点时自动复制（从其他APP切换回来）- 增强版
+// 🔥 窗口获得焦点时自动复制（从其他APP切换回来）- v70简化版
+// v69的textarea.focus()已经解决了焦点问题，不再需要复杂的重试机制
 window.addEventListener('focus', () => {
     console.log('[FOCUS] Window gained focus');
     
-    // 使用智能等待机制：检查焦点状态，最多重试3次
-    const attemptAutoCopy = async (attempt = 1, maxAttempts = 3) => {
-        // 检查页面是否可见
-        if (document.hidden) {
-            console.log('[FOCUS] Page is hidden, skipping auto-copy');
-            return;
-        }
-        
-        // 检查文档是否真正获得焦点
-        if (!document.hasFocus()) {
-            console.log(`[FOCUS] Document not focused yet (attempt ${attempt}/${maxAttempts})`);
-            
-            // 如果还有重试次数，等待后重试
-            if (attempt < maxAttempts) {
-                setTimeout(() => attemptAutoCopy(attempt + 1, maxAttempts), 500);
-                return;
-            } else {
-                console.warn('[FOCUS] Max attempts reached, document still not focused');
-                return;
-            }
-        }
-        
-        // 文档已获得焦点，执行复制
-        console.log(`[FOCUS] Document has focus, attempting auto-copy (attempt ${attempt})`);
-        await performAutoCopy('window_focus');
-    };
+    // 检查页面是否可见
+    if (document.hidden) {
+        console.log('[FOCUS] Page is hidden, skipping auto-copy');
+        return;
+    }
     
-    // 初始延迟800ms后开始第一次尝试
-    setTimeout(() => attemptAutoCopy(), 800);
+    // 短暂延迟后直接执行（performAutoCopy内部会主动focus textarea）
+    setTimeout(async () => {
+        await performAutoCopy('window_focus');
+    }, 300); // 从800ms优化到300ms，响应更快
 });
 
 // 显示 iOS 使用提示
