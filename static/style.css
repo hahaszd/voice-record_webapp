@@ -946,10 +946,9 @@ h1.header-with-icon .header-text {
         flex-shrink: 0;
     }
     
+    /* 移动端隐藏副标题，节省空间 */
     .tagline {
-        font-size: 0.9em;
-        margin-bottom: 40px; /* Increased more to push content down */
-        flex-shrink: 0;
+        display: none;
     }
     
     /* Add spacing between header and content */
@@ -1012,9 +1011,9 @@ h1.header-with-icon .header-text {
     
     /* Fix: Audio source selector visibility and positioning */
     .audio-source-selector {
-        margin-bottom: 8px; /* 减少底部间距，从12px降到8px */
-        margin-top: 15px; /* 减少顶部间距，从20px降到15px */
-        padding: 8px;
+        margin-bottom: 6px; /* 进一步优化：从8px降到6px */
+        margin-top: 10px; /* 进一步优化：从15px降到10px */
+        padding: 6px; /* 进一步优化：从8px降到6px */
         gap: 6px;
     }
     
@@ -1035,8 +1034,8 @@ h1.header-with-icon .header-text {
     
     /* Fix: Duration buttons going off screen */
     .playback-section {
-        padding: 8px;
-        margin-bottom: 8px; /* 减少底部间距，从10px降到8px */
+        padding: 6px; /* 进一步优化：从8px降到6px */
+        margin-bottom: 6px; /* 进一步优化：从8px降到6px */
         margin-top: 0; /* 确保没有顶部间距 */
     }
     
