@@ -1526,9 +1526,9 @@ button svg {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    margin-left: 8px;
+    width: 20px;
+    height: 20px;
+    margin-left: 6px;
     padding: 0;
     background: #3498db; /* 实心蓝色背景 */
     border: none;
@@ -1543,16 +1543,16 @@ button svg {
 
 .help-btn:hover {
     background: #2980b9; /* 悬停时深蓝色 */
-    transform: scale(1.15);
+    transform: scale(1.2);
     box-shadow: 0 3px 6px rgba(52, 152, 219, 0.4);
 }
 
 .help-btn:active {
-    transform: scale(1.05);
+    transform: scale(1.1);
 }
 
 .help-btn svg {
-    width: 18px;
+    width: 18px; /* 更大的i字母 */
     height: 18px;
     stroke: white; /* 白色描边 */
     fill: none;
@@ -1895,9 +1895,9 @@ button svg {
 /* Mobile Responsive for Help */
 @media (max-width: 600px) {
     .help-btn {
-        width: 24px;
-        height: 24px;
-        margin-left: 6px;
+        width: 18px;
+        height: 18px;
+        margin-left: 5px;
     }
     
     .help-btn svg {

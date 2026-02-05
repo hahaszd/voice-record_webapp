@@ -897,7 +897,9 @@ const helpContent = {
                                 <line x1="56" y1="17" x2="56" y2="20"/>
                             </svg>
                         </span>
-                        Both) | <strong>Mobile:</strong> Uses microphone automatically</li>
+                        Both)
+                        <br>
+                        <strong>Mobile:</strong> Uses microphone automatically</li>
                     <li>Choose recording duration (30s / 1m / 5m)</li>
                     <li><strong>Pro Tip:</strong> Enable 
                         <span class="help-icon-toggle">
@@ -1182,7 +1184,9 @@ const helpContent = {
                                 <line x1="56" y1="17" x2="56" y2="20"/>
                             </svg>
                         </span>
-                        两者都要）| <strong>移动端：</strong>自动使用麦克风</li>
+                        两者都要）
+                        <br>
+                        <strong>移动端：</strong>自动使用麦克风</li>
                     <li>选择录音时长（30秒 / 1分钟 / 5分钟）</li>
                     <li><strong>推荐：</strong>打开 
                         <span class="help-icon-toggle">
