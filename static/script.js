@@ -859,27 +859,157 @@ const helpContent = {
         title: 'Welcome to VoiceSpark',
         content: `
             <div class="help-highlight">
-                <strong>✨ Keep it open, always listening, instant transcription.</strong>
+                <strong>✨ Always Listening. Zero Setup.</strong>
             </div>
+            <p style="text-align: center; color: #7f8c8d; margin-top: 10px; margin-bottom: 20px;">
+                Open once, speak anytime — your thoughts are already captured
+            </p>
             
             <h3>⚡ Quick Start (30 seconds)</h3>
             <div class="help-steps">
                 <ol>
-                    <li><strong>Desktop:</strong> Select audio source (Microphone / System Audio / Both) | <strong>Mobile:</strong> Uses microphone automatically</li>
+                    <li><strong>Desktop:</strong> Select audio source (
+                        <span class="help-icon-audio-source">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                <line x1="12" y1="19" x2="12" y2="23"/>
+                            </svg>
+                        </span>
+                        Microphone / 
+                        <span class="help-icon-audio-source">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                                <line x1="8" y1="21" x2="16" y2="21"/>
+                                <line x1="12" y1="17" x2="12" y2="21"/>
+                            </svg>
+                        </span>
+                        System Audio / 
+                        <span class="help-icon-audio-source" style="padding: 6px 10px;">
+                            <svg width="40" height="20" viewBox="0 0 70 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M9 1a4 4 0 0 0-4 4v8a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4z"/>
+                                <path d="M15 10v3a6 6 0 0 1-12 0v-3"/>
+                                <line x1="9" y1="19" x2="9" y2="23"/>
+                                <line x1="29" y1="7" x2="29" y2="17"/>
+                                <line x1="24" y1="12" x2="34" y2="12"/>
+                                <rect x="46" y="3" width="20" height="14" rx="2" ry="2"/>
+                                <line x1="51" y1="20" x2="61" y2="20"/>
+                                <line x1="56" y1="17" x2="56" y2="20"/>
+                            </svg>
+                        </span>
+                        Both) | <strong>Mobile:</strong> Uses microphone automatically</li>
                     <li>Choose recording duration (30s / 1m / 5m)</li>
-                    <li>Click the <strong style="color: #3498db;">blue Record button</strong></li>
-                    <li>Speak or play content</li>
-                    <li>Click the <strong style="color: #e67e22;">orange Transcribe button</strong> to get text</li>
+                    <li><strong>Pro Tip:</strong> Enable 
+                        <span class="help-icon-toggle">
+                            <span class="help-icon-toggle-switch"></span>
+                            <span class="help-icon-toggle-arrow">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="23 4 23 10 17 10"/>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                </svg>
+                            </span>
+                        </span>
+                        <strong>Auto Record</strong> for continuous listening — then <strong>forget about it</strong>
+                    </li>
+                    <li>Click the 
+                        <span class="help-icon help-icon-record">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                <line x1="12" y1="19" x2="12" y2="23"/>
+                            </svg>
+                        </span>
+                        <strong>Record button</strong> once to start
+                    </li>
+                    <li><strong>Speak whenever</strong> — your voice is being captured automatically</li>
+                    <li>When done speaking, click the 
+                        <span class="help-icon help-icon-transcribe">
+                            <svg width="24" height="12" viewBox="0 0 48 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="4" y1="12" x2="22" y2="12" />
+                                <polyline points="18,8 22,12 18,16" />
+                                <g transform="translate(26, 2)">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="16" y1="13" x2="8" y2="13"/>
+                                    <line x1="16" y1="17" x2="8" y2="17"/>
+                                </g>
+                            </svg>
+                        </span>
+                        <strong>Transcribe button</strong> to get text
+                    </li>
+                    <li><strong>That's it!</strong> With 
+                        <span class="help-icon-toggle">
+                            <span class="help-icon-toggle-switch"></span>
+                            <span class="help-icon-toggle-arrow">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="23 4 23 10 17 10"/>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                </svg>
+                            </span>
+                        </span>
+                        <strong>Auto Record</strong> enabled, a new recording starts automatically — just speak anytime
+                    </li>
+                    <li><strong>View all your transcripts:</strong> Click the 
+                        <span class="help-icon-history">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                        </span>
+                        <strong>History button</strong> to see all your past recordings and transcripts
+                    </li>
                 </ol>
             </div>
 
+            <h3>🎛️ Control Panel</h3>
+            <ul>
+                <li>
+                    <span class="help-icon-toggle">
+                        <span class="help-icon-toggle-switch"></span>
+                        <span class="help-icon-toggle-arrow">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="23 4 23 10 17 10"/>
+                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                            </svg>
+                        </span>
+                    </span>
+                    <strong>Auto Record Toggle:</strong> Enable to automatically start a new recording after each transcription. Perfect for continuous listening sessions.
+                </li>
+                <li>
+                    <span style="display: inline-flex; align-items: center; width: 44px; height: 24px; background: #2d3436; border-radius: 24px; position: relative; padding: 3px; box-sizing: border-box; margin: 0 6px; vertical-align: middle;">
+                        <span style="width: 18px; height: 18px; background: white; border-radius: 50%; position: absolute; right: 3px;"></span>
+                    </span>
+                    <span style="display: inline-flex; align-items: center; justify-content: center; border: 2px solid #7f8c8d; border-radius: 4px; padding: 4px 6px; margin: 0 3px; vertical-align: middle;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7f8c8d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                    </span>
+                    <strong>Auto-Copy Toggle:</strong> Automatically copy transcribed text to clipboard when transcription completes. <strong>Note:</strong> Click anywhere on the VoiceSpark page once to activate it—browser security requires the page to be focused for auto-copy to work.
+                </li>
+                <li>
+                    <span style="display: inline-flex; align-items: center; width: 44px; height: 24px; background: #2d3436; border-radius: 24px; position: relative; padding: 3px; box-sizing: border-box; margin: 0 6px; vertical-align: middle;">
+                        <span style="width: 18px; height: 18px; background: white; border-radius: 50%; position: absolute; right: 3px;"></span>
+                    </span>
+                    <span style="display: inline-flex; align-items: center; justify-content: center; border: 2px solid #7f8c8d; border-radius: 4px; padding: 4px 6px; margin: 0 3px; vertical-align: middle;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7f8c8d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                        </svg>
+                    </span>
+                    <strong>Notification Toggle:</strong> Enable browser notifications to alert you when transcription completes. Perfect when working in other apps or tabs. (Desktop only)
+                </li>
+            </ul>
+
             <h3>🎤 Core Features</h3>
             
-            <h4>🔄 Continuous Listening</h4>
+            <h4>🔄 Always-On Recording</h4>
             <ul>
-                <li><strong>Open once, runs in background</strong> - No setup needed</li>
-                <li><strong>Come back anytime</strong> - What you said is already captured</li>
-                <li><strong>Skip the "prep time"</strong> - Always ready to record</li>
+                <li><strong>Open once, forget about it</strong> - Runs quietly in background</li>
+                <li><strong>Speak anytime</strong> - Your thoughts are already being captured</li>
+                <li><strong>Zero prep time</strong> - No buttons to click before speaking</li>
             </ul>
 
             <h4>🎧 Audio Source Selection</h4>
@@ -913,18 +1043,11 @@ const helpContent = {
                 <li>✅ Perfect for capturing videos, podcasts, and online meetings</li>
             </ul>
 
-            <h4>♻️ Auto Recording</h4>
+            <h3>💡 Perfect For</h3>
             <ul>
-                <li>When enabled, automatically starts the next recording after transcription</li>
-                <li>Seamless connection, perfect for long study sessions</li>
-                <li>Toggle the <code>Auto Record</code> switch to enable/disable</li>
-            </ul>
-
-            <h3>💡 Pro Tips</h3>
-            <ul>
-                <li>✅ <strong>(Desktop)</strong> Keep it running while watching videos - capture key moments instantly</li>
-                <li>✅ <strong>(Desktop)</strong> Listen to podcasts and save inspiring quotes on the fly</li>
-                <li>✅ Capture sudden ideas without breaking your flow</li>
+                <li>🎬 <strong>Watching videos?</strong> - Ideas already captured</li>
+                <li>🎙️ <strong>Listening to podcasts?</strong> - Key quotes auto-recorded</li>
+                <li>💭 <strong>Sudden inspiration?</strong> - Just speak, we got it</li>
                 <li>✅ Take live notes while learning</li>
                 <li>✅ Change recording duration even while recording</li>
                 <li>✅ <strong>(Mobile)</strong> Use shorter durations (30s/1m) for better stability</li>
@@ -1021,29 +1144,152 @@ const helpContent = {
         title: '欢迎使用 VoiceSpark',
         content: `
             <div class="help-highlight">
-                <strong>✨ 挂着就行，它一直听，一键成文。</strong>
+                <strong>✨ 始终在线，零准备</strong>
             </div>
+            <p style="text-align: center; color: #7f8c8d; margin-top: 10px; margin-bottom: 20px;">
+                打开一次，随时说话 —— 你的想法已经被捕捉了
+            </p>
             
             <h3>⚡ 30秒快速开始</h3>
             <div class="help-steps">
                 <ol>
-                    <li><strong>桌面端：</strong>选择音频源（麦克风 / 系统音频 / 两者都要）| <strong>移动端：</strong>自动使用麦克风</li>
+                    <li><strong>桌面端：</strong>选择音频源（
+                        <span class="help-icon-audio-source">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                <line x1="12" y1="19" x2="12" y2="23"/>
+                            </svg>
+                        </span>
+                        麦克风 / 
+                        <span class="help-icon-audio-source">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                                <line x1="8" y1="21" x2="16" y2="21"/>
+                                <line x1="12" y1="17" x2="12" y2="21"/>
+                            </svg>
+                        </span>
+                        系统音频 / 
+                        <span class="help-icon-audio-source" style="padding: 6px 10px;">
+                            <svg width="40" height="20" viewBox="0 0 70 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M9 1a4 4 0 0 0-4 4v8a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4z"/>
+                                <path d="M15 10v3a6 6 0 0 1-12 0v-3"/>
+                                <line x1="9" y1="19" x2="9" y2="23"/>
+                                <line x1="29" y1="7" x2="29" y2="17"/>
+                                <line x1="24" y1="12" x2="34" y2="12"/>
+                                <rect x="46" y="3" width="20" height="14" rx="2" ry="2"/>
+                                <line x1="51" y1="20" x2="61" y2="20"/>
+                                <line x1="56" y1="17" x2="56" y2="20"/>
+                            </svg>
+                        </span>
+                        两者都要）| <strong>移动端：</strong>自动使用麦克风</li>
                     <li>选择录音时长（30秒 / 1分钟 / 5分钟）</li>
-                    <li>点击<strong style="color: #3498db;">蓝色录音按钮</strong></li>
-                    <li>开始说话或播放内容</li>
-                    <li>点击<strong style="color: #e67e22;">橙色转录按钮</strong>获取文字</li>
+                    <li><strong>推荐：</strong>打开 
+                        <span class="help-icon-toggle">
+                            <span class="help-icon-toggle-switch"></span>
+                            <span class="help-icon-toggle-arrow">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="23 4 23 10 17 10"/>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                </svg>
+                            </span>
+                        </span>
+                        <strong>Auto Record</strong> 开启持续倾听 — 然后<strong>忘掉它</strong>
+                    </li>
+                    <li>点击 
+                        <span class="help-icon help-icon-record">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                <line x1="12" y1="19" x2="12" y2="23"/>
+                            </svg>
+                        </span>
+                        <strong>录音按钮</strong>开始录音
+                    </li>
+                    <li><strong>随时说话</strong> — 你的声音会被自动捕捉</li>
+                    <li>说完后，点击 
+                        <span class="help-icon help-icon-transcribe">
+                            <svg width="24" height="12" viewBox="0 0 48 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="4" y1="12" x2="22" y2="12" />
+                                <polyline points="18,8 22,12 18,16" />
+                                <g transform="translate(26, 2)">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="16" y1="13" x2="8" y2="13"/>
+                                    <line x1="16" y1="17" x2="8" y2="17"/>
+                                </g>
+                            </svg>
+                        </span>
+                        <strong>转录按钮</strong>获取文字
+                    </li>
+                    <li><strong>完成！</strong>开启 
+                        <span class="help-icon-toggle">
+                            <span class="help-icon-toggle-switch"></span>
+                            <span class="help-icon-toggle-arrow">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="23 4 23 10 17 10"/>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                </svg>
+                            </span>
+                        </span>
+                        <strong>Auto Record</strong> 后，新录音会自动开始 — 随时说话即可
+                    </li>
+                    <li><strong>查看所有记录：</strong>点击 
+                        <span class="help-icon-history">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                        </span>
+                        <strong>历史记录按钮</strong>查看所有过往录音和转录文字
+                    </li>
                 </ol>
             </div>
 
-            <h3>🎤 核心功能</h3>
-            
-            <h4>🔄 持续倾听</h4>
+            <h3>🎛️ 控制面板说明</h3>
             <ul>
-                <li><strong>打开一次，常驻后台</strong> - 不用每次都准备</li>
-                <li><strong>需要时返回</strong> - 刚才说的话已经录好了</li>
-                <li><strong>省掉「准备」流程</strong> - 随时可以开始记录</li>
+                <li>
+                    <span class="help-icon-toggle">
+                        <span class="help-icon-toggle-switch"></span>
+                        <span class="help-icon-toggle-arrow">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="23 4 23 10 17 10"/>
+                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                            </svg>
+                        </span>
+                    </span>
+                    <strong>自动录音开关：</strong>开启后，每次转录完成会自动开始新的录音。适合长时间持续使用。
+                </li>
+                <li>
+                    <span style="display: inline-flex; align-items: center; width: 44px; height: 24px; background: #2d3436; border-radius: 24px; position: relative; padding: 3px; box-sizing: border-box; margin: 0 6px; vertical-align: middle;">
+                        <span style="width: 18px; height: 18px; background: white; border-radius: 50%; position: absolute; right: 3px;"></span>
+                    </span>
+                    <span style="display: inline-flex; align-items: center; justify-content: center; border: 2px solid #7f8c8d; border-radius: 4px; padding: 4px 6px; margin: 0 3px; vertical-align: middle;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7f8c8d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                    </span>
+                    <strong>自动复制开关：</strong>转录完成后自动将文字复制到剪贴板。<strong>注意：</strong>请先点击 VoiceSpark 页面任意位置激活它——浏览器的安全机制要求页面处于活跃状态才能自动复制。
+                </li>
+                <li>
+                    <span style="display: inline-flex; align-items: center; width: 44px; height: 24px; background: #2d3436; border-radius: 24px; position: relative; padding: 3px; box-sizing: border-box; margin: 0 6px; vertical-align: middle;">
+                        <span style="width: 18px; height: 18px; background: white; border-radius: 50%; position: absolute; right: 3px;"></span>
+                    </span>
+                    <span style="display: inline-flex; align-items: center; justify-content: center; border: 2px solid #7f8c8d; border-radius: 4px; padding: 4px 6px; margin: 0 3px; vertical-align: middle;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7f8c8d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                        </svg>
+                    </span>
+                    <strong>浏览器通知开关：</strong>开启后，转录完成时会弹出浏览器通知提醒你。适合在其他应用或标签页工作时使用。（仅桌面端）
+                </li>
             </ul>
 
+            <h3>🎤 核心功能</h3>
+            
             <h4>🎧 音频源选择</h4>
             <ul>
                 <li><strong>🎤 麦克风：</strong>录制你的声音</li>
@@ -1075,18 +1321,35 @@ const helpContent = {
                 <li>✅ 完美捕获视频、播客和在线会议</li>
             </ul>
 
-            <h4>♻️ 自动录音</h4>
+            <h4>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2c3e50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;">
+                    <polyline points="23 4 23 10 17 10"/>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                </svg>
+                自动录音
+            </h4>
             <ul>
                 <li>开启后，转录完成自动开始下一段录音</li>
                 <li>无缝连接，适合长时间学习</li>
-                <li>切换 <code>Auto Record</code> 开关来启用/禁用</li>
+                <li>切换 
+                    <span class="help-icon-toggle">
+                        <span class="help-icon-toggle-switch"></span>
+                        <span class="help-icon-toggle-arrow">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="23 4 23 10 17 10"/>
+                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                            </svg>
+                        </span>
+                    </span>
+                    <strong>Auto Record</strong> 开关来启用/禁用
+                </li>
             </ul>
 
-            <h3>💡 使用技巧</h3>
+            <h3>💡 完美适用于</h3>
             <ul>
-                <li>✅ <strong>（桌面端）</strong>看视频时打开，随时记录金句</li>
-                <li>✅ <strong>（桌面端）</strong>听播客时捕捉灵感</li>
-                <li>✅ 突然有想法时，立即记录</li>
+                <li>🎬 <strong>看视频？</strong> - 想法已被捕捉</li>
+                <li>🎙️ <strong>听播客？</strong> - 金句自动记录</li>
+                <li>💭 <strong>灵感突现？</strong> - 直接说，我们搞定</li>
                 <li>✅ 学习时做实时笔记</li>
                 <li>✅ 录音过程中可随时切换时长</li>
                 <li>✅ <strong>（移动端）</strong>使用较短时长（30秒/1分钟）以获得更好的稳定性</li>

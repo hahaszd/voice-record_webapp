@@ -1526,32 +1526,35 @@ button svg {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
-    margin-left: 6px;
+    width: 28px;
+    height: 28px;
+    margin-left: 8px;
     padding: 0;
-    background: transparent;
+    background: #3498db; /* 实心蓝色背景 */
     border: none;
-    color: #3498db;
+    border-radius: 50%; /* 圆形 */
+    color: white; /* 白色i字母 */
     cursor: pointer;
     transition: all 0.3s ease;
     vertical-align: middle;
     flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3); /* 轻微阴影 */
 }
 
 .help-btn:hover {
-    color: #2980b9;
-    transform: scale(1.2);
+    background: #2980b9; /* 悬停时深蓝色 */
+    transform: scale(1.15);
+    box-shadow: 0 3px 6px rgba(52, 152, 219, 0.4);
 }
 
 .help-btn:active {
-    transform: scale(1.1);
+    transform: scale(1.05);
 }
 
 .help-btn svg {
-    width: 16px;
-    height: 16px;
-    stroke: currentColor;
+    width: 18px;
+    height: 18px;
+    stroke: white; /* 白色描边 */
     fill: none;
 }
 
@@ -1892,14 +1895,14 @@ button svg {
 /* Mobile Responsive for Help */
 @media (max-width: 600px) {
     .help-btn {
-        width: 18px;
-        height: 18px;
-        margin-left: 5px;
+        width: 24px;
+        height: 24px;
+        margin-left: 6px;
     }
     
     .help-btn svg {
-        width: 14px;
-        height: 14px;
+        width: 16px;
+        height: 16px;
     }
     
     h1 {
@@ -1991,6 +1994,146 @@ button svg {
 /* Ensure container has relative positioning */
 .container {
     position: relative;
+}
+
+/* Help Modal Icon Styles */
+.help-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    margin: 0 4px;
+    padding: 6px;
+    background: #f0f0f0;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+}
+
+.help-icon svg {
+    display: block;
+}
+
+/* 录音按钮 - 圆形 */
+.help-icon-record {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    border-color: #2980b9;
+    border-radius: 50%; /* 圆形 */
+    width: 38px;
+    height: 38px;
+    padding: 0;
+}
+
+.help-icon-record svg {
+    stroke: white;
+}
+
+/* 转录按钮 - 方形，调整比例 */
+.help-icon-transcribe {
+    background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+    border-color: #d35400;
+    border-radius: 6px;
+    padding: 8px 12px; /* 调整padding让它更方形 */
+    min-width: 50px;
+    height: 38px;
+}
+
+.help-icon-transcribe svg {
+    stroke: white;
+}
+
+.help-icon-copy svg {
+    stroke: #2c3e50;
+    width: 14px;
+    height: 14px;
+}
+
+.help-icon-history svg {
+    stroke: #2c3e50;
+    width: 16px;
+    height: 16px;
+}
+
+/* Toggle开关样式（模拟真实开关） */
+.help-icon-toggle {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0 4px;
+    vertical-align: middle;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* 循环箭头图标 */
+.help-icon-toggle-arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.help-icon-toggle-arrow svg {
+    stroke: #2c3e50; /* 黑色，和真实UI一致 */
+    width: 18px;
+    height: 18px;
+}
+
+/* 开关滑块 */
+.help-icon-toggle-switch {
+    display: inline-flex;
+    align-items: center;
+    width: 44px;
+    height: 24px;
+    background: #2d3436;
+    border-radius: 24px;
+    position: relative;
+    padding: 3px;
+    box-sizing: border-box;
+}
+
+.help-icon-toggle-switch::after {
+    content: '';
+    width: 18px;
+    height: 18px;
+    background: white;
+    border-radius: 50%;
+    position: absolute;
+    right: 3px;
+    transition: all 0.3s ease;
+}
+
+/* 音频源按钮图标（黑色方形） */
+.help-icon-audio-source {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #2d3436; /* 黑色背景 */
+    border-radius: 6px;
+    padding: 6px 8px;
+    margin: 0 3px;
+    vertical-align: middle;
+}
+
+.help-icon-audio-source svg {
+    stroke: white; /* 白色图标 */
+}
+
+/* 历史记录按钮图标 */
+.help-icon-history {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 2px solid #7f8c8d;
+    border-radius: 6px;
+    padding: 4px 8px;
+    margin: 0 3px;
+    vertical-align: middle;
+    color: #7f8c8d;
+}
+
+.help-icon-history svg {
+    stroke: currentColor;
 }
 
 /* Mobile Responsive for Feedback */
