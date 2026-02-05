@@ -851,7 +851,7 @@ h1.header-with-icon .header-text {
 .loading {
     text-align: center;
     padding: 15px;
-    color: #667eea;
+    color: #3498db; /* 改为蓝色，与录音按钮一致，低调专业 */
     min-height: 60px;
     display: flex;
     flex-direction: column;
@@ -861,7 +861,7 @@ h1.header-with-icon .header-text {
 
 .spinner {
     border: 3px solid #f3f3f3;
-    border-top: 3px solid #667eea;
+    border-top: 3px solid #3498db; /* 改为蓝色 */
     border-radius: 50%;
     width: 36px;
     height: 36px;
@@ -887,7 +887,7 @@ h1.header-with-icon .header-text {
     .loading {
         padding: 12px;
         min-height: 50px;
-        background: rgba(102, 126, 234, 0.08);
+        background: rgba(52, 152, 219, 0.08); /* 改为浅蓝色背景 */
         border-radius: 8px;
         margin: 10px 0;
     }
