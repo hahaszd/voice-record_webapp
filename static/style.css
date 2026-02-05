@@ -1878,16 +1878,13 @@ button svg {
 /* Moved to Help Modal bottom */
 
 /* ================================
-   Feedback Button (Floating)
-   ================================ */
-/* ================================
-   Feedback Button (Inside Container - Icon Only)
+   Feedback Button (Inside Container - Icon Only, Subtle Gray)
    ================================ */
 .feedback-button {
     position: absolute; /* 相对于.container定位 */
     bottom: 20px;
     right: 20px;
-    background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+    background: #9ba1a8; /* 柔和的灰色 - 低调专业 */
     color: white;
     padding: 12px;
     border-radius: 50%; /* 圆形按钮 */
@@ -1895,15 +1892,15 @@ button svg {
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 3px 10px rgba(230, 126, 34, 0.25);
+    box-shadow: 0 2px 8px rgba(155, 161, 168, 0.2); /* 更柔和的阴影 */
     transition: all 0.3s ease;
     z-index: 100;
 }
 
 .feedback-button:hover {
     transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(230, 126, 34, 0.35);
-    background: linear-gradient(135deg, #d35400 0%, #e67e22 100%);
+    box-shadow: 0 4px 12px rgba(90, 108, 125, 0.3);
+    background: #5a6c7d; /* hover时才"亮起来" - 深灰蓝色 */
 }
 
 .feedback-button svg {
