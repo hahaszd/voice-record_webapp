@@ -882,6 +882,22 @@ const helpContent = {
                 <li><strong>🖥️ System Audio:</strong> Capture computer sound (videos, podcasts, music)</li>
                 <li><strong>🎤+🖥️ Both:</strong> Record microphone + system audio simultaneously (perfect for online meetings, discussions)</li>
             </ul>
+            
+            <div class="help-highlight">
+                <strong>📱 Mobile vs 💻 Desktop Support</strong>
+            </div>
+            <p><strong>Mobile Devices (Phones & Tablets):</strong></p>
+            <ul>
+                <li>✅ <strong>Microphone only</strong> - Audio source buttons are hidden on mobile</li>
+                <li>❌ System audio not available (browser limitation)</li>
+                <li>ℹ️ The interface automatically adapts - you'll only see what works</li>
+            </ul>
+            <p><strong>Desktop (PC & Mac):</strong></p>
+            <ul>
+                <li>✅ <strong>All three options available</strong> - Microphone, System Audio, or Both</li>
+                <li>✅ Full control over audio sources</li>
+                <li>✅ Perfect for capturing videos, podcasts, and online meetings</li>
+            </ul>
 
             <h4>♻️ Auto Recording</h4>
             <ul>
@@ -1017,6 +1033,22 @@ const helpContent = {
                 <li><strong>🎤 麦克风：</strong>录制你的声音</li>
                 <li><strong>🖥️ 系统音频：</strong>捕捉电脑播放的内容（视频、播客、音乐）</li>
                 <li><strong>🎤+🖥️ 两者都要：</strong>同时录制麦克风和系统音频（适合在线会议、讨论）</li>
+            </ul>
+            
+            <div class="help-highlight">
+                <strong>📱 移动端 vs 💻 桌面端支持</strong>
+            </div>
+            <p><strong>移动设备（手机和平板）：</strong></p>
+            <ul>
+                <li>✅ <strong>仅支持麦克风</strong> - 移动端不显示音频源选择按钮</li>
+                <li>❌ 不支持系统音频（浏览器限制）</li>
+                <li>ℹ️ 界面会自动适配 - 只显示可用的功能</li>
+            </ul>
+            <p><strong>桌面端（电脑和Mac）：</strong></p>
+            <ul>
+                <li>✅ <strong>三个选项都可用</strong> - 麦克风、系统音频、两者都要</li>
+                <li>✅ 完整的音频源控制</li>
+                <li>✅ 完美捕获视频、播客和在线会议</li>
             </ul>
 
             <h4>♻️ 自动录音</h4>
