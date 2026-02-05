@@ -1031,9 +1031,9 @@ h1.header-with-icon .header-text {
         min-width: 0;
     }
     
-    /* Result section sizing */
+    /* Result section sizing - 优化移动端高度，留出空间显示转录进度 */
     .result-section {
-        min-height: 280px; /* Increased to ensure textarea is visible */
+        min-height: 220px; /* 从280px减少到220px，节省60px */
         flex: 1;
         flex-shrink: 1;
         overflow: hidden;
@@ -1043,11 +1043,11 @@ h1.header-with-icon .header-text {
     
     .result-box {
         flex: 1;
-        min-height: 180px; /* Ensure textarea container has minimum height */
+        min-height: 120px; /* 从180px减少到120px，约显示4-5行 */
     }
     
     .result-box textarea {
-        min-height: 180px !important; /* Ensure textarea itself has minimum height */
+        min-height: 120px !important; /* 从180px减少到120px，确保转录进度可见 */
     }
     
     .result-header {
