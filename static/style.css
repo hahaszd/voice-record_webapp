@@ -883,6 +883,13 @@ h1.header-with-icon .header-text {
 
 /* 响应式设计 */
 @media (max-width: 900px) {
+    /* v73改进：移动端隐藏通知开关 */
+    /* 原因：iOS不支持Web Notifications API，Android支持不可靠 */
+    /* 移动端用户页面就在眼前，不需要通知功能 */
+    .auto-notify-switch {
+        display: none;
+    }
+    
     /* 移动端：让loading indicator更明显 */
     .loading {
         padding: 12px;
