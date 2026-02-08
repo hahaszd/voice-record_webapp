@@ -1932,18 +1932,40 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const micSource = audioContext.createMediaStreamSource(micStream);
                 const systemSource = audioContext.createMediaStreamSource(systemStream);
                 
-                // 🔥 可选：为系统音频添加增益控制（如果系统音频太小可以调整）
+                // 🔥 修复：为系统音频添加增益控制，增大音量
                 const systemGain = audioContext.createGain();
-                systemGain.gain.value = 1.0; // 默认1.0，可以调整到1.5-2.0增大音量
+                systemGain.gain.value = 2.5; // 增大到2.5倍音量（原来1.0太小）
                 
-                micSource.connect(destination);
+                // 🔥 也为麦克风添加增益控制，保持平衡
+                const micGain = audioContext.createGain();
+                micGain.gain.value = 1.0; // 麦克风保持原音量
+                
+                console.log('[INFO] 音频增益设置 - 麦克风:', micGain.gain.value, '系统音频:', systemGain.gain.value);
+                
+                micSource.connect(micGain);
+                micGain.connect(destination);
+                
                 systemSource.connect(systemGain);
                 systemGain.connect(destination);
                 
                 combinedStream = destination.stream;
                 audioStreamsReady = true;
                 
-                console.log('[SUCCESS] ✅ 音频混合完成，combined stream tracks:', combinedStream.getAudioTracks().length);
+                // 🔥 调试：验证混合流的音频轨道
+                const combinedTracks = combinedStream.getAudioTracks();
+                console.log('[SUCCESS] ✅ 音频混合完成，combined stream tracks:', combinedTracks.length);
+                console.log('[DEBUG] Combined stream track details:', {
+                    trackId: combinedTracks[0]?.id,
+                    trackLabel: combinedTracks[0]?.label,
+                    trackEnabled: combinedTracks[0]?.enabled,
+                    trackMuted: combinedTracks[0]?.muted,
+                    trackReadyState: combinedTracks[0]?.readyState
+                });
+                console.log('[DEBUG] Original streams:', {
+                    micTracks: micStream.getAudioTracks().length,
+                    systemTracks: systemStream.getAudioTracks().length
+                });
+                
                 return combinedStream;
             }
         } catch (error) {
@@ -2085,6 +2107,25 @@ function cleanupAudioStreams(force = false) {
                              audioSource === 'system' ? '系统音频' : 
                              '麦克风+系统音频';
             console.log(`[INFO] 开始录音，音频源: ${sourceText}，使用MIME类型:`, recordedMimeType);
+            
+            // 🔥 调试：验证传给 MediaRecorder 的流
+            const recordingTracks = stream.getAudioTracks();
+            console.log('[DEBUG] MediaRecorder 使用的 stream:', {
+                tracksCount: recordingTracks.length,
+                trackDetails: recordingTracks.map(t => ({
+                    id: t.id,
+                    label: t.label,
+                    enabled: t.enabled,
+                    muted: t.muted,
+                    readyState: t.readyState
+                }))
+            });
+            console.log('[DEBUG] 当前音频源变量:', {
+                selectedAudioSource,
+                currentAudioSource,
+                micStreamActive: micStream?.getAudioTracks()[0]?.readyState,
+                systemStreamActive: systemStream?.getAudioTracks()[0]?.readyState
+            });
             
             // 数据可用事件：保存到IndexedDB和内存
             mediaRecorder.ondataavailable = async (event) => {
