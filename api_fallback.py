@@ -170,10 +170,7 @@ async def _transcribe_ai_builder(
     if not AI_BUILDER_TOKEN:
         raise Exception("AI_BUILDER_TOKEN 未配置")
     
-    if logger:
-        logger.log_info(f"[FALLBACK] 尝试使用 AI Builder Space API")
-    else:
-        print(f"[FALLBACK] 尝试使用 AI Builder Space API")
+    print(f"[FALLBACK] 尝试使用 AI Builder Space API")
     
     # 准备请求
     api_url = f"{AI_BUILDER_API_BASE}/audio/transcriptions"
@@ -245,10 +242,7 @@ async def _transcribe_openai(
     if not openai_api_key:
         raise Exception("OPENAI_API_KEY 未配置")
     
-    if logger:
-        logger.log_info(f"[FALLBACK] 尝试使用 OpenAI Whisper API")
-    else:
-        print(f"[FALLBACK] 尝试使用 OpenAI Whisper API")
+    print(f"[FALLBACK] 尝试使用 OpenAI Whisper API")
     
     # OpenAI API endpoint
     api_url = "https://api.openai.com/v1/audio/transcriptions"
@@ -316,10 +310,7 @@ async def _transcribe_google(
     """
     from server2 import get_access_token, get_project_id
     
-    if logger:
-        logger.log_info(f"[FALLBACK] 尝试使用 Google Cloud Speech-to-Text API")
-    else:
-        print(f"[FALLBACK] 尝试使用 Google Cloud Speech-to-Text API")
+    print(f"[FALLBACK] 尝试使用 Google Cloud Speech-to-Text API")
     
     # 获取访问令牌和项目 ID
     access_token = get_access_token()
@@ -428,10 +419,7 @@ async def transcribe_with_fallback(
                 API_FALLBACK_STATUS["ai_builder_quota_exceeded"] = False
                 API_FALLBACK_STATUS["ai_builder_last_check"] = None
             
-            if logger:
-                logger.log_info(f"[FALLBACK] ✅ 使用 AI Builder Space 成功")
-            else:
-                print(f"[FALLBACK] ✅ 使用 AI Builder Space 成功")
+            print(f"[FALLBACK] ✅ 使用 AI Builder Space 成功")
             
             return text, "ai_builder", metadata
             
@@ -484,10 +472,7 @@ async def transcribe_with_fallback(
                 API_FALLBACK_STATUS["openai_quota_exceeded"] = False
                 API_FALLBACK_STATUS["openai_last_check"] = None
             
-            if logger:
-                logger.log_info(f"[FALLBACK] ✅ 使用 OpenAI Whisper 成功")
-            else:
-                print(f"[FALLBACK] ✅ 使用 OpenAI Whisper 成功")
+            print(f"[FALLBACK] ✅ 使用 OpenAI Whisper 成功")
             
             return text, "openai", metadata
             
@@ -533,10 +518,7 @@ async def transcribe_with_fallback(
         API_FALLBACK_STATUS["last_successful_api"] = "google"
         API_FALLBACK_STATUS["api_usage_count"]["google"] += 1
         
-        if logger:
-            logger.log_info(f"[FALLBACK] ✅ 使用 Google Cloud STT 成功")
-        else:
-            print(f"[FALLBACK] ✅ 使用 Google Cloud STT 成功")
+        print(f"[FALLBACK] ✅ 使用 Google Cloud STT 成功")
         
         return text, "google", metadata
         

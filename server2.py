@@ -774,8 +774,8 @@ async def transcribe_segment(
         
         # 记录请求基本信息
         logger.log_request_info(filename, content_type, file_size, duration)
-        logger.log_info(f"[API_FALLBACK] 开始智能 API fallback 转录")
-        logger.log_info(f"[API_FALLBACK] 当前 API 状态: {get_api_status()}")
+        print(f"[API_FALLBACK] 开始智能 API fallback 转录")
+        print(f"[API_FALLBACK] 当前 API 状态: {get_api_status()}")
         
         # 检查文件大小（25MB 限制）
         max_size = 25 * 1024 * 1024  # 25MB
@@ -814,10 +814,10 @@ async def transcribe_segment(
             request_duration = (request_end_time - request_start_time).total_seconds()
             
             # 记录成功
-            logger.log_info(f"[API_FALLBACK] ✅ 转录成功，使用 API: {api_used}")
-            logger.log_info(f"[API_FALLBACK] 转录时长: {request_duration:.2f}秒")
-            logger.log_info(f"[API_FALLBACK] 转录文本长度: {len(transcription_text)} 字符")
-            logger.log_info(f"[API_FALLBACK] 更新后的 API 状态: {get_api_status()}")
+            print(f"[API_FALLBACK] ✅ 转录成功，使用 API: {api_used}")
+            print(f"[API_FALLBACK] 转录时长: {request_duration:.2f}秒")
+            print(f"[API_FALLBACK] 转录文本长度: {len(transcription_text)} 字符")
+            print(f"[API_FALLBACK] 更新后的 API 状态: {get_api_status()}")
             
             # 打印成功日志
             logger.print_log("SUCCESS")
@@ -841,8 +841,8 @@ async def transcribe_segment(
                 error_message="所有 API fallback 均失败",
                 error_detail=str(fallback_error)
             )
-            logger.log_info(f"[API_FALLBACK] ❌ 所有 API 失败，耗时: {request_duration:.2f}秒")
-            logger.log_info(f"[API_FALLBACK] 最终 API 状态: {get_api_status()}")
+            print(f"[API_FALLBACK] ❌ 所有 API 失败，耗时: {request_duration:.2f}秒")
+            print(f"[API_FALLBACK] 最终 API 状态: {get_api_status()}")
             logger.print_log("ERROR")
             
             return {
