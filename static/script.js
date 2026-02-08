@@ -1822,11 +1822,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                     },
                     video: true // 需要视频权限才能捕获音频
                 });
+                
+                // 🔥 修复：检查是否成功获取音频轨道
+                const audioTracks = systemStream.getAudioTracks();
+                if (audioTracks.length === 0) {
+                    console.error('[ERROR] 未能获取系统音频轨道。请确保在浏览器弹窗中勾选"分享音频"选项');
+                    // 清理视频轨道
+                    systemStream.getVideoTracks().forEach(track => track.stop());
+                    systemStream = null;
+                    throw new Error('未能获取系统音频。请在浏览器弹窗中勾选"分享音频"选项，或选择"标签页音频"');
+                }
+                
+                console.log('[INFO] ✅ 成功获取系统音频轨道:', audioTracks.length, '个');
+                
                 // 停止视频轨道，我们只需要音频
-                systemStream.getVideoTracks().forEach(track => track.stop());
+                const videoTracks = systemStream.getVideoTracks();
+                if (videoTracks.length > 0) {
+                    videoTracks.forEach(track => track.stop());
+                    console.log('[INFO] 已停止视频轨道，仅保留音频');
+                }
                 
                 // 监听流结束事件（用户手动停止共享）
-                systemStream.getAudioTracks()[0].addEventListener('ended', () => {
+                audioTracks[0].addEventListener('ended', () => {
                     console.log('[WARNING] 系统音频流已被用户停止');
                     audioStreamsReady = false;
                     systemStream = null;
@@ -1854,32 +1871,79 @@ document.addEventListener('DOMContentLoaded', async () => {
                         },
                         video: true
                     });
-                    // 停止视频轨道
-                    systemStream.getVideoTracks().forEach(track => track.stop());
+                    
+                    // 🔥 修复：检查是否成功获取音频轨道
+                    const audioTracks = systemStream.getAudioTracks();
+                    if (audioTracks.length === 0) {
+                        console.error('[ERROR] 未能获取系统音频轨道。请确保在浏览器弹窗中勾选"分享音频"选项');
+                        // 清理视频轨道
+                        systemStream.getVideoTracks().forEach(track => track.stop());
+                        throw new Error('未能获取系统音频。请在浏览器弹窗中勾选"分享音频"选项，或选择"标签页音频"');
+                    }
+                    
+                    console.log('[INFO] ✅ 成功获取系统音频轨道:', audioTracks.length, '个');
+                    
+                    // 停止视频轨道（只保留音频）
+                    const videoTracks = systemStream.getVideoTracks();
+                    if (videoTracks.length > 0) {
+                        videoTracks.forEach(track => track.stop());
+                        console.log('[INFO] 已停止视频轨道，仅保留音频');
+                    }
                     
                     // 监听流结束事件
-                    systemStream.getAudioTracks()[0].addEventListener('ended', () => {
+                    audioTracks[0].addEventListener('ended', () => {
                         console.log('[WARNING] 系统音频流已被用户停止');
                         audioStreamsReady = false;
                         systemStream = null;
                         combinedStream = null;
+                        // 清理 AudioContext
+                        if (audioContext && audioContext.state !== 'closed') {
+                            audioContext.close();
+                            audioContext = null;
+                        }
                     });
                 } else {
                     console.log('[INFO] ✅ 复用现有系统音频流');
                 }
                 
-                // 使用 Web Audio API 混合两个音频流
+                // 🔥 修复：使用 Web Audio API 混合两个音频流
+                // 如果已有 AudioContext 且未关闭，先关闭
+                if (audioContext && audioContext.state !== 'closed') {
+                    console.log('[INFO] 关闭之前的 AudioContext');
+                    await audioContext.close();
+                }
+                
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 const destination = audioContext.createMediaStreamDestination();
+                
+                // 🔥 修复：验证音频轨道存在再创建源
+                const micAudioTracks = micStream.getAudioTracks();
+                const systemAudioTracks = systemStream.getAudioTracks();
+                
+                console.log('[INFO] 混合音频 - 麦克风轨道:', micAudioTracks.length, '系统音频轨道:', systemAudioTracks.length);
+                
+                if (micAudioTracks.length === 0) {
+                    throw new Error('麦克风音频轨道不可用');
+                }
+                if (systemAudioTracks.length === 0) {
+                    throw new Error('系统音频轨道不可用。请确保在浏览器弹窗中勾选"分享音频"');
+                }
                 
                 const micSource = audioContext.createMediaStreamSource(micStream);
                 const systemSource = audioContext.createMediaStreamSource(systemStream);
                 
+                // 🔥 可选：为系统音频添加增益控制（如果系统音频太小可以调整）
+                const systemGain = audioContext.createGain();
+                systemGain.gain.value = 1.0; // 默认1.0，可以调整到1.5-2.0增大音量
+                
                 micSource.connect(destination);
-                systemSource.connect(destination);
+                systemSource.connect(systemGain);
+                systemGain.connect(destination);
                 
                 combinedStream = destination.stream;
                 audioStreamsReady = true;
+                
+                console.log('[SUCCESS] ✅ 音频混合完成，combined stream tracks:', combinedStream.getAudioTracks().length);
                 return combinedStream;
             }
         } catch (error) {
