@@ -2037,24 +2037,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // 每200ms检查一次音量并调整（足够频繁但不会影响性能）
                 balanceInterval = setInterval(autoBalanceAudio, 200);
                 
+                combinedStream = destination.stream;
+                audioStreamsReady = true;
+                
                 // 停止录音时清理定时器
-                const originalCombinedStream = combinedStream;
-                originalCombinedStream.addEventListener('inactive', () => {
-                    if (balanceInterval) {
-                        clearInterval(balanceInterval);
-                        balanceInterval = null;
-                        console.log('[INFO] 智能音量平衡已停止');
-                    }
-                });
+                const streamTracks = combinedStream.getAudioTracks();
+                if (streamTracks.length > 0) {
+                    streamTracks[0].addEventListener('ended', () => {
+                        if (balanceInterval) {
+                            clearInterval(balanceInterval);
+                            balanceInterval = null;
+                            console.log('[INFO] 智能音量平衡已停止');
+                        }
+                    });
+                }
                 
                 // 存储定时器ID以便后续清理
                 if (!window.audioBalanceIntervals) {
                     window.audioBalanceIntervals = [];
                 }
                 window.audioBalanceIntervals.push(balanceInterval);
-                
-                combinedStream = destination.stream;
-                audioStreamsReady = true;
                 
                 // 🔥 调试：验证混合流的音频轨道
                 const combinedTracks = combinedStream.getAudioTracks();
