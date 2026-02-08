@@ -2762,6 +2762,22 @@ function cleanupAudioStreams(force = false) {
             console.log(`  - Message: ${result.message || 'N/A'}`);
             console.log(`  - Text length: ${result.text ? result.text.length : 0}`);
             
+            // 🔥 v96: 显示使用的 API
+            if (result.api_used) {
+                console.log(`  - API Used: ${result.api_used}`);
+                const apiNames = {
+                    'ai_builder': 'AI Builder Space (免费)',
+                    'openai': 'OpenAI Whisper',
+                    'google': 'Google Cloud STT'
+                };
+                console.log(`  - API Name: ${apiNames[result.api_used] || result.api_used}`);
+            }
+            
+            // 显示 API 状态（如果有）
+            if (result.api_status) {
+                console.log(`[API_STATUS] 当前 API 状态:`, result.api_status);
+            };
+            
             if (result.success) {
                 transcriptionResult.value = result.text || '未识别到文字';
                 console.log(`[SUCCESS] 转录完成`);
