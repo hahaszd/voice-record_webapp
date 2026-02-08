@@ -2,6 +2,7 @@ import os
 import json
 import base64
 import requests
+import datetime
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -743,6 +744,157 @@ async def chat_completions(request: ChatRequest):
         )
 
 @app.post("/transcribe-segment")
+async def transcribe_segment(
+    audio_file: UploadFile = File(...),
+    duration: int = 60,
+    needs_segmentation: str = None
+):
+    """
+    转录音频片段（用于录音界面的转录功能）
+    🔥 v96: 使用智能 API fallback 系统
+    
+    - **audio_file**: 上传的音频文件
+    - **duration**: 音频时长（秒），用于信息显示
+    
+    返回转录结果
+    """
+    import datetime
+    import traceback
+    from api_fallback import transcribe_with_fallback, get_api_status
+    
+    # 初始化日志记录器
+    logger = TranscriptionLogger("transcribe-segment-fallback")
+    
+    try:
+        # 读取上传的音频文件
+        audio_content = await audio_file.read()
+        file_size = len(audio_content)
+        filename = audio_file.filename or 'recording.webm'
+        content_type = audio_file.content_type or 'audio/webm'
+        
+        # 记录请求基本信息
+        logger.log_request_info(filename, content_type, file_size, duration)
+        logger.log_info(f"[API_FALLBACK] 开始智能 API fallback 转录")
+        logger.log_info(f"[API_FALLBACK] 当前 API 状态: {get_api_status()}")
+        
+        # 检查文件大小（25MB 限制）
+        max_size = 25 * 1024 * 1024  # 25MB
+        if file_size > max_size:
+            logger.log_error("FILE_TOO_LARGE", f"文件太大: {file_size / 1024 / 1024:.2f} MB > {max_size / 1024 / 1024} MB")
+            logger.print_log("ERROR")
+            return {
+                "success": False,
+                "message": f"音频文件太大 ({file_size / 1024 / 1024:.2f} MB)，超过限制 (25 MB)。请尝试转录更短的片段。",
+                "text": "",
+                "api_used": None,
+                "debug_info": logger.get_log_dict()
+            }
+        
+        # 检测音频格式
+        file_header_hex = format_file_header_hex(audio_content)
+        detected_format, final_content_type = detect_audio_format(audio_content, filename, content_type)
+        
+        # 记录文件分析结果
+        logger.log_file_analysis(file_header_hex, detected_format, final_content_type, filename)
+        
+        # 打印请求前的日志
+        logger.print_log("INFO")
+        
+        # 🔥 使用智能 fallback 进行转录
+        request_start_time = datetime.datetime.now()
+        try:
+            transcription_text, api_used, metadata = await transcribe_with_fallback(
+                audio_content=audio_content,
+                filename=filename,
+                language=None,  # 可以从请求参数获取
+                duration=duration,
+                logger=logger
+            )
+            request_end_time = datetime.datetime.now()
+            request_duration = (request_end_time - request_start_time).total_seconds()
+            
+            # 记录成功
+            logger.log_info(f"[API_FALLBACK] ✅ 转录成功，使用 API: {api_used}")
+            logger.log_info(f"[API_FALLBACK] 转录时长: {request_duration:.2f}秒")
+            logger.log_info(f"[API_FALLBACK] 转录文本长度: {len(transcription_text)} 字符")
+            logger.log_info(f"[API_FALLBACK] 更新后的 API 状态: {get_api_status()}")
+            
+            # 打印成功日志
+            logger.print_log("SUCCESS")
+            
+            return {
+                "success": True,
+                "text": transcription_text,
+                "api_used": api_used,
+                "metadata": metadata,
+                "duration_seconds": request_duration,
+                "api_status": get_api_status()
+            }
+            
+        except Exception as fallback_error:
+            request_end_time = datetime.datetime.now()
+            request_duration = (request_end_time - request_start_time).total_seconds()
+            
+            # 所有 API 都失败
+            logger.log_error(
+                error_type="API_ALL_FAILED",
+                error_message="所有 API fallback 均失败",
+                error_detail=str(fallback_error)
+            )
+            logger.log_info(f"[API_FALLBACK] ❌ 所有 API 失败，耗时: {request_duration:.2f}秒")
+            logger.log_info(f"[API_FALLBACK] 最终 API 状态: {get_api_status()}")
+            logger.print_log("ERROR")
+            
+            return {
+                "success": False,
+                "message": f"转录失败：{str(fallback_error)}",
+                "text": "",
+                "api_used": None,
+                "duration_seconds": request_duration,
+                "api_status": get_api_status(),
+                "debug_info": logger.get_log_dict()
+            }
+    
+    except Exception as e:
+        # 未预期的错误
+        logger.log_error(
+            error_type="UNEXPECTED_ERROR",
+            error_message="发生未预期的错误",
+            error_detail=str(e),
+            traceback_str=traceback.format_exc()
+        )
+        logger.print_log("ERROR")
+        
+        return {
+            "success": False,
+            "message": f"服务器错误: {str(e)}",
+            "text": "",
+            "api_used": None,
+            "debug_info": logger.get_log_dict()
+        }
+
+
+# 🔥 v96: 添加 API 状态查询端点
+@app.get("/api-status")
+async def api_status():
+    """
+    查询 API fallback 状态
+    
+    返回当前各个 API 的可用性和使用统计
+    """
+    from api_fallback import get_api_status
+    
+    status = get_api_status()
+    
+    return {
+        "success": True,
+        "status": status,
+        "timestamp": datetime.datetime.now().isoformat()
+    }
+
+
+# 保留原来的端点作为备份（重命名）
+@app.post("/transcribe-segment-legacy")
 async def transcribe_segment(
     audio_file: UploadFile = File(...),
     duration: int = 60,
