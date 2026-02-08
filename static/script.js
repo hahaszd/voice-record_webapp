@@ -2055,6 +2055,34 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 window.audioBalanceIntervals.push(balanceInterval);
                 
+                // 🔥 启动验证：2秒后检查系统音频是否有数据
+                setTimeout(() => {
+                    const checkSystemLevel = getAudioLevel(systemAnalyser);
+                    const checkMicLevel = getAudioLevel(micAnalyser);
+                    
+                    console.log('[STARTUP-CHECK] 录音启动2秒后验证 - 麦克风:', (checkMicLevel * 100).toFixed(1), '%, 系统音频:', (checkSystemLevel * 100).toFixed(1), '%');
+                    
+                    // 如果系统音频持续为0，警告用户
+                    if (checkSystemLevel < 0.01 && checkMicLevel > 0.05) {
+                        console.warn('[WARNING] ⚠️⚠️⚠️ 系统音频没有数据！');
+                        console.warn('[WARNING] 可能原因：');
+                        console.warn('[WARNING] 1. 浏览器弹窗中没有勾选"分享标签页音频"');
+                        console.warn('[WARNING] 2. 选择了错误的共享源（如整个屏幕而不是标签页）');
+                        console.warn('[WARNING] 3. 选择的标签页没有声音播放');
+                        console.warn('[WARNING] 请重新录音并确保正确操作！');
+                        
+                        // 显示用户友好的警告
+                        if (confirm('⚠️ 检测到系统音频没有数据！\n\n可能原因：\n1. 浏览器弹窗中没有勾选"分享标签页音频"\n2. 选择了错误的标签页\n3. 标签页没有播放声音\n\n是否停止录音并重新开始？')) {
+                            // 用户确认停止
+                            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                                cancelRecordBtn.click(); // 触发取消录音
+                            }
+                        }
+                    } else if (checkSystemLevel > 0.01) {
+                        console.log('[STARTUP-CHECK] ✅ 系统音频正常，有数据流入');
+                    }
+                }, 2000); // 2秒后验证
+                
                 // 🔥 调试：验证混合流的音频轨道
                 const combinedTracks = combinedStream.getAudioTracks();
                 console.log('[SUCCESS] ✅ 音频混合完成，combined stream tracks:', combinedTracks.length);
