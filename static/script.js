@@ -1932,15 +1932,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const micSource = audioContext.createMediaStreamSource(micStream);
                 const systemSource = audioContext.createMediaStreamSource(systemStream);
                 
-                // 🔥 修复：为系统音频添加增益控制，增大音量
-                const systemGain = audioContext.createGain();
-                systemGain.gain.value = 2.5; // 增大到2.5倍音量（原来1.0太小）
+                // 🔥 音量平衡策略：
+                // 问题：系统音频通常比麦克风音量小，但不能提升太多否则会淹没麦克风
+                // 解决方案：两者都适度提升，保持平衡
                 
-                // 🔥 也为麦克风添加增益控制，保持平衡
                 const micGain = audioContext.createGain();
-                micGain.gain.value = 1.0; // 麦克风保持原音量
+                const systemGain = audioContext.createGain();
                 
-                console.log('[INFO] 音频增益设置 - 麦克风:', micGain.gain.value, '系统音频:', systemGain.gain.value);
+                // 💡 推荐配置（可根据实际测试调整）：
+                // 方案1（保守）：麦克风 1.2倍，系统音频 1.8倍
+                // 方案2（平衡）：麦克风 1.0倍，系统音频 1.5倍
+                // 方案3（激进）：麦克风 0.8倍，系统音频 2.0倍
+                
+                // 当前使用：方案2（平衡）- 适合大多数情况
+                micGain.gain.value = 1.0;      // 麦克风保持原音量
+                systemGain.gain.value = 1.5;   // 系统音频提升1.5倍（从1.0调整）
+                
+                console.log('[INFO] 音频增益设置（平衡模式）- 麦克风:', micGain.gain.value, 'x, 系统音频:', systemGain.gain.value, 'x');
+                console.log('[INFO] 这样可以确保两者都能被清晰录制，不会互相压过');
                 
                 micSource.connect(micGain);
                 micGain.connect(destination);
