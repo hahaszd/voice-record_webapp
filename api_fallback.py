@@ -175,14 +175,16 @@ async def _transcribe_ai_builder(
     # 准备请求
     api_url = f"{AI_BUILDER_API_BASE}/audio/transcriptions"
     
-    # 构建 multipart/form-data
+    # 🔥 AI Builder Space 使用 'audio_file' 作为字段名（不是 'file'）
     files = {
-        'file': (filename, audio_content, 'audio/wav')
+        'audio_file': (filename, audio_content, 'audio/wav')
     }
     
+    # 🔥 添加 language 参数
     form_data = {
         'model': 'whisper-1',
-        'response_format': 'json'
+        'response_format': 'json',
+        'language': 'zh-CN'
     }
     
     if language:
