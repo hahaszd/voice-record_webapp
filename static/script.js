@@ -1932,23 +1932,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const micSource = audioContext.createMediaStreamSource(micStream);
                 const systemSource = audioContext.createMediaStreamSource(systemStream);
                 
-                // 🔥 智能音量平衡系统
-                // 目标：自动检测两个音源的音量差异，动态调整增益使两者平衡
+                // 🔥 激进的音量平衡策略 v2
+                // 问题：之前的渐进式调整太慢，导致极端情况下无法及时平衡
+                // 新策略：快速检测并立即调整到目标增益
                 
                 const micGain = audioContext.createGain();
                 const systemGain = audioContext.createGain();
                 
-                // 初始增益值
+                // 初始增益
                 micGain.gain.value = 1.0;      
-                systemGain.gain.value = 1.5;   
+                systemGain.gain.value = 2.0; // 提高初始值到 2.0x
                 
                 // 创建音量分析器
                 const micAnalyser = audioContext.createAnalyser();
                 const systemAnalyser = audioContext.createAnalyser();
                 micAnalyser.fftSize = 256;
                 systemAnalyser.fftSize = 256;
-                micAnalyser.smoothingTimeConstant = 0.8;
-                systemAnalyser.smoothingTimeConstant = 0.8;
+                micAnalyser.smoothingTimeConstant = 0.3; // 降低平滑度，更快响应
+                systemAnalyser.smoothingTimeConstant = 0.3;
                 
                 // 连接分析器
                 micSource.connect(micAnalyser);
@@ -1960,99 +1961,95 @@ document.addEventListener('DOMContentLoaded', async () => {
                 micGain.connect(destination);
                 systemGain.connect(destination);
                 
-                console.log('[INFO] 🤖 智能音量平衡已启动');
+                console.log('[INFO] 🤖 激进式智能平衡已启动（v2）');
                 console.log('[INFO] 初始增益 - 麦克风:', micGain.gain.value, 'x, 系统音频:', systemGain.gain.value, 'x');
                 
-                // 🔥 实时音量平衡调整
                 let balanceInterval = null;
+                let adjustmentHistory = [];
                 
                 function getAudioLevel(analyser) {
                     const dataArray = new Uint8Array(analyser.frequencyBinCount);
                     analyser.getByteFrequencyData(dataArray);
-                    
-                    // 计算平均音量 (0-255)
                     const sum = dataArray.reduce((a, b) => a + b, 0);
                     const average = sum / dataArray.length;
-                    
-                    // 转换为 0-1 范围
                     return average / 255;
                 }
                 
-                function autoBalanceAudio() {
+                function aggressiveBalance() {
                     const micLevel = getAudioLevel(micAnalyser);
                     const systemLevel = getAudioLevel(systemAnalyser);
                     
-                    // 只在有音频活动时调整（避免静音时误调整）
-                    const micActive = micLevel > 0.05;
-                    const systemActive = systemLevel > 0.05;
+                    // 活动检测阈值降低
+                    const micActive = micLevel > 0.02;
+                    const systemActive = systemLevel > 0.02;
                     
                     if (!micActive && !systemActive) {
-                        return; // 两者都静音，不调整
+                        return;
                     }
                     
-                    // 计算音量比例
-                    const levelRatio = systemActive && micActive ? systemLevel / micLevel : 0;
-                    
-                    // 🎯 智能调整策略
-                    // 目标：让系统音频音量接近麦克风音量的 70-100%
-                    const targetRatio = 0.85; // 目标比例：系统音频 = 麦克风 * 0.85
-                    
+                    // 🔥 新策略：直接计算目标增益
                     if (systemActive && micActive) {
-                        // 如果系统音频太小（< 50% 麦克风音量）
-                        if (levelRatio < 0.5) {
-                            // 逐步提升系统音频增益
-                            const newGain = Math.min(systemGain.gain.value * 1.05, 3.0);
-                            systemGain.gain.value = newGain;
-                            console.log('[AUTO-BALANCE] 系统音频太小，提升增益至:', newGain.toFixed(2), 'x');
+                        const currentRatio = systemLevel / micLevel;
+                        const targetRatio = 0.85;
+                        
+                        // 计算需要的增益调整
+                        const idealSystemGain = (micLevel * targetRatio) / systemLevel * systemGain.gain.value;
+                        
+                        // 限制增益范围：0.3x - 5.0x（扩大范围）
+                        const newSystemGain = Math.max(0.3, Math.min(5.0, idealSystemGain));
+                        
+                        // 🔥 立即跳转到目标增益（不再渐进）
+                        const gainChange = Math.abs(newSystemGain - systemGain.gain.value);
+                        
+                        // 只在变化显著时才调整（避免频繁微调）
+                        if (gainChange > 0.1) {
+                            systemGain.gain.value = newSystemGain;
+                            console.log('[BALANCE-AGGRESSIVE] 调整系统增益至:', newSystemGain.toFixed(2), 'x (比例:', currentRatio.toFixed(2), '→', (systemLevel * newSystemGain / systemGain.gain.value / micLevel).toFixed(2), ')');
+                            
+                            adjustmentHistory.push({
+                                time: Date.now(),
+                                micLevel: micLevel.toFixed(3),
+                                systemLevel: systemLevel.toFixed(3),
+                                ratio: currentRatio.toFixed(3),
+                                newGain: newSystemGain.toFixed(2)
+                            });
                         }
-                        // 如果系统音频太大（> 120% 麦克风音量）
-                        else if (levelRatio > 1.2) {
-                            // 逐步降低系统音频增益
-                            const newGain = Math.max(systemGain.gain.value * 0.95, 0.5);
-                            systemGain.gain.value = newGain;
-                            console.log('[AUTO-BALANCE] 系统音频太大，降低增益至:', newGain.toFixed(2), 'x');
-                        }
-                        // 在合理范围内，微调
-                        else if (levelRatio < targetRatio * 0.9) {
-                            const newGain = Math.min(systemGain.gain.value * 1.02, 3.0);
-                            systemGain.gain.value = newGain;
-                        } else if (levelRatio > targetRatio * 1.1) {
-                            const newGain = Math.max(systemGain.gain.value * 0.98, 0.5);
-                            systemGain.gain.value = newGain;
+                    }
+                    // 只有系统音频，提升到最大
+                    else if (systemActive && !micActive) {
+                        if (systemLevel < 0.3 && systemGain.gain.value < 4.0) {
+                            systemGain.gain.value = Math.min(5.0, systemGain.gain.value * 1.2);
+                            console.log('[BALANCE-BOOST] 只有系统音频，提升至:', systemGain.gain.value.toFixed(2), 'x');
                         }
                     }
                     
-                    // 定期输出状态（每5秒）
-                    if (Math.random() < 0.05) {
-                        console.log('[BALANCE-STATUS]', {
-                            micLevel: (micLevel * 100).toFixed(1) + '%',
-                            systemLevel: (systemLevel * 100).toFixed(1) + '%',
-                            ratio: levelRatio.toFixed(2),
-                            micGain: micGain.gain.value.toFixed(2) + 'x',
-                            systemGain: systemGain.gain.value.toFixed(2) + 'x'
-                        });
+                    // 定期状态报告
+                    if (Math.random() < 0.03) {
+                        console.log('[BALANCE-STATUS] 麦克风:', (micLevel * 100).toFixed(1), '%, 系统:', (systemLevel * 100).toFixed(1), '%, 比例:', (systemLevel/micLevel).toFixed(2), ', 系统增益:', systemGain.gain.value.toFixed(2), 'x');
                     }
                 }
                 
-                // 每200ms检查一次音量并调整（足够频繁但不会影响性能）
-                balanceInterval = setInterval(autoBalanceAudio, 200);
+                // 更频繁的检查：每100ms
+                balanceInterval = setInterval(aggressiveBalance, 100);
                 
                 combinedStream = destination.stream;
                 audioStreamsReady = true;
                 
-                // 停止录音时清理定时器
+                // 停止时清理并输出历史
                 const streamTracks = combinedStream.getAudioTracks();
                 if (streamTracks.length > 0) {
                     streamTracks[0].addEventListener('ended', () => {
                         if (balanceInterval) {
                             clearInterval(balanceInterval);
                             balanceInterval = null;
-                            console.log('[INFO] 智能音量平衡已停止');
+                            console.log('[INFO] 智能平衡已停止');
+                            if (adjustmentHistory.length > 0) {
+                                console.log('[HISTORY] 调整历史:', adjustmentHistory);
+                            }
                         }
                     });
                 }
                 
-                // 存储定时器ID以便后续清理
                 if (!window.audioBalanceIntervals) {
                     window.audioBalanceIntervals = [];
                 }
