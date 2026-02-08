@@ -1941,7 +1941,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 // 初始增益
                 micGain.gain.value = 1.0;      
-                systemGain.gain.value = 2.0; // 提高初始值到 2.0x
+                systemGain.gain.value = 10.0; // 🔥 提高到10x确保系统音频能录到
                 
                 // 创建音量分析器
                 const micAnalyser = audioContext.createAnalyser();
@@ -1995,8 +1995,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         // 计算需要的增益调整
                         const idealSystemGain = (micLevel * targetRatio) / systemLevel * systemGain.gain.value;
                         
-                        // 限制增益范围：0.3x - 5.0x（扩大范围）
-                        const newSystemGain = Math.max(0.3, Math.min(5.0, idealSystemGain));
+                        // 限制增益范围：0.5x - 20.0x（扩大上限）
+                        const newSystemGain = Math.max(0.5, Math.min(20.0, idealSystemGain));
                         
                         // 🔥 立即跳转到目标增益（不再渐进）
                         const gainChange = Math.abs(newSystemGain - systemGain.gain.value);
@@ -2017,8 +2017,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     // 只有系统音频，提升到最大
                     else if (systemActive && !micActive) {
-                        if (systemLevel < 0.3 && systemGain.gain.value < 4.0) {
-                            systemGain.gain.value = Math.min(5.0, systemGain.gain.value * 1.2);
+                        if (systemLevel < 0.3 && systemGain.gain.value < 15.0) {
+                            systemGain.gain.value = Math.min(20.0, systemGain.gain.value * 1.3);
                             console.log('[BALANCE-BOOST] 只有系统音频，提升至:', systemGain.gain.value.toFixed(2), 'x');
                         }
                     }
