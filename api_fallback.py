@@ -210,8 +210,15 @@ async def _transcribe_deepgram(
     
     try:
         print(f"[v111-DEEPGRAM-DEBUG] 尝试导入 deepgram SDK...")
-        from deepgram import DeepgramClient
-        from deepgram.clients.prerecorded.v1 import PrerecordedOptions
+        try:
+            # 尝试 SDK v5.x 的新导入方式
+            from deepgram import DeepgramClient
+            from deepgram.clients.prerecorded.v1 import PrerecordedOptions
+            print(f"[v111-DEEPGRAM-DEBUG] ✅ 使用 SDK v5.x 导入方式")
+        except ImportError:
+            # 回退到旧版本导入方式
+            from deepgram import DeepgramClient, PrerecordedOptions
+            print(f"[v111-DEEPGRAM-DEBUG] ✅ 使用旧版 SDK 导入方式")
         print(f"[v111-DEEPGRAM-DEBUG] ✅ deepgram SDK 导入成功")
         
         print(f"[v111-DEEPGRAM] 🚀 开始调用 Deepgram Nova-3 Multilingual API")
@@ -424,7 +431,7 @@ async def _transcribe_ai_builder(
         raise Exception("AI Builder Space API 返回空文本")
     
     # v109: 记录 verbose 信息（如果有）
-    if 'segments' in result:
+    if 'segments' in result and result['segments'] is not None:
         segments_count = len(result['segments'])
         print(f"[v109-DEBUG] 转录包含 {segments_count} 个音频段落")
         
@@ -520,7 +527,7 @@ async def _transcribe_openai(
         raise Exception("OpenAI API 返回空文本")
     
     # v109: 记录 verbose 信息（如果有）
-    if 'segments' in result:
+    if 'segments' in result and result['segments'] is not None:
         segments_count = len(result['segments'])
         print(f"[v109-DEBUG] OpenAI 转录包含 {segments_count} 个音频段落")
         
