@@ -746,10 +746,10 @@ async def chat_completions(request: ChatRequest):
 @app.post("/transcribe-segment")
 async def transcribe_segment(
     audio_file: UploadFile = File(...),
-    duration: int = Form(60),
-    needs_segmentation: str = Form(None),
-    language: str = Form(None),  # 🌍 v107: 语言参数（保留但默认自动识别）
-    audio_source: str = Form('microphone')  # 🎙️ v110: 音频源（microphone/system/both）
+    duration: int = Form(default=60),
+    needs_segmentation: str = Form(default=None),
+    language: str = Form(default=None),  # 🌍 v107: 语言参数（保留但默认自动识别）
+    audio_source: str = Form(default='microphone')  # 🎙️ v110: 音频源（microphone/system/both）
 ):
     """
     转录音频片段（用于录音界面的转录功能）
