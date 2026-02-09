@@ -299,6 +299,65 @@ async def _transcribe_openai(
 # API 调用函数 - Google Cloud Speech-to-Text
 # ================================================================================
 
+def convert_language_code_for_google(lang_code: str) -> str:
+    """
+    将标准语言代码转换为 Google Cloud Speech-to-Text 格式
+    
+    Args:
+        lang_code: 标准语言代码（如 'en', 'zh'）
+    
+    Returns:
+        str: Google 格式的语言代码（如 'en-US', 'zh-CN'）
+    """
+    # 常见语言映射
+    google_lang_map = {
+        'en': 'en-US',
+        'zh': 'zh-CN',
+        'es': 'es-ES',
+        'fr': 'fr-FR',
+        'de': 'de-DE',
+        'ja': 'ja-JP',
+        'ko': 'ko-KR',
+        'pt': 'pt-BR',
+        'ru': 'ru-RU',
+        'ar': 'ar-SA',
+        'it': 'it-IT',
+        'nl': 'nl-NL',
+        'tr': 'tr-TR',
+        'pl': 'pl-PL',
+        'sv': 'sv-SE',
+        'da': 'da-DK',
+        'fi': 'fi-FI',
+        'no': 'no-NO',
+        'cs': 'cs-CZ',
+        'el': 'el-GR',
+        'he': 'he-IL',
+        'hi': 'hi-IN',
+        'id': 'id-ID',
+        'ms': 'ms-MY',
+        'th': 'th-TH',
+        'vi': 'vi-VN',
+        'uk': 'uk-UA',
+        'ro': 'ro-RO',
+        'sk': 'sk-SK',
+        'bg': 'bg-BG',
+        'hr': 'hr-HR',
+        'sr': 'sr-RS',
+        'ca': 'ca-ES',
+        'hu': 'hu-HU',
+        'lt': 'lt-LT',
+        'lv': 'lv-LV',
+        'et': 'et-EE',
+        'sl': 'sl-SI',
+    }
+    
+    # 如果已经是正确格式（如 'en-US'），直接返回
+    if '-' in lang_code:
+        return lang_code
+    
+    # 查找映射
+    return google_lang_map.get(lang_code, f'{lang_code}-{lang_code.upper()}')
+
 async def _transcribe_google(
     audio_content: bytes,
     filename: str,
@@ -330,7 +389,7 @@ async def _transcribe_google(
         "config": {
             "encoding": "LINEAR16",
             "sampleRateHertz": 48000,
-            "languageCode": language or "en-US",  # v104: 默认英文
+            "languageCode": convert_language_code_for_google(language) if language else "en-US",  # v105: 智能转换语言代码
             "enableAutomaticPunctuation": True,
             "model": "default"
         },

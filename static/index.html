@@ -77,7 +77,7 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="/static/manifest.json">
     
-    <link rel="stylesheet" href="/static/style.css?v=105">
+    <link rel="stylesheet" href="/static/style.css?v=106">
 </head>
 <body>
     <div class="container">
@@ -227,7 +227,131 @@
                     </div>
                 </div>
 
-                <!-- 3. Recording Controls -->
+                <!-- 3. Language Selector -->
+                <div class="language-selector-section">
+                    <label class="language-label" for="languageSelect">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M2 12h20"/>
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                        </svg>
+                        <span>Language</span>
+                    </label>
+                    <select id="languageSelect" class="language-select" title="Select transcription language">
+                        <optgroup label="🔥 Common Languages">
+                            <option value="en" selected>English</option>
+                            <option value="zh">中文 (Chinese)</option>
+                            <option value="es">Español (Spanish)</option>
+                            <option value="fr">Français (French)</option>
+                            <option value="de">Deutsch (German)</option>
+                            <option value="ja">日本語 (Japanese)</option>
+                            <option value="ko">한국어 (Korean)</option>
+                            <option value="pt">Português (Portuguese)</option>
+                            <option value="ru">Русский (Russian)</option>
+                            <option value="ar">العربية (Arabic)</option>
+                        </optgroup>
+                        <optgroup label="🌍 All Languages (A-Z)">
+                            <option value="af">Afrikaans</option>
+                            <option value="sq">Albanian</option>
+                            <option value="am">Amharic</option>
+                            <option value="hy">Armenian</option>
+                            <option value="az">Azerbaijani</option>
+                            <option value="eu">Basque</option>
+                            <option value="be">Belarusian</option>
+                            <option value="bn">Bengali</option>
+                            <option value="bs">Bosnian</option>
+                            <option value="bg">Bulgarian</option>
+                            <option value="ca">Catalan</option>
+                            <option value="hr">Croatian</option>
+                            <option value="cs">Czech</option>
+                            <option value="da">Danish</option>
+                            <option value="nl">Dutch</option>
+                            <option value="et">Estonian</option>
+                            <option value="fi">Finnish</option>
+                            <option value="gl">Galician</option>
+                            <option value="ka">Georgian</option>
+                            <option value="el">Greek</option>
+                            <option value="gu">Gujarati</option>
+                            <option value="ht">Haitian Creole</option>
+                            <option value="ha">Hausa</option>
+                            <option value="haw">Hawaiian</option>
+                            <option value="he">Hebrew</option>
+                            <option value="hi">Hindi</option>
+                            <option value="hu">Hungarian</option>
+                            <option value="is">Icelandic</option>
+                            <option value="id">Indonesian</option>
+                            <option value="ga">Irish</option>
+                            <option value="it">Italian</option>
+                            <option value="jv">Javanese</option>
+                            <option value="kn">Kannada</option>
+                            <option value="kk">Kazakh</option>
+                            <option value="km">Khmer</option>
+                            <option value="rw">Kinyarwanda</option>
+                            <option value="ky">Kyrgyz</option>
+                            <option value="lo">Lao</option>
+                            <option value="la">Latin</option>
+                            <option value="lv">Latvian</option>
+                            <option value="ln">Lingala</option>
+                            <option value="lt">Lithuanian</option>
+                            <option value="lb">Luxembourgish</option>
+                            <option value="mk">Macedonian</option>
+                            <option value="mg">Malagasy</option>
+                            <option value="ms">Malay</option>
+                            <option value="ml">Malayalam</option>
+                            <option value="mt">Maltese</option>
+                            <option value="mi">Maori</option>
+                            <option value="mr">Marathi</option>
+                            <option value="mn">Mongolian</option>
+                            <option value="my">Myanmar</option>
+                            <option value="ne">Nepali</option>
+                            <option value="no">Norwegian</option>
+                            <option value="ny">Nyanja</option>
+                            <option value="or">Odia</option>
+                            <option value="ps">Pashto</option>
+                            <option value="fa">Persian</option>
+                            <option value="pl">Polish</option>
+                            <option value="pa">Punjabi</option>
+                            <option value="ro">Romanian</option>
+                            <option value="sa">Sanskrit</option>
+                            <option value="gd">Scottish Gaelic</option>
+                            <option value="sr">Serbian</option>
+                            <option value="sn">Shona</option>
+                            <option value="sd">Sindhi</option>
+                            <option value="si">Sinhala</option>
+                            <option value="sk">Slovak</option>
+                            <option value="sl">Slovenian</option>
+                            <option value="so">Somali</option>
+                            <option value="st">Southern Sotho</option>
+                            <option value="su">Sundanese</option>
+                            <option value="sw">Swahili</option>
+                            <option value="sv">Swedish</option>
+                            <option value="tl">Tagalog</option>
+                            <option value="tg">Tajik</option>
+                            <option value="ta">Tamil</option>
+                            <option value="tt">Tatar</option>
+                            <option value="te">Telugu</option>
+                            <option value="th">Thai</option>
+                            <option value="bo">Tibetan</option>
+                            <option value="ti">Tigrinya</option>
+                            <option value="ts">Tsonga</option>
+                            <option value="tr">Turkish</option>
+                            <option value="tk">Turkmen</option>
+                            <option value="uk">Ukrainian</option>
+                            <option value="ur">Urdu</option>
+                            <option value="ug">Uyghur</option>
+                            <option value="uz">Uzbek</option>
+                            <option value="vi">Vietnamese</option>
+                            <option value="cy">Welsh</option>
+                            <option value="fy">Western Frisian</option>
+                            <option value="xh">Xhosa</option>
+                            <option value="yi">Yiddish</option>
+                            <option value="yo">Yoruba</option>
+                            <option value="zu">Zulu</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <!-- 4. Recording Controls -->
                 <div class="recording-section">
                     <div class="recording-controls">
                         <label class="auto-record-switch" title="Continuous capture mode - perfect for learning sessions">
@@ -379,8 +503,8 @@
     </div>
 
     <script src="/static/audio-storage.js?v=51"></script>
-    <script src="/static/script.js?v=103"></script>
-    <!-- 🔥 v103: Force mono output to ensure proper audio mixing --></script></script></script></script>
+    <script src="/static/script.js?v=106"></script>
+    <!-- 🌍 v106: 添加语言选择器，支持98种语言 --></script></script></script></script>
     
     <!-- Tally Embed Script -->
     <script>var d=document,w="https://tally.so/widgets/embed.js",v=function(){"undefined"!=typeof Tally?Tally.loadEmbeds():d.querySelectorAll("iframe[data-tally-src]:not([src])").forEach((function(e){e.src=e.dataset.tallySrc}))};if("undefined"!=typeof Tally)v();else if(d.querySelector('script[src="'+w+'"]')==null){var s=d.createElement("script");s.src=w,s.onload=v,s.onerror=v,d.body.appendChild(s);}</script>
