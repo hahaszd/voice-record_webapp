@@ -1070,6 +1070,22 @@ const helpContent = {
             <h4>Q: Can I edit the transcribed text?</h4>
             <p>Yes! Click on the text area to edit directly. Your changes will be copied when you click the copy button.</p>
 
+            <h4>🌐 Q: Can I speak in multiple languages in one recording?</h4>
+            <p><strong>⚠️ Best Practice: Use one language per recording for optimal results.</strong></p>
+            <p>Mixing multiple languages in the same recording may cause:</p>
+            <ul>
+                <li>❌ Partial transcription failure</li>
+                <li>❌ Missed or inaccurate words</li>
+                <li>❌ Lower overall transcription quality</li>
+            </ul>
+            <p><strong>Recommended approach:</strong></p>
+            <ul>
+                <li>✅ Stick to one language throughout each recording</li>
+                <li>✅ If you need to switch languages, stop and start a new recording</li>
+                <li>✅ Select the appropriate language from the dropdown before recording</li>
+            </ul>
+            <p><em>Note: Single-language recordings provide the most accurate and complete transcriptions.</em></p>
+
             <h4>📱 Q: Recording stops on iPhone/iPad Safari?</h4>
             <p><strong>This is a Safari/iOS limitation, not a VoiceSpark bug.</strong></p>
             <p>iOS Safari automatically pauses audio recording when:</p>
@@ -1373,6 +1389,22 @@ const helpContent = {
 
             <h4>Q: 可以编辑转录的文字吗？</h4>
             <p>可以！点击文本框直接编辑。修改后的内容会在您点击复制按钮时被复制。</p>
+
+            <h4>🌐 Q: 可以在同一录音中使用多种语言吗？</h4>
+            <p><strong>⚠️ 最佳实践：每次录音请尽量使用同一种语言，以获得最佳效果。</strong></p>
+            <p>在同一录音中混用多种语言可能导致：</p>
+            <ul>
+                <li>❌ 部分语音转录失败</li>
+                <li>❌ 漏词或识别不准确</li>
+                <li>❌ 整体转录质量下降</li>
+            </ul>
+            <p><strong>推荐做法：</strong></p>
+            <ul>
+                <li>✅ 整段录音保持使用同一种语言</li>
+                <li>✅ 如需切换语言，请停止当前录音并开始新的录音</li>
+                <li>✅ 录音前从下拉菜单选择对应的语言</li>
+            </ul>
+            <p><em>注意：单一语言录音能提供最准确和完整的转录结果。</em></p>
 
             <h4>📱 Q: iPhone/iPad Safari 上录音会中断？</h4>
             <p><strong>这是 iOS Safari 的系统限制，不是 VoiceSpark 的问题。</strong></p>
