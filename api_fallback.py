@@ -210,7 +210,8 @@ async def _transcribe_deepgram(
     
     try:
         print(f"[v111-DEEPGRAM-DEBUG] 尝试导入 deepgram SDK...")
-        from deepgram import DeepgramClient, PrerecordedOptions
+        from deepgram import DeepgramClient
+        from deepgram.clients.prerecorded.v1 import PrerecordedOptions
         print(f"[v111-DEEPGRAM-DEBUG] ✅ deepgram SDK 导入成功")
         
         print(f"[v111-DEEPGRAM] 🚀 开始调用 Deepgram Nova-3 Multilingual API")
@@ -352,6 +353,16 @@ async def _transcribe_ai_builder(
         Tuple[str, dict]: (转录文本, 元数据)
     """
     from server2 import AI_BUILDER_TOKEN, AI_BUILDER_API_BASE
+    
+    print(f"[v111-AI-BUILDER-DEBUG] ========== 进入 _transcribe_ai_builder 函数 ==========")
+    print(f"[v111-AI-BUILDER-DEBUG] AI_BUILDER_TOKEN 存在: {bool(AI_BUILDER_TOKEN)}")
+    print(f"[v111-AI-BUILDER-DEBUG] audio_content 类型: {type(audio_content)}")
+    print(f"[v111-AI-BUILDER-DEBUG] audio_content 是否为 None: {audio_content is None}")
+    if audio_content:
+        print(f"[v111-AI-BUILDER-DEBUG] audio_content 长度: {len(audio_content)}")
+    else:
+        print(f"[v111-AI-BUILDER-DEBUG] ❌❌❌ audio_content 是 None！这是错误的根源！")
+        raise Exception("audio_content 是 None，无法进行转录")
     
     if not AI_BUILDER_TOKEN:
         raise Exception("AI_BUILDER_TOKEN 未配置")
