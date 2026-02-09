@@ -1979,8 +1979,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const micLevel = getAudioLevel(micAnalyser);
                     const systemLevel = getAudioLevel(systemAnalyser);
                     
-                    // 活动检测阈值
-                    const micActive = micLevel > 0.02;
+                    // 🔥 v100: 提高活动检测阈值，避免环境噪音触发平衡
+                    const micActive = micLevel > 0.05;  // 从 0.02 提高到 0.05
                     const systemActive = systemLevel > 0.02;
                     
                     if (!micActive && !systemActive) {
@@ -1999,41 +1999,33 @@ document.addEventListener('DOMContentLoaded', async () => {
                     else if (systemActive && !micActive) {
                         // 目标：让系统电平接近典型麦克风电平
                         const targetSystemLevel = typicalMicLevel;
-                        const lowerBound = targetSystemLevel * 0.7;  // 低于这个就提升
-                        const upperBound = targetSystemLevel * 1.5;  // 高于这个就降低
+                        const lowerBound = targetSystemLevel * 0.6;  // 🔥 调整为 60%，更早提升
                         
+                        // 🔥 只提升，不降低！
                         // 系统电平太低，提升增益
                         if (systemLevel < lowerBound && systemGain.gain.value < 20.0) {
                             const oldGain = systemGain.gain.value;
                             systemGain.gain.value = Math.min(20.0, systemGain.gain.value * 1.3);
                             console.log('[BOOST] 系统电平低 (' + (systemLevel*100).toFixed(1) + '% < ' + (lowerBound*100).toFixed(1) + '%), 增益:', oldGain.toFixed(2), 'x →', systemGain.gain.value.toFixed(2), 'x');
                         }
-                        // 系统电平太高，降低增益（但不低于3x）
-                        else if (systemLevel > upperBound && systemGain.gain.value > 3.0) {
-                            const oldGain = systemGain.gain.value;
-                            systemGain.gain.value = Math.max(3.0, systemGain.gain.value * 0.85);
-                            console.log('[REDUCE] 系统电平高 (' + (systemLevel*100).toFixed(1) + '% > ' + (upperBound*100).toFixed(1) + '%), 增益:', oldGain.toFixed(2), 'x →', systemGain.gain.value.toFixed(2), 'x');
-                        }
-                        // 在合理范围内
+                        // 在合理范围内，保持不变
                         else {
                             if (Math.random() < 0.05) {
-                                console.log('[OK] 系统电平正常 (' + (systemLevel*100).toFixed(1) + '%), 目标范围: [' + (lowerBound*100).toFixed(1) + '% - ' + (upperBound*100).toFixed(1) + '%], 增益:', systemGain.gain.value.toFixed(2), 'x');
+                                console.log('[OK] 系统电平正常 (' + (systemLevel*100).toFixed(1) + '%), 保持增益:', systemGain.gain.value.toFixed(2), 'x');
                             }
                         }
                     }
                     
                     // 🔥 场景C：两者同时有声音（罕见，比如边说话边播放）
                     else if (micActive && systemActive) {
-                        // 简单平衡：让两者电平相等
-                        if (systemLevel < micLevel * 0.5 && systemGain.gain.value < 20.0) {
+                        // 🔥 更保守的平衡策略：只在差距很大时才调整
+                        const ratio = systemLevel / micLevel;
+                        
+                        // 只有在系统音频明显太低时才提升（不降低）
+                        if (ratio < 0.5 && systemGain.gain.value < 20.0) {
                             const oldGain = systemGain.gain.value;
-                            systemGain.gain.value = Math.min(20.0, systemGain.gain.value * 1.2);
-                            console.log('[BALANCE-UP] 系统太低，提升增益:', oldGain.toFixed(2), 'x →', systemGain.gain.value.toFixed(2), 'x (麦克:', (micLevel*100).toFixed(1), '%, 系统:', (systemLevel*100).toFixed(1), '%)');
-                        }
-                        else if (systemLevel > micLevel * 1.5 && systemGain.gain.value > 3.0) {
-                            const oldGain = systemGain.gain.value;
-                            systemGain.gain.value = Math.max(3.0, systemGain.gain.value * 0.9);
-                            console.log('[BALANCE-DOWN] 系统太高，降低增益:', oldGain.toFixed(2), 'x →', systemGain.gain.value.toFixed(2), 'x (麦克:', (micLevel*100).toFixed(1), '%, 系统:', (systemLevel*100).toFixed(1), '%)');
+                            systemGain.gain.value = Math.min(20.0, systemGain.gain.value * 1.15);
+                            console.log('[BALANCE-UP] 系统太低，提升增益:', oldGain.toFixed(2), 'x →', systemGain.gain.value.toFixed(2), 'x (麦克:', (micLevel*100).toFixed(1), '%, 系统:', (systemLevel*100).toFixed(1), '%, 比例:', ratio.toFixed(2), ')');
                         }
                         
                         // 记录到历史
@@ -2041,6 +2033,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             time: Date.now(),
                             micLevel: micLevel.toFixed(3),
                             systemLevel: systemLevel.toFixed(3),
+                            ratio: ratio.toFixed(2),
                             gain: systemGain.gain.value.toFixed(2)
                         });
                     }
@@ -2051,9 +2044,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
                 
-                console.log('[INFO] 🤖 v99: 智能自适应平衡已启动');
+                console.log('[INFO] 🤖 v100: 智能自适应平衡已启动');
                 console.log('[INFO] 初始增益 - 麦克风:', micGain.gain.value, 'x, 系统音频:', systemGain.gain.value, 'x');
-                console.log('[INFO] 策略：学习麦克风典型电平，自动调整系统增益匹配');
+                console.log('[INFO] 策略：学习麦克风典型电平，只提升系统增益（不降低）');
+                console.log('[INFO] 麦克风活动阈值：5%（避免环境噪音触发平衡）');
                 
                 // 更频繁的检查：每100ms
                 balanceInterval = setInterval(adaptiveBalance, 100);
