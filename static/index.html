@@ -14,11 +14,12 @@
       
       if (currentHostname === 'localhost' || currentHostname === '127.0.0.1') {
         deployEnvironment = 'local';
-      } else if (currentHostname.includes('railway.app') && currentHostname.includes('voicespark-dev')) {
+      } else if (currentHostname.includes('railway.app') && currentHostname.includes('-dev')) {
+        // 🔥 修复：检测包含 "-dev" 的 Railway 域名
         deployEnvironment = 'development';
       } else if (currentHostname.includes('railway.app')) {
         deployEnvironment = 'production';
-      } else if (currentHostname.includes('voicespark.com')) {
+      } else if (currentHostname.includes('voicespark.com') || currentHostname.includes('voicespark.app')) {
         deployEnvironment = 'production';
       }
       
@@ -364,7 +365,8 @@
     </div>
 
     <script src="/static/audio-storage.js?v=51"></script>
-    <script src="/static/script.js?v=100"></script></script></script></script></script>
+    <script src="/static/script.js?v=100"></script>
+    <!-- 🔥 v100.1: Fix GA environment detection for dev Railway domains --></script></script></script></script>
     
     <!-- Tally Embed Script -->
     <script>var d=document,w="https://tally.so/widgets/embed.js",v=function(){"undefined"!=typeof Tally?Tally.loadEmbeds():d.querySelectorAll("iframe[data-tally-src]:not([src])").forEach((function(e){e.src=e.dataset.tallySrc}))};if("undefined"!=typeof Tally)v();else if(d.querySelector('script[src="'+w+'"]')==null){var s=d.createElement("script");s.src=w,s.onload=v,s.onerror=v,d.body.appendChild(s);}</script>
