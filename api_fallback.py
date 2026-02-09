@@ -550,15 +550,16 @@ async def _transcribe_google(
         "model": "default"
     }
     
-    # 🌍 语言设置
+    # 🌍 语言设置（支持英文+中文双语自动检测）
     if language:
+        # 用户指定了语言
         config["languageCode"] = convert_language_code_for_google(language)
         print(f"[v110-GOOGLE] 指定语言: {config['languageCode']}")
     else:
-        # 默认使用 en-US（Google API 必须指定 languageCode）
-        # 注意：Google API 不支持完全省略 languageCode
-        config["languageCode"] = "en-US"
-        print(f"[v110-GOOGLE] 使用默认语言: en-US")
+        # 默认使用英文+中文双语支持（自动检测）
+        config["languageCode"] = "en-US"  # 主要语言
+        config["alternativeLanguageCodes"] = ["zh-CN"]  # 备选中文
+        print(f"[v110-GOOGLE] 🌍 双语模式: 主语言 en-US, 备选 zh-CN（自动检测）")
     
     # 🎙️ v110: 添加多说话人分离配置
     if enable_diarization:
@@ -596,6 +597,13 @@ async def _transcribe_google(
     # 解析响应
     result = response.json()
     
+    # 🌍 检测实际使用的语言（如果 Google API 返回了 languageCode）
+    detected_language = None
+    if "results" in result and len(result["results"]) > 0:
+        detected_language = result["results"][0].get("languageCode")
+        if detected_language:
+            print(f"[v110-GOOGLE] 🌍 检测到的语言: {detected_language}")
+    
     # 🎙️ v110: 处理多说话人分离结果
     if enable_diarization and "results" in result:
         print(f"[v110-DIARIZATION] 开始处理多说话人转录结果")
@@ -617,7 +625,8 @@ async def _transcribe_google(
         "api": "google",
         "model": "default",
         "status_code": response.status_code,
-        "diarization_enabled": enable_diarization
+        "diarization_enabled": enable_diarization,
+        "detected_language": detected_language  # 🌍 添加检测到的语言
     }
     
     if enable_diarization:
