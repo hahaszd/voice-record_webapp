@@ -221,10 +221,11 @@ async def _transcribe_deepgram(
         # 使用 REST API 直接调用
         api_url = "https://api.deepgram.com/v1/listen"
         
-        # 构建查询参数
+        # 🌍 使用 Nova-3 多语言模式（支持中英文混合 Code-switching）
+        # 参考：https://developers.deepgram.com/docs/multilingual-code-switching
         params = {
-            "model": "nova-2",  # 使用 nova-2（更稳定）
-            "detect_language": "true",  # 🌍 自动检测语言（支持中文、英文等）
+            "model": "nova-3",  # Nova-3 最新模型
+            "language": "multi",  # 多语言模式（支持语内代码转换）
             "smart_format": "true",
             "punctuate": "true",
             "paragraphs": "true",
@@ -232,8 +233,9 @@ async def _transcribe_deepgram(
         
         if enable_diarization:
             params["diarize"] = "true"
+            params["endpointing"] = "100"  # 建议的端点检测值（毫秒）
         
-        print(f"[v111-DEEPGRAM] 🌍 语言检测: 自动检测（支持中文、英文等多语言）")
+        print(f"[v111-DEEPGRAM] 🌍 模型: Nova-3 Multilingual (支持中英文混合)")
         
         headers = {
             "Authorization": f"Token {DEEPGRAM_API_KEY}",
@@ -276,8 +278,9 @@ async def _transcribe_deepgram(
         
         # 提取元数据
         metadata = {
-            "api": "deepgram_nova2",
-            "model": "nova-2",
+            "api": "deepgram_nova3_multilingual",
+            "model": "nova-3",
+            "language_mode": "multi",  # 多语言模式
             "api_response_time": round(api_time, 2),
             "audio_duration": duration,
             "diarization_enabled": enable_diarization,
