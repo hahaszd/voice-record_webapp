@@ -221,11 +221,13 @@ async def _transcribe_deepgram(
         # 使用 REST API 直接调用
         api_url = "https://api.deepgram.com/v1/listen"
         
-        # 🌍 使用 Nova-3 多语言模式（支持中英文混合 Code-switching）
-        # 参考：https://developers.deepgram.com/docs/multilingual-code-switching
+        # 🌍 使用 Nova-2 多语言模式（支持中英文混合）
+        # Nova-3 的 multilingual 模式不包含中文
+        # Nova-2 multilingual 支持：Spanish + English, 中文需要单独指定
+        # 最佳策略：使用 zh-CN 作为主语言，Nova-2 会自动处理英文单词
         params = {
-            "model": "nova-3",  # Nova-3 最新模型
-            "language": "multi",  # 多语言模式（支持语内代码转换）
+            "model": "nova-2",
+            "language": "zh-CN",  # 主语言：中文（会自动处理夹杂的英文）
             "smart_format": "true",
             "punctuate": "true",
             "paragraphs": "true",
@@ -233,9 +235,8 @@ async def _transcribe_deepgram(
         
         if enable_diarization:
             params["diarize"] = "true"
-            params["endpointing"] = "100"  # 建议的端点检测值（毫秒）
         
-        print(f"[v111-DEEPGRAM] 🌍 模型: Nova-3 Multilingual (支持中英文混合)")
+        print(f"[v111-DEEPGRAM] 🌍 模型: Nova-2 中文模式（自动处理夹杂的英文单词）")
         
         headers = {
             "Authorization": f"Token {DEEPGRAM_API_KEY}",
@@ -278,9 +279,9 @@ async def _transcribe_deepgram(
         
         # 提取元数据
         metadata = {
-            "api": "deepgram_nova3_multilingual",
-            "model": "nova-3",
-            "language_mode": "multi",  # 多语言模式
+            "api": "deepgram_nova2_chinese",
+            "model": "nova-2",
+            "language": "zh-CN",
             "api_response_time": round(api_time, 2),
             "audio_duration": duration,
             "diarization_enabled": enable_diarization,
