@@ -171,7 +171,6 @@ async def _transcribe_ai_builder(
         raise Exception("AI_BUILDER_TOKEN 未配置")
     
     print(f"[FALLBACK] 尝试使用 AI Builder Space API")
-    print(f"[v108-TEST] 🔴 强制使用英文模式（测试中文效果）")
     print(f"[v109-FIX] 🔧 添加 Prompt 参数，尝试解决内容截断问题")
     print(f"[v109-FIX] 🔧 超时增加到 300 秒，response_format 改为 verbose_json")
     
@@ -183,18 +182,20 @@ async def _transcribe_ai_builder(
         'audio_file': (filename, audio_content, 'audio/wav')
     }
     
-    # 🔥 添加 language 参数 - v108: 强制英文（用于测试中文效果）
     # 🔧 v109: 添加 prompt 参数，解决内容截断问题
+    # 🌍 v110: 恢复自动语言识别（移除 v108-TEST 强制英文）
     form_data = {
         'model': 'whisper-1',
         'response_format': 'verbose_json',  # v109: 改为 verbose 获取更多信息
-        'language': 'en',  # 强制英文
         'prompt': 'This is a continuous recording containing both human speech and video/audio playback (such as YouTube). Please transcribe all audio content completely and accurately, including all speech, video audio, and background sounds throughout the entire recording.'  # v109: 引导完整转录
     }
     
-    # v108: 忽略传入的 language 参数，始终使用英文
-    # if language:
-    #     form_data['language'] = language
+    # 🌍 v110: 如果指定了语言，则使用指定语言；否则自动检测
+    if language:
+        form_data['language'] = language
+        print(f"[v110-WHISPER] 指定语言: {language}")
+    else:
+        print(f"[v110-WHISPER] 🌍 使用自动语言识别")
     
     # 发送请求
     response = requests.post(
@@ -267,7 +268,6 @@ async def _transcribe_openai(
         raise Exception("OPENAI_API_KEY 未配置")
     
     print(f"[FALLBACK] 尝试使用 OpenAI Whisper API")
-    print(f"[v108-TEST] 🔴 强制使用英文模式（测试中文效果）")
     print(f"[v109-FIX] 🔧 添加 Prompt 参数，尝试解决内容截断问题")
     
     # OpenAI API endpoint
@@ -278,16 +278,20 @@ async def _transcribe_openai(
         'file': (filename, audio_content, 'audio/wav')
     }
     
+    # 🔧 v109: 添加 prompt 参数
+    # 🌍 v110: 恢复自动语言识别（移除 v108-TEST 强制英文）
     data = {
         'model': 'whisper-1',
         'response_format': 'verbose_json',  # v109: 改为 verbose
-        'language': 'en',  # v108: 强制英文（用于测试中文效果）
         'prompt': 'This is a continuous recording containing both human speech and video/audio playback (such as YouTube). Please transcribe all audio content completely and accurately, including all speech, video audio, and background sounds throughout the entire recording.'  # v109: 引导完整转录
     }
     
-    # v108: 忽略传入的 language 参数，始终使用英文
-    # if language:
-    #     data['language'] = language
+    # 🌍 v110: 如果指定了语言，则使用指定语言；否则自动检测
+    if language:
+        data['language'] = language
+        print(f"[v110-WHISPER] 指定语言: {language}")
+    else:
+        print(f"[v110-WHISPER] 🌍 使用自动语言识别")
     
     # 发送请求
     response = requests.post(
