@@ -1962,6 +1962,41 @@ document.addEventListener('DOMContentLoaded', async () => {
                 combinedStream = destination.stream;
                 audioStreamsReady = true;
                 
+                // 🔥 v104: 添加 destination.stream 的音频轨道检测
+                const destTracks = combinedStream.getAudioTracks();
+                console.log('[DEBUG-v104] Destination stream tracks:', destTracks.length);
+                if (destTracks.length > 0) {
+                    console.log('[DEBUG-v104] Destination track details:', {
+                        id: destTracks[0].id,
+                        label: destTracks[0].label,
+                        enabled: destTracks[0].enabled,
+                        muted: destTracks[0].muted,
+                        readyState: destTracks[0].readyState,
+                        contentHint: destTracks[0].contentHint
+                    });
+                } else {
+                    console.error('[ERROR-v104] ❌ Destination stream has NO audio tracks!');
+                }
+                
+                // 🔥 v104: 测试 destination stream 是否真的有音频数据
+                const testContext = new AudioContext();
+                const testSource = testContext.createMediaStreamSource(combinedStream);
+                const testAnalyser = testContext.createAnalyser();
+                testAnalyser.fftSize = 256;
+                testSource.connect(testAnalyser);
+                
+                setTimeout(() => {
+                    const testData = new Uint8Array(testAnalyser.frequencyBinCount);
+                    testAnalyser.getByteFrequencyData(testData);
+                    const testSum = testData.reduce((a, b) => a + b, 0);
+                    const testAvg = testSum / testData.length;
+                    console.log('[DEBUG-v104] Destination stream audio level test:', (testAvg / 255 * 100).toFixed(1), '%');
+                    if (testAvg < 1) {
+                        console.error('[ERROR-v104] ❌ Destination stream appears to be SILENT!');
+                    }
+                    testContext.close();
+                }, 1000);
+                
                 // 🔥 监控：创建analyser用于诊断（不影响音频连接）
                 const micAnalyser = audioContext.createAnalyser();
                 const systemAnalyser = audioContext.createAnalyser();
