@@ -180,11 +180,11 @@ async def _transcribe_ai_builder(
         'audio_file': (filename, audio_content, 'audio/wav')
     }
     
-    # 🔥 添加 language 参数
+    # 🔥 添加 language 参数 - v104: 默认英文
     form_data = {
         'model': 'whisper-1',
         'response_format': 'json',
-        'language': 'zh-CN'
+        'language': 'en'  # 默认英文
     }
     
     if language:
@@ -256,7 +256,8 @@ async def _transcribe_openai(
     
     data = {
         'model': 'whisper-1',
-        'response_format': 'json'
+        'response_format': 'json',
+        'language': 'en'  # v104: 默认英文
     }
     
     if language:
@@ -329,7 +330,7 @@ async def _transcribe_google(
         "config": {
             "encoding": "LINEAR16",
             "sampleRateHertz": 48000,
-            "languageCode": language or "zh-CN",
+            "languageCode": language or "en-US",  # v104: 默认英文
             "enableAutomaticPunctuation": True,
             "model": "default"
         },
