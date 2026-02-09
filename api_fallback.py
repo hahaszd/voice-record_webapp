@@ -172,6 +172,8 @@ async def _transcribe_ai_builder(
     
     print(f"[FALLBACK] 尝试使用 AI Builder Space API")
     print(f"[v108-TEST] 🔴 强制使用英文模式（测试中文效果）")
+    print(f"[v109-FIX] 🔧 添加 Prompt 参数，尝试解决内容截断问题")
+    print(f"[v109-FIX] 🔧 超时增加到 300 秒，response_format 改为 verbose_json")
     
     # 准备请求
     api_url = f"{AI_BUILDER_API_BASE}/audio/transcriptions"
@@ -182,10 +184,12 @@ async def _transcribe_ai_builder(
     }
     
     # 🔥 添加 language 参数 - v108: 强制英文（用于测试中文效果）
+    # 🔧 v109: 添加 prompt 参数，解决内容截断问题
     form_data = {
         'model': 'whisper-1',
-        'response_format': 'json',
-        'language': 'en'  # 强制英文
+        'response_format': 'verbose_json',  # v109: 改为 verbose 获取更多信息
+        'language': 'en',  # 强制英文
+        'prompt': 'This is a continuous recording containing both human speech and video/audio playback (such as YouTube). Please transcribe all audio content completely and accurately, including all speech, video audio, and background sounds throughout the entire recording.'  # v109: 引导完整转录
     }
     
     # v108: 忽略传入的 language 参数，始终使用英文
@@ -201,7 +205,7 @@ async def _transcribe_ai_builder(
         },
         files=files,
         data=form_data,
-        timeout=120
+        timeout=300  # v109: 增加超时到 5 分钟，避免长音频被截断
     )
     
     # 检查响应
@@ -211,10 +215,26 @@ async def _transcribe_ai_builder(
     
     # 解析响应
     result = response.json()
-    text = result.get('text', '')
+    
+    # v109: 支持 verbose_json 格式
+    if isinstance(result, dict) and 'text' in result:
+        text = result.get('text', '')
+    else:
+        text = result if isinstance(result, str) else str(result)
     
     if not text:
         raise Exception("AI Builder Space API 返回空文本")
+    
+    # v109: 记录 verbose 信息（如果有）
+    if 'segments' in result:
+        segments_count = len(result['segments'])
+        print(f"[v109-DEBUG] 转录包含 {segments_count} 个音频段落")
+        
+        # 检查是否有段落被标记为"非语音"
+        for i, seg in enumerate(result['segments']):
+            no_speech_prob = seg.get('no_speech_prob', 0)
+            if no_speech_prob > 0.5:
+                print(f"[v109-WARNING] 段落 {i} 被判断为非语音 (概率: {no_speech_prob:.2f})")
     
     metadata = {
         "api": "ai_builder",
@@ -248,6 +268,7 @@ async def _transcribe_openai(
     
     print(f"[FALLBACK] 尝试使用 OpenAI Whisper API")
     print(f"[v108-TEST] 🔴 强制使用英文模式（测试中文效果）")
+    print(f"[v109-FIX] 🔧 添加 Prompt 参数，尝试解决内容截断问题")
     
     # OpenAI API endpoint
     api_url = "https://api.openai.com/v1/audio/transcriptions"
@@ -259,8 +280,9 @@ async def _transcribe_openai(
     
     data = {
         'model': 'whisper-1',
-        'response_format': 'json',
-        'language': 'en'  # v108: 强制英文（用于测试中文效果）
+        'response_format': 'verbose_json',  # v109: 改为 verbose
+        'language': 'en',  # v108: 强制英文（用于测试中文效果）
+        'prompt': 'This is a continuous recording containing both human speech and video/audio playback (such as YouTube). Please transcribe all audio content completely and accurately, including all speech, video audio, and background sounds throughout the entire recording.'  # v109: 引导完整转录
     }
     
     # v108: 忽略传入的 language 参数，始终使用英文
@@ -275,7 +297,7 @@ async def _transcribe_openai(
         },
         files=files,
         data=data,
-        timeout=120
+        timeout=300  # v109: 增加超时到 5 分钟
     )
     
     # 检查响应
@@ -285,10 +307,28 @@ async def _transcribe_openai(
     
     # 解析响应
     result = response.json()
-    text = result.get('text', '')
+    
+    # v109: 支持 verbose_json 格式
+    if isinstance(result, dict) and 'text' in result:
+        text = result.get('text', '')
+    else:
+        text = result if isinstance(result, str) else str(result)
     
     if not text:
         raise Exception("OpenAI API 返回空文本")
+    
+    # v109: 记录 verbose 信息（如果有）
+    if 'segments' in result:
+        segments_count = len(result['segments'])
+        print(f"[v109-DEBUG] OpenAI 转录包含 {segments_count} 个音频段落")
+        
+        # 检查是否有段落被标记为"非语音"
+        for i, seg in enumerate(result['segments']):
+            no_speech_prob = seg.get('no_speech_prob', 0)
+            if no_speech_prob > 0.5:
+                start = seg.get('start', 0)
+                end = seg.get('end', 0)
+                print(f"[v109-WARNING] 段落 {i} ({start:.1f}s-{end:.1f}s) 被判断为非语音 (概率: {no_speech_prob:.2f})")
     
     metadata = {
         "api": "openai",
@@ -415,7 +455,7 @@ async def _transcribe_google(
             "Content-Type": "application/json"
         },
         json=request_body,
-        timeout=120
+        timeout=300  # v109: 增加超时到 5 分钟
     )
     
     # 检查响应
