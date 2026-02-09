@@ -1916,6 +1916,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 const destination = audioContext.createMediaStreamDestination();
                 
+                // 🔥 v103: 强制单声道输出，确保两个音频源混合到同一声道
+                destination.channelCount = 1;
+                destination.channelCountMode = 'explicit';
+                destination.channelInterpretation = 'speakers';
+                
+                console.log('[INFO] 🎛️ Destination配置: 单声道输出（强制混合）');
+                
                 // 🔥 修复：验证音频轨道存在再创建源
                 const micAudioTracks = micStream.getAudioTracks();
                 const systemAudioTracks = systemStream.getAudioTracks();
@@ -1946,10 +1953,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 micGain.connect(destination);
                 systemGain.connect(destination);
                 
-                console.log('[INFO] 🎚️ v102: 简化音频连接（source → gain → destination）');
+                console.log('[INFO] 🎚️ v103: 简化音频连接 + 强制单声道混合');
                 console.log('[INFO] 麦克风增益:', micGain.gain.value, 'x');
                 console.log('[INFO] 系统音频增益:', systemGain.gain.value, 'x');
                 console.log('[DEBUG] AudioContext:', audioContext.state, '@ ', audioContext.sampleRate, 'Hz');
+                console.log('[DEBUG] Destination声道:', destination.channelCount, '(强制单声道)');
                 
                 combinedStream = destination.stream;
                 audioStreamsReady = true;
