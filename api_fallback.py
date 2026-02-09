@@ -1,6 +1,6 @@
 """
 API Fallback Module for Speech-to-Text
-🔥 v111: 优化 API 优先级策略
+🔥 v112: 多说话人转录（无标签模式）
 
 优先级策略：
 麦克风场景：
@@ -8,10 +8,16 @@ API Fallback Module for Speech-to-Text
 2. OpenAI Whisper API - $0.006/min
 3. Deepgram Nova-2 - $0.0077/min (备用)
 
-系统/混合场景：
-1. OpenAI gpt-4o-transcribe-diarize - 多说话人识别
-2. Google Cloud Speech-to-Text - $0.016/min + Diarization
+系统/混合场景（多说话人识别）：
+1. OpenAI gpt-4o-transcribe-diarize - 多说话人识别，无标签
+2. Google Cloud Speech-to-Text - $0.016/min + Diarization，无标签
 3. Deepgram Nova-2 - $0.0077/min (备用)
+
+🎯 v112 新特性:
+- ✅ 转录所有说话人的话（包括 YouTube 视频中的多人对话）
+- ✅ 不显示 "Speaker A:", "Speaker B:" 等标签
+- ✅ 返回完整的连续文本
+- ✅ 确保不会丢失任何说话人的内容
 """
 
 import os
@@ -185,7 +191,8 @@ async def _transcribe_openai_diarize(
     特点：
     - 原生多说话人识别（Speaker Diarization）
     - 支持中英文混合
-    - 返回带说话人标签的文本
+    - ✅ 返回完整转录文本（不包含说话人标签）
+    - ✅ 确保所有说话人的话都被转录
     
     Args:
         audio_content: 音频文件的二进制内容
@@ -202,11 +209,11 @@ async def _transcribe_openai_diarize(
     if not openai_api_key:
         raise Exception("OPENAI_API_KEY 未配置")
     
-    print(f"[v111-OPENAI-DIARIZE] 🎤 开始调用 OpenAI gpt-4o-transcribe-diarize（多说话人识别）")
-    print(f"[v111-OPENAI-DIARIZE] - 文件名: {filename}")
-    print(f"[v111-OPENAI-DIARIZE] - 音频大小: {len(audio_content) / 1024:.2f} KB")
+    print(f"[v112-OPENAI-DIARIZE] 🎤 开始调用 OpenAI gpt-4o-transcribe-diarize（多说话人识别）")
+    print(f"[v112-OPENAI-DIARIZE] - 文件名: {filename}")
+    print(f"[v112-OPENAI-DIARIZE] - 音频大小: {len(audio_content) / 1024:.2f} KB")
     if duration:
-        print(f"[v111-OPENAI-DIARIZE] - 时长: {duration}秒")
+        print(f"[v112-OPENAI-DIARIZE] - 时长: {duration}秒")
     
     # OpenAI API endpoint
     api_url = "https://api.openai.com/v1/audio/transcriptions"
@@ -216,20 +223,22 @@ async def _transcribe_openai_diarize(
         'file': (filename, audio_content, 'audio/wav')
     }
     
+    # 🔥 v112: 使用 diarized_json 格式以获取完整的多说话人转录
+    # 参考文档: https://platform.openai.com/docs/api-reference/audio/createTranscription
     data = {
         'model': 'gpt-4o-transcribe-diarize',
-        'response_format': 'json',  # 返回 JSON 格式
+        'response_format': 'diarized_json',  # 🔥 使用 diarized_json 获取 segments
         'chunking_strategy': 'auto',  # 自动分段（音频>30秒时必需）
     }
     
     # 如果指定了语言，添加语言参数
     if language:
         data['language'] = language
-        print(f"[v111-OPENAI-DIARIZE] 指定语言: {language}")
+        print(f"[v112-OPENAI-DIARIZE] 指定语言: {language}")
     else:
-        print(f"[v111-OPENAI-DIARIZE] 🌍 使用自动语言识别")
+        print(f"[v112-OPENAI-DIARIZE] 🌍 使用自动语言识别")
     
-    print(f"[v111-OPENAI-DIARIZE] 📤 发送转录请求...")
+    print(f"[v112-OPENAI-DIARIZE] 📤 发送转录请求（diarized_json 格式）...")
     start_time = time.time()
     
     # 发送请求
@@ -244,7 +253,7 @@ async def _transcribe_openai_diarize(
     )
     
     api_time = time.time() - start_time
-    print(f"[v111-OPENAI-DIARIZE] ⏱️ API 响应耗时: {api_time:.2f}秒")
+    print(f"[v112-OPENAI-DIARIZE] ⏱️ API 响应耗时: {api_time:.2f}秒")
     
     # 检查响应
     if response.status_code != 200:
@@ -254,9 +263,9 @@ async def _transcribe_openai_diarize(
     # 解析响应
     result = response.json()
     
-    # 提取转录文本和说话人信息
+    # 提取转录文本（根据 diarized_json 格式）
     if 'segments' in result and result['segments']:
-        print(f"[v111-OPENAI-DIARIZE] 🎤 检测到多说话人信息")
+        print(f"[v112-OPENAI-DIARIZE] 🎤 检测到多说话人信息")
         
         # 统计说话人数量
         speakers = set()
@@ -264,17 +273,20 @@ async def _transcribe_openai_diarize(
             if 'speaker' in segment:
                 speakers.add(segment['speaker'])
         
-        print(f"[v111-OPENAI-DIARIZE] - 检测到 {len(speakers)} 个说话人")
+        print(f"[v112-OPENAI-DIARIZE] - 检测到 {len(speakers)} 个说话人")
         
-        # 格式化带说话人标签的文本
-        formatted_segments = []
+        # 🔥 v112: 合并所有说话人的文本，不包含说话人标签
+        # 按时间顺序拼接所有 segment 的文本
+        all_texts = []
         for segment in result['segments']:
-            speaker = segment.get('speaker', 'Unknown')
-            text = segment.get('text', '')
-            formatted_segments.append(f"{speaker}: {text}")
+            text = segment.get('text', '').strip()
+            if text:  # 只添加非空文本
+                all_texts.append(text)
         
-        transcription_text = "\n".join(formatted_segments)
-        print(f"[v111-OPENAI-DIARIZE] ✅ 已格式化多说话人文本")
+        # 合并为一段完整文本
+        transcription_text = " ".join(all_texts)
+        print(f"[v112-OPENAI-DIARIZE] ✅ 已合并所有说话人文本（无标签）")
+        print(f"[v112-OPENAI-DIARIZE] - {len(speakers)} 个说话人的 {len(all_texts)} 个语句片段")
         
         metadata = {
             "api": "openai_diarize",
@@ -282,13 +294,16 @@ async def _transcribe_openai_diarize(
             "num_speakers": len(speakers),
             "num_segments": len(result['segments']),
             "api_response_time": round(api_time, 2),
-            "status_code": response.status_code
+            "status_code": response.status_code,
+            "note": "All speakers transcribed without labels"
         }
     else:
-        # 没有 segments，使用普通文本
+        # 没有 segments，使用普通文本（fallback）
         transcription_text = result.get('text', '')
         if not transcription_text:
             raise Exception("OpenAI Diarize API 返回空文本")
+        
+        print(f"[v112-OPENAI-DIARIZE] ⚠️ 未检测到 segments，使用完整文本")
         
         metadata = {
             "api": "openai_diarize",
@@ -297,8 +312,8 @@ async def _transcribe_openai_diarize(
             "status_code": response.status_code
         }
     
-    print(f"[v111-OPENAI-DIARIZE] ✅ 转录成功")
-    print(f"[v111-OPENAI-DIARIZE] - 文本长度: {len(transcription_text)} 字符")
+    print(f"[v112-OPENAI-DIARIZE] ✅ 转录成功")
+    print(f"[v112-OPENAI-DIARIZE] - 文本长度: {len(transcription_text)} 字符")
     
     # 记录日志
     if logger:
@@ -809,15 +824,16 @@ def count_unique_speakers(result: Dict[str, Any]) -> int:
     return len(speakers)
 
 
-def parse_diarization_result(result: Dict[str, Any]) -> str:
+def parse_diarization_result(result: Dict[str, Any], remove_speaker_labels: bool = False) -> str:
     """
     解析多说话人分离结果，格式化输出
     
     Args:
         result: Google API 返回的结果
+        remove_speaker_labels: 是否移除说话人标签（True = 只返回文本，False = 包含标签）
     
     Returns:
-        str: 格式化的转录文本（包含说话人标签）
+        str: 格式化的转录文本
     """
     # 收集所有 words 及其 speaker tag
     all_words = []
@@ -843,6 +859,12 @@ def parse_diarization_result(result: Dict[str, Any]) -> str:
                     text += r["alternatives"][0].get("transcript", "")
         return text
     
+    # 🔥 v112: 如果只需要完整文本（不需要标签），直接拼接所有单词
+    if remove_speaker_labels:
+        all_text = " ".join([word_info["word"] for word_info in all_words])
+        return all_text
+    
+    # 以下是原有的带标签逻辑
     # 按说话人分组
     current_speaker = None
     segments = []
@@ -888,11 +910,13 @@ async def _transcribe_google(
     filename: str,
     language: Optional[str] = None,
     logger: Optional[TranscriptionLogger] = None,
-    enable_diarization: bool = False  # 🎙️ v110: 是否启用说话人分离
+    enable_diarization: bool = False,  # 🎙️ v110: 是否启用说话人分离
+    remove_speaker_labels: bool = False  # 🔥 v112: 是否移除说话人标签
 ) -> Tuple[str, Dict[str, Any]]:
     """
     调用 Google Cloud Speech-to-Text API 进行转录
     🎙️ v110: 支持多说话人分离（Speaker Diarization）
+    🔥 v112: 支持移除说话人标签（转录所有人但不显示标签）
     
     Args:
         audio_content: 音频内容
@@ -900,6 +924,7 @@ async def _transcribe_google(
         language: 语言代码（可选，默认自动识别）
         logger: 日志记录器
         enable_diarization: 是否启用多说话人分离
+        remove_speaker_labels: 是否移除说话人标签（True = 只返回完整文本）
     
     Returns:
         Tuple[str, dict]: (转录文本, 元数据)
@@ -908,7 +933,11 @@ async def _transcribe_google(
     
     print(f"[FALLBACK] 尝试使用 Google Cloud Speech-to-Text API")
     if enable_diarization:
-        print(f"[v110-DIARIZATION] 🎙️ 启用多说话人分离（Speaker Diarization）")
+        print(f"[v112-GOOGLE-DIARIZATION] 🎙️ 启用多说话人分离（Speaker Diarization）")
+        if remove_speaker_labels:
+            print(f"[v112-GOOGLE-DIARIZATION] ✅ 模式: 转录所有说话人，但不显示标签")
+        else:
+            print(f"[v112-GOOGLE-DIARIZATION] 📋 模式: 转录所有说话人并显示标签")
     
     # 获取访问令牌和项目 ID
     access_token = get_access_token()
@@ -932,21 +961,22 @@ async def _transcribe_google(
     if language:
         # 用户指定了语言
         config["languageCode"] = convert_language_code_for_google(language)
-        print(f"[v110-GOOGLE] 指定语言: {config['languageCode']}")
+        print(f"[v112-GOOGLE] 指定语言: {config['languageCode']}")
     else:
         # 默认使用英文+中文双语支持（自动检测）
         config["languageCode"] = "en-US"  # 主要语言
         config["alternativeLanguageCodes"] = ["zh-CN"]  # 备选中文
-        print(f"[v110-GOOGLE] 🌍 双语模式: 主语言 en-US, 备选 zh-CN（自动检测）")
+        print(f"[v112-GOOGLE] 🌍 双语模式: 主语言 en-US, 备选 zh-CN（自动检测）")
     
-    # 🎙️ v110: 添加多说话人分离配置
+    # 🎙️ v110/v112: 添加多说话人分离配置
+    # 参考文档: https://cloud.google.com/speech-to-text/v2/docs/multiple-voices
     if enable_diarization:
         config["diarizationConfig"] = {
             "enableSpeakerDiarization": True,
-            "minSpeakerCount": 1,
-            "maxSpeakerCount": 10  # 支持最多 10 个说话人
+            "minSpeakerCount": 1,  # 最少 1 个说话人
+            "maxSpeakerCount": 10  # 最多 10 个说话人
         }
-        print(f"[v110-DIARIZATION] 配置: minSpeakers=1, maxSpeakers=10")
+        print(f"[v112-GOOGLE-DIARIZATION] 配置: minSpeakers=1, maxSpeakers=10")
     
     # 构建请求体
     request_body = {
@@ -955,6 +985,9 @@ async def _transcribe_google(
             "content": audio_base64
         }
     }
+    
+    print(f"[v112-GOOGLE] 📤 发送转录请求...")
+    start_time = time.time()
     
     # 发送请求
     response = requests.post(
@@ -966,6 +999,9 @@ async def _transcribe_google(
         json=request_body,
         timeout=300  # v109: 增加超时到 5 分钟
     )
+    
+    api_time = time.time() - start_time
+    print(f"[v112-GOOGLE] ⏱️ API 响应耗时: {api_time:.2f}秒")
     
     # 检查响应
     if response.status_code != 200:
@@ -980,14 +1016,20 @@ async def _transcribe_google(
     if "results" in result and len(result["results"]) > 0:
         detected_language = result["results"][0].get("languageCode")
         if detected_language:
-            print(f"[v110-GOOGLE] 🌍 检测到的语言: {detected_language}")
+            print(f"[v112-GOOGLE] 🌍 检测到的语言: {detected_language}")
     
-    # 🎙️ v110: 处理多说话人分离结果
+    # 🎙️ v110/v112: 处理多说话人分离结果
     if enable_diarization and "results" in result:
-        print(f"[v110-DIARIZATION] 开始处理多说话人转录结果")
-        text = parse_diarization_result(result)
+        print(f"[v112-GOOGLE-DIARIZATION] 开始处理多说话人转录结果")
+        
+        # 🔥 v112: 使用新参数控制是否显示标签
+        text = parse_diarization_result(result, remove_speaker_labels=remove_speaker_labels)
         speaker_count = count_unique_speakers(result)
-        print(f"[v110-DIARIZATION] ✅ 检测到 {speaker_count} 个说话人")
+        
+        if remove_speaker_labels:
+            print(f"[v112-GOOGLE-DIARIZATION] ✅ 检测到 {speaker_count} 个说话人，已合并完整文本（无标签）")
+        else:
+            print(f"[v112-GOOGLE-DIARIZATION] ✅ 检测到 {speaker_count} 个说话人（带标签）")
     else:
         # 标准转录（无说话人分离）
         text = ""
@@ -999,12 +1041,17 @@ async def _transcribe_google(
     if not text:
         raise Exception("Google API 返回空文本")
     
+    print(f"[v112-GOOGLE] ✅ 转录成功")
+    print(f"[v112-GOOGLE] - 文本长度: {len(text)} 字符")
+    
     metadata = {
         "api": "google",
         "model": "default",
         "status_code": response.status_code,
         "diarization_enabled": enable_diarization,
-        "detected_language": detected_language  # 🌍 添加检测到的语言
+        "speaker_labels_removed": remove_speaker_labels,  # 🔥 v112: 新增标识
+        "detected_language": detected_language,  # 🌍 添加检测到的语言
+        "api_response_time": round(api_time, 2)
     }
     
     if enable_diarization:
@@ -1180,12 +1227,14 @@ async def transcribe_system_audio(
     logger: Optional[TranscriptionLogger] = None
 ) -> Tuple[str, str, Dict[str, Any]]:
     """
-    🔊 v111: 系统/混合音频转录（支持多说话人识别）
+    🔊 v112: 系统/混合音频转录（支持多说话人识别，不显示标签）
     
     优先级：
-    1️⃣ OpenAI gpt-4o-transcribe-diarize (多说话人)
-    2️⃣ Google Cloud Speech-to-Text + Diarization
+    1️⃣ OpenAI gpt-4o-transcribe-diarize (多说话人，无标签)
+    2️⃣ Google Cloud Speech-to-Text + Diarization (多说话人，无标签)
     3️⃣ Deepgram Nova-2 (备用)
+    
+    ✅ 特性：转录所有说话人的话，但不显示"Speaker A:", "Speaker B:"等标签
     
     Args:
         audio_content: 音频文件内容（字节）
@@ -1197,7 +1246,7 @@ async def transcribe_system_audio(
     Returns:
         Tuple[str, str, dict]: (转录文本, 使用的API, 元数据)
     """
-    print(f"[v111-SYSTEM] 🔊 系统/混合音频场景 → 启用多说话人识别")
+    print(f"[v112-SYSTEM] 🔊 系统/混合音频场景 → 启用多说话人识别（无标签模式）")
     errors = []
     
     # ============================================================================
@@ -1216,40 +1265,40 @@ async def transcribe_system_audio(
         API_FALLBACK_STATUS["last_successful_api"] = "openai_diarize"
         API_FALLBACK_STATUS["api_usage_count"]["openai_diarize"] += 1
         
-        print(f"[v111-SYSTEM] ✅ OpenAI Diarize 转录成功（多说话人）")
+        print(f"[v112-SYSTEM] ✅ OpenAI Diarize 转录成功（多说话人，无标签）")
         
         return text, "openai_diarize", metadata
         
     except Exception as e:
         error_msg = str(e)
         errors.append(f"OpenAI Diarize: {error_msg}")
-        print(f"[v111-SYSTEM] ❌ OpenAI Diarize 失败: {error_msg}")
+        print(f"[v112-SYSTEM] ❌ OpenAI Diarize 失败: {error_msg}")
     
     # ============================================================================
-    # 2️⃣ 尝试 Google Cloud Speech-to-Text + Diarization
+    # 2️⃣ 尝试 Google Cloud Speech-to-Text + Diarization（无标签）
     # ============================================================================
     try:
         text, metadata = await _transcribe_google(
             audio_content=audio_content,
             filename=filename,
             language=language,
-            duration=duration,
+            logger=logger,
             enable_diarization=True,  # 🎤 启用多说话人识别
-            logger=logger
+            remove_speaker_labels=True  # 🔥 v112: 不显示说话人标签
         )
         
         # 成功！更新状态
         API_FALLBACK_STATUS["last_successful_api"] = "google"
         API_FALLBACK_STATUS["api_usage_count"]["google"] += 1
         
-        print(f"[v111-SYSTEM] ✅ Google API 转录成功（多说话人）(Fallback #2)")
+        print(f"[v112-SYSTEM] ✅ Google API 转录成功（多说话人，无标签）(Fallback #2)")
         
         return text, "google", metadata
         
     except Exception as e:
         error_msg = str(e)
         errors.append(f"Google: {error_msg}")
-        print(f"[v111-SYSTEM] ❌ Google API 失败: {error_msg}")
+        print(f"[v112-SYSTEM] ❌ Google API 失败: {error_msg}")
     
     # ============================================================================
     # 3️⃣ 尝试 Deepgram Nova-2 + Diarization（备用）
@@ -1269,30 +1318,30 @@ async def transcribe_system_audio(
             API_FALLBACK_STATUS["last_successful_api"] = "deepgram"
             API_FALLBACK_STATUS["api_usage_count"]["deepgram"] += 1
             
-            print(f"[v111-SYSTEM] ✅ Deepgram Nova-2 转录成功（多说话人）(Fallback #3 - 备用)")
+            print(f"[v112-SYSTEM] ✅ Deepgram Nova-2 转录成功（多说话人）(Fallback #3 - 备用)")
             
             return text, "deepgram_nova2_chinese", metadata
             
         except Exception as e:
             error_msg = str(e)
             errors.append(f"Deepgram: {error_msg}")
-            print(f"[v111-SYSTEM] ❌ Deepgram 失败: {error_msg}")
+            print(f"[v112-SYSTEM] ❌ Deepgram 失败: {error_msg}")
             
             # 检查是否是配额问题
             if is_quota_exceeded(None, error_msg):
                 API_FALLBACK_STATUS["deepgram_quota_exceeded"] = True
                 API_FALLBACK_STATUS["deepgram_last_check"] = time.time()
-                print(f"[v111-SYSTEM] 🚨 Deepgram 配额耗尽")
+                print(f"[v112-SYSTEM] 🚨 Deepgram 配额耗尽")
     else:
-        print(f"[v111-SYSTEM] ⏭️ 跳过 Deepgram（配额已耗尽）")
+        print(f"[v112-SYSTEM] ⏭️ 跳过 Deepgram（配额已耗尽）")
         errors.append("Deepgram: 配额已耗尽，跳过")
     
     # ============================================================================
     # ❌ 所有 API 都失败
     # ============================================================================
     error_summary = " | ".join(errors)
-    print(f"[v111-SYSTEM] 💥 所有系统音频 API 都失败了")
-    print(f"[v111-SYSTEM] 错误汇总: {error_summary}")
+    print(f"[v112-SYSTEM] 💥 所有系统音频 API 都失败了")
+    print(f"[v112-SYSTEM] 错误汇总: {error_summary}")
     
     raise Exception(f"系统音频转录失败（所有 API）: {error_summary}")
 
