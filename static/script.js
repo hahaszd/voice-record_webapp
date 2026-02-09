@@ -1932,33 +1932,37 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const micSource = audioContext.createMediaStreamSource(micStream);
                 const systemSource = audioContext.createMediaStreamSource(systemStream);
                 
-                // 🔥 v101: 移除自动平衡，使用固定增益
+                // 🔥 v102: 简化连接逻辑，直接连接到destination
                 const micGain = audioContext.createGain();
                 const systemGain = audioContext.createGain();
                 
-                // 固定增益，不再调整
-                micGain.gain.value = 1.0;      // 麦克风保持原始音量
-                systemGain.gain.value = 5.0;   // 系统音频固定5x增益
+                // 固定增益
+                micGain.gain.value = 1.0;
+                systemGain.gain.value = 5.0;
                 
-                // 创建音量分析器（仅用于监控，不用于调整）
+                // 直接连接：source → gain → destination
+                micSource.connect(micGain);
+                systemSource.connect(systemGain);
+                micGain.connect(destination);
+                systemGain.connect(destination);
+                
+                console.log('[INFO] 🎚️ v102: 简化音频连接（source → gain → destination）');
+                console.log('[INFO] 麦克风增益:', micGain.gain.value, 'x');
+                console.log('[INFO] 系统音频增益:', systemGain.gain.value, 'x');
+                console.log('[DEBUG] AudioContext:', audioContext.state, '@ ', audioContext.sampleRate, 'Hz');
+                
+                combinedStream = destination.stream;
+                audioStreamsReady = true;
+                
+                // 🔥 监控：创建analyser用于诊断（不影响音频连接）
                 const micAnalyser = audioContext.createAnalyser();
                 const systemAnalyser = audioContext.createAnalyser();
                 micAnalyser.fftSize = 256;
                 systemAnalyser.fftSize = 256;
                 
-                // 连接分析器
+                // 连接analyser（仅用于监控，不影响主音频流）
                 micSource.connect(micAnalyser);
                 systemSource.connect(systemAnalyser);
-                
-                // 连接增益节点
-                micAnalyser.connect(micGain);
-                systemAnalyser.connect(systemGain);
-                micGain.connect(destination);
-                systemGain.connect(destination);
-                
-                console.log('[INFO] 🎚️ v101: 固定增益模式（无自动平衡）');
-                console.log('[INFO] 麦克风增益:', micGain.gain.value, 'x (固定)');
-                console.log('[INFO] 系统音频增益:', systemGain.gain.value, 'x (固定)');
                 
                 // 🔥 定期监控音频电平（仅用于诊断，不做调整）
                 function getAudioLevel(analyser) {
