@@ -781,10 +781,19 @@ h1.header-with-icon .header-text {
     background: white;
 }
 
-.result-copy-btn {
+/* Result Actions Container */
+.result-actions {
     position: absolute;
     top: 10px;
     right: 10px;
+    display: flex;
+    gap: 8px;
+    z-index: 5;
+}
+
+.result-copy-btn,
+.result-play-btn,
+.result-download-btn {
     width: 32px;
     height: 32px;
     padding: 0;
@@ -794,24 +803,29 @@ h1.header-with-icon .header-text {
     border-radius: 50%;
     cursor: pointer;
     transition: all 0.2s ease;
-    z-index: 5;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.result-copy-btn:hover:not(:disabled) {
+.result-copy-btn:hover:not(:disabled),
+.result-play-btn:hover:not(:disabled),
+.result-download-btn:hover:not(:disabled) {
     background: #2d3436;
     color: white;
     border-color: #2d3436;
 }
 
-.result-copy-btn:disabled {
+.result-copy-btn:disabled,
+.result-play-btn:disabled,
+.result-download-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
 
-.result-copy-btn svg {
+.result-copy-btn svg,
+.result-play-btn svg,
+.result-download-btn svg {
     width: 14px;
     height: 14px;
 }
@@ -832,6 +846,18 @@ h1.header-with-icon .header-text {
     background: #4a9eff;
     color: white;
     border-color: #4a9eff;
+}
+
+.result-play-btn.playing {
+    background: #f39c12;
+    color: white;
+    border-color: #f39c12;
+}
+
+.result-download-btn.downloading {
+    background: #3498db;
+    color: white;
+    border-color: #3498db;
 }
 
 /* History Expand Button */

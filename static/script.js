@@ -1479,6 +1479,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const resultSection = document.getElementById('resultSection');
     const transcriptionResult = document.getElementById('transcriptionResult');
     const copyBtn = document.getElementById('copyBtn');
+    const playAudioBtn = document.getElementById('playAudioBtn');
+    const downloadAudioBtn = document.getElementById('downloadAudioBtn');
     const loadingIndicator = document.getElementById('loadingIndicator');
     const autoCopyToggle = document.getElementById('autoCopyToggle');
     const autoRecordToggle = document.getElementById('autoRecordToggle');
@@ -1492,6 +1494,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const helpModal = document.getElementById('helpModal');
     const closeHelpBtn = document.getElementById('closeHelpBtn');
     const langBtns = document.querySelectorAll('.lang-btn');
+    
+    // 存储最后录制的音频
+    let lastRecordedAudioBlob = null;
+    let currentAudioPlayer = null;
     
     // 验证关键元素是否找到
     console.log('[INFO] Key elements found:', {
@@ -1758,6 +1764,93 @@ document.addEventListener('DOMContentLoaded', async () => {
             await copyToClipboardWithFeedback(text, false);
         }
     });
+    
+    // 🔥 v104: 播放音频按钮
+    if (playAudioBtn) {
+        playAudioBtn.addEventListener('click', () => {
+            if (!lastRecordedAudioBlob) {
+                console.error('[ERROR] No audio to play');
+                return;
+            }
+            
+            // 如果正在播放，停止
+            if (currentAudioPlayer && !currentAudioPlayer.paused) {
+                currentAudioPlayer.pause();
+                currentAudioPlayer.currentTime = 0;
+                playAudioBtn.classList.remove('playing');
+                playAudioBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                `;
+                return;
+            }
+            
+            // 创建音频URL并播放
+            const audioUrl = URL.createObjectURL(lastRecordedAudioBlob);
+            currentAudioPlayer = new Audio(audioUrl);
+            
+            playAudioBtn.classList.add('playing');
+            playAudioBtn.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="6" y="4" width="4" height="16"/>
+                    <rect x="14" y="4" width="4" height="16"/>
+                </svg>
+            `;
+            
+            currentAudioPlayer.play();
+            
+            currentAudioPlayer.onended = () => {
+                playAudioBtn.classList.remove('playing');
+                playAudioBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                `;
+                URL.revokeObjectURL(audioUrl);
+            };
+            
+            currentAudioPlayer.onerror = (e) => {
+                console.error('[ERROR] Audio playback failed:', e);
+                playAudioBtn.classList.remove('playing');
+                playAudioBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                `;
+            };
+        });
+    }
+    
+    // 🔥 v104: 下载音频按钮
+    if (downloadAudioBtn) {
+        downloadAudioBtn.addEventListener('click', () => {
+            if (!lastRecordedAudioBlob) {
+                console.error('[ERROR] No audio to download');
+                return;
+            }
+            
+            downloadAudioBtn.classList.add('downloading');
+            
+            const audioUrl = URL.createObjectURL(lastRecordedAudioBlob);
+            const a = document.createElement('a');
+            a.href = audioUrl;
+            
+            // 生成文件名：voicespark-YYYYMMDD-HHMMSS.wav
+            const now = new Date();
+            const dateStr = now.toISOString().slice(0, 19).replace(/[T:]/g, '-');
+            a.download = `voicespark-${dateStr}.wav`;
+            
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            setTimeout(() => {
+                URL.revokeObjectURL(audioUrl);
+                downloadAudioBtn.classList.remove('downloading');
+            }, 1000);
+        });
+    }
 
     // 获取音频流（复用已有流或创建新流）
     async function getAudioStreams() {
@@ -2629,6 +2722,17 @@ function cleanupAudioStreams(force = false) {
             console.log(`[INFO] ✅ 音频准备完成`);
             console.log(`[INFO] 音频类型: ${audioBlobToPlay.type}`);
             console.log(`[INFO] 音频大小: ${(audioBlobToPlay.size / 1024).toFixed(2)} KB`);
+            
+            // 🔥 v104: 保存音频用于播放/下载
+            lastRecordedAudioBlob = audioBlobToPlay;
+            
+            // 显示播放和下载按钮
+            if (playAudioBtn && downloadAudioBtn) {
+                playAudioBtn.style.display = 'flex';
+                downloadAudioBtn.style.display = 'flex';
+                playAudioBtn.disabled = false;
+                downloadAudioBtn.disabled = false;
+            }
             
             const frontendProcessTime = Date.now() - totalStartTime;
             console.log(`\n${'='.repeat(80)}`);
