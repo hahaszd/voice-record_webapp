@@ -402,14 +402,126 @@ def convert_language_code_for_google(lang_code: str) -> str:
     # 查找映射
     return google_lang_map.get(lang_code, f'{lang_code}-{lang_code.upper()}')
 
+
+# ================================================================================
+# 🎙️ v110: 多说话人分离辅助函数
+# ================================================================================
+
+def count_unique_speakers(result: Dict[str, Any]) -> int:
+    """
+    统计检测到的说话人数量
+    
+    Args:
+        result: Google API 返回的结果
+    
+    Returns:
+        int: 说话人数量
+    """
+    speakers = set()
+    
+    if "results" in result:
+        for r in result["results"]:
+            if "alternatives" in r and len(r["alternatives"]) > 0:
+                words = r["alternatives"][0].get("words", [])
+                for word in words:
+                    speaker_tag = word.get("speakerTag")
+                    if speaker_tag:
+                        speakers.add(speaker_tag)
+    
+    return len(speakers)
+
+
+def parse_diarization_result(result: Dict[str, Any]) -> str:
+    """
+    解析多说话人分离结果，格式化输出
+    
+    Args:
+        result: Google API 返回的结果
+    
+    Returns:
+        str: 格式化的转录文本（包含说话人标签）
+    """
+    # 收集所有 words 及其 speaker tag
+    all_words = []
+    
+    if "results" in result:
+        for r in result["results"]:
+            if "alternatives" in r and len(r["alternatives"]) > 0:
+                words = r["alternatives"][0].get("words", [])
+                for word in words:
+                    all_words.append({
+                        "word": word.get("word", ""),
+                        "speaker": word.get("speakerTag", 0),
+                        "startTime": word.get("startTime", "0s"),
+                        "endTime": word.get("endTime", "0s")
+                    })
+    
+    if not all_words:
+        # 如果没有 word-level 数据，退回到标准格式
+        text = ""
+        if "results" in result:
+            for r in result["results"]:
+                if "alternatives" in r and len(r["alternatives"]) > 0:
+                    text += r["alternatives"][0].get("transcript", "")
+        return text
+    
+    # 按说话人分组
+    current_speaker = None
+    segments = []
+    current_segment = []
+    
+    for word_info in all_words:
+        speaker = word_info["speaker"]
+        word = word_info["word"]
+        
+        if speaker != current_speaker:
+            # 说话人切换
+            if current_segment:
+                segments.append({
+                    "speaker": current_speaker,
+                    "text": " ".join(current_segment)
+                })
+            current_speaker = speaker
+            current_segment = [word]
+        else:
+            current_segment.append(word)
+    
+    # 添加最后一个 segment
+    if current_segment:
+        segments.append({
+            "speaker": current_speaker,
+            "text": " ".join(current_segment)
+        })
+    
+    # 格式化输出
+    if len(segments) == 1:
+        # 只有一个说话人，直接返回文本（不添加标签）
+        return segments[0]["text"]
+    else:
+        # 多个说话人，添加标签
+        formatted_lines = []
+        for seg in segments:
+            formatted_lines.append(f"Speaker {seg['speaker']}: {seg['text']}")
+        return "\n".join(formatted_lines)
+
+
 async def _transcribe_google(
     audio_content: bytes,
     filename: str,
     language: Optional[str] = None,
-    logger: Optional[TranscriptionLogger] = None
+    logger: Optional[TranscriptionLogger] = None,
+    enable_diarization: bool = False  # 🎙️ v110: 是否启用说话人分离
 ) -> Tuple[str, Dict[str, Any]]:
     """
     调用 Google Cloud Speech-to-Text API 进行转录
+    🎙️ v110: 支持多说话人分离（Speaker Diarization）
+    
+    Args:
+        audio_content: 音频内容
+        filename: 文件名
+        language: 语言代码（可选，默认自动识别）
+        logger: 日志记录器
+        enable_diarization: 是否启用多说话人分离
     
     Returns:
         Tuple[str, dict]: (转录文本, 元数据)
@@ -417,7 +529,8 @@ async def _transcribe_google(
     from server2 import get_access_token, get_project_id
     
     print(f"[FALLBACK] 尝试使用 Google Cloud Speech-to-Text API")
-    print(f"[v108-TEST] 🔴 强制使用英文模式（测试中文效果）")
+    if enable_diarization:
+        print(f"[v110-DIARIZATION] 🎙️ 启用多说话人分离（Speaker Diarization）")
     
     # 获取访问令牌和项目 ID
     access_token = get_access_token()
@@ -429,23 +542,39 @@ async def _transcribe_google(
     # 编码音频
     audio_base64 = base64.b64encode(audio_content).decode('utf-8')
     
-    # 构建请求体 - v108: 强制英文（用于测试中文效果）
+    # 构建基础配置
+    config = {
+        "encoding": "LINEAR16",
+        "sampleRateHertz": 48000,
+        "enableAutomaticPunctuation": True,
+        "model": "default"
+    }
+    
+    # 🌍 语言设置（自动识别或指定）
+    if language:
+        config["languageCode"] = convert_language_code_for_google(language)
+        print(f"[v110-GOOGLE] 指定语言: {config['languageCode']}")
+    else:
+        # 默认自动识别（不指定 languageCode）
+        # Google API 会自动检测语言
+        print(f"[v110-GOOGLE] 使用自动语言识别")
+    
+    # 🎙️ v110: 添加多说话人分离配置
+    if enable_diarization:
+        config["diarizationConfig"] = {
+            "enableSpeakerDiarization": True,
+            "minSpeakerCount": 1,
+            "maxSpeakerCount": 10  # 支持最多 10 个说话人
+        }
+        print(f"[v110-DIARIZATION] 配置: minSpeakers=1, maxSpeakers=10")
+    
+    # 构建请求体
     request_body = {
-        "config": {
-            "encoding": "LINEAR16",
-            "sampleRateHertz": 48000,
-            "languageCode": "en-US",  # v108: 强制英文
-            "enableAutomaticPunctuation": True,
-            "model": "default"
-        },
+        "config": config,
         "audio": {
             "content": audio_base64
         }
     }
-    
-    # v108: 忽略传入的 language 参数，始终使用英文
-    # if language:
-    #     request_body["config"]["languageCode"] = convert_language_code_for_google(language)
     
     # 发送请求
     response = requests.post(
@@ -466,12 +595,19 @@ async def _transcribe_google(
     # 解析响应
     result = response.json()
     
-    # 提取转录文本
-    text = ""
-    if "results" in result and len(result["results"]) > 0:
-        for r in result["results"]:
-            if "alternatives" in r and len(r["alternatives"]) > 0:
-                text += r["alternatives"][0].get("transcript", "")
+    # 🎙️ v110: 处理多说话人分离结果
+    if enable_diarization and "results" in result:
+        print(f"[v110-DIARIZATION] 开始处理多说话人转录结果")
+        text = parse_diarization_result(result)
+        speaker_count = count_unique_speakers(result)
+        print(f"[v110-DIARIZATION] ✅ 检测到 {speaker_count} 个说话人")
+    else:
+        # 标准转录（无说话人分离）
+        text = ""
+        if "results" in result and len(result["results"]) > 0:
+            for r in result["results"]:
+                if "alternatives" in r and len(r["alternatives"]) > 0:
+                    text += r["alternatives"][0].get("transcript", "")
     
     if not text:
         raise Exception("Google API 返回空文本")
@@ -479,8 +615,12 @@ async def _transcribe_google(
     metadata = {
         "api": "google",
         "model": "default",
-        "status_code": response.status_code
+        "status_code": response.status_code,
+        "diarization_enabled": enable_diarization
     }
+    
+    if enable_diarization:
+        metadata["speaker_count"] = count_unique_speakers(result)
     
     return text, metadata
 
@@ -622,7 +762,8 @@ async def transcribe_with_fallback(
     # ============================================================================
     try:
         text, metadata = await _transcribe_google(
-            audio_content, filename, language, logger
+            audio_content, filename, language, logger,
+            enable_diarization=False  # fallback 链中默认不启用 diarization
         )
         
         # 成功！更新状态
@@ -647,6 +788,63 @@ async def transcribe_with_fallback(
     # ============================================================================
     all_errors = " | ".join(errors)
     raise Exception(f"所有转录 API 均失败: {all_errors}")
+
+
+# ================================================================================
+# 🎙️ v110: Google-Only 转录（用于系统音频/混合音频）
+# ================================================================================
+
+async def transcribe_google_only(
+    audio_content: bytes,
+    filename: str,
+    language: Optional[str] = None,
+    duration: Optional[int] = None,
+    logger: Optional[TranscriptionLogger] = None
+) -> Tuple[str, str, Dict[str, Any]]:
+    """
+    仅使用 Google API 进行转录，启用多说话人分离
+    
+    用于系统音频或混合音频场景（需要识别多个说话人）
+    
+    Args:
+        audio_content: 音频文件内容（字节）
+        filename: 文件名
+        language: 语言代码（可选）
+        duration: 音频时长（秒，可选）
+        logger: 日志记录器（可选）
+    
+    Returns:
+        Tuple[str, str, dict]: (转录文本, 使用的API, 元数据)
+    """
+    print(f"[v110-ROUTING] 🎙️ 强制使用 Google API（多说话人支持）")
+    
+    try:
+        # 调用 Google API，启用多说话人分离
+        text, metadata = await _transcribe_google(
+            audio_content=audio_content,
+            filename=filename,
+            language=language,
+            logger=logger,
+            enable_diarization=True  # 🎙️ 启用多说话人分离
+        )
+        
+        # 成功！更新状态
+        API_FALLBACK_STATUS["last_successful_api"] = "google"
+        API_FALLBACK_STATUS["api_usage_count"]["google"] += 1
+        
+        print(f"[v110-ROUTING] ✅ Google API 转录成功（多说话人）")
+        
+        return text, "google", metadata
+        
+    except Exception as e:
+        error_msg = str(e)
+        
+        if logger:
+            logger.log_error("API_GOOGLE_FAILED", f"Google API 失败: {error_msg}")
+        
+        print(f"[v110-ROUTING] ❌ Google API 失败: {error_msg}")
+        
+        raise Exception(f"Google API 转录失败: {error_msg}")
 
 
 # ================================================================================

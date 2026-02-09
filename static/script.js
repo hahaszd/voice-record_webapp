@@ -2808,6 +2808,9 @@ function cleanupAudioStreams(force = false) {
             
             formData.append('audio_file', audioToTranscribe, filename);
             formData.append('duration', String(requestedDuration));
+            // 🎙️ v110: 传递音频源信息（用于智能 API 路由）
+            formData.append('audio_source', currentAudioSource || 'microphone');
+            console.log(`[v110-ROUTING] 📤 发送音频源信息: ${currentAudioSource || 'microphone'}`);
             
             // 发送到服务器
             console.log(`[INFO] 发送转录请求到服务器...`);
