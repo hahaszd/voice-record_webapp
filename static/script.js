@@ -1479,8 +1479,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const resultSection = document.getElementById('resultSection');
     const transcriptionResult = document.getElementById('transcriptionResult');
     const copyBtn = document.getElementById('copyBtn');
-    const playAudioBtn = document.getElementById('playAudioBtn');
-    const downloadAudioBtn = document.getElementById('downloadAudioBtn');
+    // 🔥 v112: 注释掉调试用的按钮定义
+    // const playAudioBtn = document.getElementById('playAudioBtn');
+    // const downloadAudioBtn = document.getElementById('downloadAudioBtn');
     const loadingIndicator = document.getElementById('loadingIndicator');
     const autoCopyToggle = document.getElementById('autoCopyToggle');
     const autoRecordToggle = document.getElementById('autoRecordToggle');
@@ -1765,6 +1766,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
     
+    // 🔥 v112: 隐藏调试用的播放和下载按钮
+    // 以下代码已注释掉
+    /*
     // 🔥 v104: 播放音频按钮
     if (playAudioBtn) {
         playAudioBtn.addEventListener('click', () => {
@@ -1821,7 +1825,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
         });
     }
+    */
     
+    // 🔥 v112: 隐藏调试用的下载按钮（已在 HTML 中注释掉）
+    /*
     // 🔥 v104: 下载音频按钮
     if (downloadAudioBtn) {
         downloadAudioBtn.addEventListener('click', () => {
@@ -1851,6 +1858,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }, 1000);
         });
     }
+    */
 
     // 获取音频流（复用已有流或创建新流）
     async function getAudioStreams() {
@@ -2726,13 +2734,13 @@ function cleanupAudioStreams(force = false) {
             // 🔥 v104: 保存音频用于播放/下载
             lastRecordedAudioBlob = audioBlobToPlay;
             
-            // 显示播放和下载按钮
-            if (playAudioBtn && downloadAudioBtn) {
-                playAudioBtn.style.display = 'flex';
-                downloadAudioBtn.style.display = 'flex';
-                playAudioBtn.disabled = false;
-                downloadAudioBtn.disabled = false;
-            }
+            // 🔥 v112: 隐藏调试用的播放和下载按钮（已在 HTML 中注释掉）
+            // if (playAudioBtn && downloadAudioBtn) {
+            //     playAudioBtn.style.display = 'flex';
+            //     downloadAudioBtn.style.display = 'flex';
+            //     playAudioBtn.disabled = false;
+            //     downloadAudioBtn.disabled = false;
+            // }
             
             const frontendProcessTime = Date.now() - totalStartTime;
             console.log(`\n${'='.repeat(80)}`);
