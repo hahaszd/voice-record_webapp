@@ -171,6 +171,7 @@ async def _transcribe_ai_builder(
         raise Exception("AI_BUILDER_TOKEN 未配置")
     
     print(f"[FALLBACK] 尝试使用 AI Builder Space API")
+    print(f"[v108-TEST] 🔴 强制使用英文模式（测试中文效果）")
     
     # 准备请求
     api_url = f"{AI_BUILDER_API_BASE}/audio/transcriptions"
@@ -180,15 +181,16 @@ async def _transcribe_ai_builder(
         'audio_file': (filename, audio_content, 'audio/wav')
     }
     
-    # 🔥 添加 language 参数 - v107: 默认自动识别
+    # 🔥 添加 language 参数 - v108: 强制英文（用于测试中文效果）
     form_data = {
         'model': 'whisper-1',
-        'response_format': 'json'
+        'response_format': 'json',
+        'language': 'en'  # 强制英文
     }
     
-    # 只有明确指定语言时才添加 language 参数
-    if language:
-        form_data['language'] = language
+    # v108: 忽略传入的 language 参数，始终使用英文
+    # if language:
+    #     form_data['language'] = language
     
     # 发送请求
     response = requests.post(
@@ -245,6 +247,7 @@ async def _transcribe_openai(
         raise Exception("OPENAI_API_KEY 未配置")
     
     print(f"[FALLBACK] 尝试使用 OpenAI Whisper API")
+    print(f"[v108-TEST] 🔴 强制使用英文模式（测试中文效果）")
     
     # OpenAI API endpoint
     api_url = "https://api.openai.com/v1/audio/transcriptions"
@@ -256,12 +259,13 @@ async def _transcribe_openai(
     
     data = {
         'model': 'whisper-1',
-        'response_format': 'json'
+        'response_format': 'json',
+        'language': 'en'  # v108: 强制英文（用于测试中文效果）
     }
     
-    # 只有明确指定语言时才添加 language 参数
-    if language:
-        data['language'] = language
+    # v108: 忽略传入的 language 参数，始终使用英文
+    # if language:
+    #     data['language'] = language
     
     # 发送请求
     response = requests.post(
@@ -373,6 +377,7 @@ async def _transcribe_google(
     from server2 import get_access_token, get_project_id
     
     print(f"[FALLBACK] 尝试使用 Google Cloud Speech-to-Text API")
+    print(f"[v108-TEST] 🔴 强制使用英文模式（测试中文效果）")
     
     # 获取访问令牌和项目 ID
     access_token = get_access_token()
@@ -384,11 +389,12 @@ async def _transcribe_google(
     # 编码音频
     audio_base64 = base64.b64encode(audio_content).decode('utf-8')
     
-    # 构建请求体
+    # 构建请求体 - v108: 强制英文（用于测试中文效果）
     request_body = {
         "config": {
             "encoding": "LINEAR16",
             "sampleRateHertz": 48000,
+            "languageCode": "en-US",  # v108: 强制英文
             "enableAutomaticPunctuation": True,
             "model": "default"
         },
@@ -397,9 +403,9 @@ async def _transcribe_google(
         }
     }
     
-    # 只有明确指定语言时才添加 languageCode - v107: 自动识别
-    if language:
-        request_body["config"]["languageCode"] = convert_language_code_for_google(language)
+    # v108: 忽略传入的 language 参数，始终使用英文
+    # if language:
+    #     request_body["config"]["languageCode"] = convert_language_code_for_google(language)
     
     # 发送请求
     response = requests.post(
