@@ -970,13 +970,14 @@ async def _transcribe_google(
     
     # 🎙️ v110/v112: 添加多说话人分离配置
     # 参考文档: https://cloud.google.com/speech-to-text/v2/docs/multiple-voices
+    # 🔥 v112: 优化为 maxSpeakers=6（YouTube 视频很少超过 6 人，更准确）
     if enable_diarization:
         config["diarizationConfig"] = {
             "enableSpeakerDiarization": True,
             "minSpeakerCount": 1,  # 最少 1 个说话人
-            "maxSpeakerCount": 10  # 最多 10 个说话人
+            "maxSpeakerCount": 6   # 🔥 最多 6 个说话人（优化准确率）
         }
-        print(f"[v112-GOOGLE-DIARIZATION] 配置: minSpeakers=1, maxSpeakers=10")
+        print(f"[v112-GOOGLE-DIARIZATION] 配置: minSpeakers=1, maxSpeakers=6（优化准确率）")
     
     # 构建请求体
     request_body = {
