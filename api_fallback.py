@@ -550,14 +550,15 @@ async def _transcribe_google(
         "model": "default"
     }
     
-    # 🌍 语言设置（自动识别或指定）
+    # 🌍 语言设置
     if language:
         config["languageCode"] = convert_language_code_for_google(language)
         print(f"[v110-GOOGLE] 指定语言: {config['languageCode']}")
     else:
-        # 默认自动识别（不指定 languageCode）
-        # Google API 会自动检测语言
-        print(f"[v110-GOOGLE] 使用自动语言识别")
+        # 默认使用 en-US（Google API 必须指定 languageCode）
+        # 注意：Google API 不支持完全省略 languageCode
+        config["languageCode"] = "en-US"
+        print(f"[v110-GOOGLE] 使用默认语言: en-US")
     
     # 🎙️ v110: 添加多说话人分离配置
     if enable_diarization:
