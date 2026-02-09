@@ -300,13 +300,11 @@ async def _transcribe_deepgram(
         
         # 记录日志
         if logger:
-            logger.log_api_call(
-                api_name="deepgram_nova3_multilingual",
-                status="success",
-                response_time=api_time,
-                audio_duration=duration,
-                text_length=len(transcription_text),
-                metadata=metadata
+            logger.log_api_response(
+                status_code=200,
+                response_headers={},
+                response_body={"text": transcription_text, "metadata": metadata},
+                duration_seconds=api_time
             )
         
         # 更新全局状态
@@ -321,11 +319,9 @@ async def _transcribe_deepgram(
         
         # 记录失败日志
         if logger:
-            logger.log_api_call(
-                api_name="deepgram_nova3_multilingual",
-                status="error",
-                error_message=error_msg,
-                audio_duration=duration
+            logger.log_error(
+                error_type="DEEPGRAM_API_ERROR",
+                error_message=error_msg
             )
         
         raise Exception(f"Deepgram API 转录失败: {error_msg}")
@@ -437,6 +433,7 @@ async def _transcribe_openai(
     audio_content: bytes,
     filename: str,
     language: Optional[str] = None,
+    duration: Optional[int] = None,  # 🆕 v111: 添加 duration 参数
     logger: Optional[TranscriptionLogger] = None
 ) -> Tuple[str, Dict[str, Any]]:
     """
