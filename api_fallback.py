@@ -1,16 +1,17 @@
 """
 API Fallback Module for Speech-to-Text
-🔥 v111: 引入 Deepgram Nova-3 Multilingual 作为主力 API
+🔥 v111: 优化 API 优先级策略
 
 优先级策略：
 麦克风场景：
-1. Deepgram Nova-3 Multilingual - $0.0077/min
-2. AI Builder Space (OpenAI Whisper) - 免费 $100
-3. OpenAI Whisper API - $0.006/min
+1. AI Builder Space (OpenAI Whisper) - 免费 $100
+2. OpenAI Whisper API - $0.006/min
+3. Deepgram Nova-2 - $0.0077/min (备用)
 
 系统/混合场景：
-1. Deepgram Nova-3 Multilingual - $0.0077/min + Diarization
+1. OpenAI gpt-4o-transcribe-diarize - 多说话人识别
 2. Google Cloud Speech-to-Text - $0.016/min + Diarization
+3. Deepgram Nova-2 - $0.0077/min (备用)
 """
 
 import os
@@ -30,14 +31,15 @@ API_FALLBACK_STATUS = {
     "ai_builder_last_check": None,
     "openai_quota_exceeded": False,
     "openai_last_check": None,
-    "deepgram_quota_exceeded": False,  # 🆕 v111: Deepgram
+    "deepgram_quota_exceeded": False,  # v111: Deepgram
     "deepgram_last_check": None,
-    "last_successful_api": "deepgram",  # 🆕 v111: Deepgram 为主力
+    "last_successful_api": "ai_builder",  # v111: 回到 AI Builder 为主力
     "api_usage_count": {
-        "deepgram": 0,  # 🆕 v111: Deepgram
         "ai_builder": 0,
         "openai": 0,
-        "google": 0
+        "deepgram": 0,  # v111: Deepgram
+        "google": 0,
+        "openai_diarize": 0  # v111: OpenAI 多说话人模型
     }
 }
 
@@ -167,7 +169,155 @@ def should_retry_api(api_name: str) -> bool:
 
 
 # ================================================================================
-# 🆕 v111: API 调用函数 - Deepgram Nova-3 Multilingual
+# 🆕 v111: API 调用函数 - OpenAI gpt-4o-transcribe-diarize (多说话人)
+# ================================================================================
+
+async def _transcribe_openai_diarize(
+    audio_content: bytes,
+    filename: str,
+    language: Optional[str] = None,
+    duration: Optional[int] = None,
+    logger: Optional[TranscriptionLogger] = None
+) -> Tuple[str, Dict[str, Any]]:
+    """
+    调用 OpenAI gpt-4o-transcribe-diarize 进行多说话人转录
+    
+    特点：
+    - 原生多说话人识别（Speaker Diarization）
+    - 支持中英文混合
+    - 返回带说话人标签的文本
+    
+    Args:
+        audio_content: 音频文件的二进制内容
+        filename: 音频文件名
+        language: 语言代码（可选）
+        duration: 音频时长（秒）
+        logger: 日志记录器
+    
+    Returns:
+        Tuple[str, dict]: (转录文本, 元数据)
+    """
+    openai_api_key = os.environ.get("OPENAI_API_KEY")
+    
+    if not openai_api_key:
+        raise Exception("OPENAI_API_KEY 未配置")
+    
+    print(f"[v111-OPENAI-DIARIZE] 🎤 开始调用 OpenAI gpt-4o-transcribe-diarize（多说话人识别）")
+    print(f"[v111-OPENAI-DIARIZE] - 文件名: {filename}")
+    print(f"[v111-OPENAI-DIARIZE] - 音频大小: {len(audio_content) / 1024:.2f} KB")
+    if duration:
+        print(f"[v111-OPENAI-DIARIZE] - 时长: {duration}秒")
+    
+    # OpenAI API endpoint
+    api_url = "https://api.openai.com/v1/audio/transcriptions"
+    
+    # 准备请求
+    files = {
+        'file': (filename, audio_content, 'audio/wav')
+    }
+    
+    data = {
+        'model': 'gpt-4o-transcribe-diarize',
+        'response_format': 'json',  # 返回 JSON 格式
+        'chunking_strategy': 'auto',  # 自动分段（音频>30秒时必需）
+    }
+    
+    # 如果指定了语言，添加语言参数
+    if language:
+        data['language'] = language
+        print(f"[v111-OPENAI-DIARIZE] 指定语言: {language}")
+    else:
+        print(f"[v111-OPENAI-DIARIZE] 🌍 使用自动语言识别")
+    
+    print(f"[v111-OPENAI-DIARIZE] 📤 发送转录请求...")
+    start_time = time.time()
+    
+    # 发送请求
+    response = requests.post(
+        api_url,
+        headers={
+            "Authorization": f"Bearer {openai_api_key}"
+        },
+        files=files,
+        data=data,
+        timeout=300
+    )
+    
+    api_time = time.time() - start_time
+    print(f"[v111-OPENAI-DIARIZE] ⏱️ API 响应耗时: {api_time:.2f}秒")
+    
+    # 检查响应
+    if response.status_code != 200:
+        error_msg = f"OpenAI Diarize API 错误 [{response.status_code}]: {response.text}"
+        raise Exception(error_msg)
+    
+    # 解析响应
+    result = response.json()
+    
+    # 提取转录文本和说话人信息
+    if 'segments' in result and result['segments']:
+        print(f"[v111-OPENAI-DIARIZE] 🎤 检测到多说话人信息")
+        
+        # 统计说话人数量
+        speakers = set()
+        for segment in result['segments']:
+            if 'speaker' in segment:
+                speakers.add(segment['speaker'])
+        
+        print(f"[v111-OPENAI-DIARIZE] - 检测到 {len(speakers)} 个说话人")
+        
+        # 格式化带说话人标签的文本
+        formatted_segments = []
+        for segment in result['segments']:
+            speaker = segment.get('speaker', 'Unknown')
+            text = segment.get('text', '')
+            formatted_segments.append(f"{speaker}: {text}")
+        
+        transcription_text = "\n".join(formatted_segments)
+        print(f"[v111-OPENAI-DIARIZE] ✅ 已格式化多说话人文本")
+        
+        metadata = {
+            "api": "openai_diarize",
+            "model": "gpt-4o-transcribe-diarize",
+            "num_speakers": len(speakers),
+            "num_segments": len(result['segments']),
+            "api_response_time": round(api_time, 2),
+            "status_code": response.status_code
+        }
+    else:
+        # 没有 segments，使用普通文本
+        transcription_text = result.get('text', '')
+        if not transcription_text:
+            raise Exception("OpenAI Diarize API 返回空文本")
+        
+        metadata = {
+            "api": "openai_diarize",
+            "model": "gpt-4o-transcribe-diarize",
+            "api_response_time": round(api_time, 2),
+            "status_code": response.status_code
+        }
+    
+    print(f"[v111-OPENAI-DIARIZE] ✅ 转录成功")
+    print(f"[v111-OPENAI-DIARIZE] - 文本长度: {len(transcription_text)} 字符")
+    
+    # 记录日志
+    if logger:
+        logger.log_api_response(
+            status_code=200,
+            response_headers={},
+            response_body={"text": transcription_text, "metadata": metadata},
+            duration_seconds=api_time
+        )
+    
+    # 更新全局状态
+    API_FALLBACK_STATUS["api_usage_count"]["openai_diarize"] += 1
+    API_FALLBACK_STATUS["last_successful_api"] = "openai_diarize"
+    
+    return transcription_text, metadata
+
+
+# ================================================================================
+# 🆕 v111: API 调用函数 - Deepgram Nova-2 (备用)
 # ================================================================================
 
 async def _transcribe_deepgram(
@@ -878,9 +1028,9 @@ async def transcribe_with_fallback(
     🎤 v111: 麦克风场景智能 fallback 转录
     
     优先级：
-    1️⃣ Deepgram Nova-3 Multilingual
-    2️⃣ AI Builder Space (OpenAI Whisper)
-    3️⃣ OpenAI Whisper API
+    1️⃣ AI Builder Space (OpenAI Whisper)
+    2️⃣ OpenAI Whisper API
+    3️⃣ Deepgram Nova-2 (备用)
     
     Args:
         audio_content: 音频文件内容（字节）
@@ -901,45 +1051,7 @@ async def transcribe_with_fallback(
     print(f"[v111-DEBUG] 时长: {duration}")
     
     # ============================================================================
-    # 🆕 v111: 1️⃣ 尝试 Deepgram Nova-3 Multilingual（主力）
-    # ============================================================================
-    print(f"[v111-DEBUG] 检查 Deepgram 是否可用...")
-    deepgram_should_retry = should_retry_api("deepgram")
-    print(f"[v111-DEBUG] should_retry_api('deepgram') = {deepgram_should_retry}")
-    
-    if deepgram_should_retry:
-        print(f"[v111-DEBUG] ✅ 开始尝试 Deepgram API...")
-        try:
-            text, metadata = await _transcribe_deepgram(
-                audio_content, filename, language, duration, 
-                enable_diarization=False,  # 麦克风场景不需要多说话人识别
-                logger=logger
-            )
-            
-            print(f"[v111-FALLBACK] ✅ Deepgram Nova-3 转录成功")
-            print(f"[v111-DEBUG] 返回文本长度: {len(text)}")
-            return text, "deepgram_nova3_multilingual", metadata
-            
-        except Exception as e:
-            error_msg = str(e)
-            errors.append(f"Deepgram: {error_msg}")
-            print(f"[v111-FALLBACK] ❌ Deepgram 失败: {error_msg}")
-            print(f"[v111-DEBUG] Deepgram 异常详情: {type(e).__name__}: {e}")
-            import traceback
-            print(f"[v111-DEBUG] Deepgram 堆栈跟踪:\n{traceback.format_exc()}")
-            
-            # 检查是否是配额问题
-            if is_quota_exceeded(None, error_msg):
-                API_FALLBACK_STATUS["deepgram_quota_exceeded"] = True
-                API_FALLBACK_STATUS["deepgram_last_check"] = time.time()
-                print(f"[v111-FALLBACK] 🚨 Deepgram 配额耗尽，切换到下一个 API")
-    else:
-        print(f"[v111-FALLBACK] ⏭️ 跳过 Deepgram（配额已耗尽）")
-        print(f"[v111-DEBUG] Deepgram quota_exceeded: {API_FALLBACK_STATUS['deepgram_quota_exceeded']}")
-        errors.append("Deepgram: 配额已耗尽，跳过")
-    
-    # ============================================================================
-    # 2️⃣ 尝试 AI Builder Space
+    # 1️⃣ 尝试 AI Builder Space
     # ============================================================================
     print(f"[v111-DEBUG] 检查 AI Builder 是否可用...")
     ai_builder_should_retry = should_retry_api("ai_builder")
@@ -952,7 +1064,7 @@ async def transcribe_with_fallback(
                 audio_content, filename, language, duration, logger
             )
             
-            print(f"[v111-FALLBACK] ✅ AI Builder Space 转录成功 (Fallback #2)")
+            print(f"[v111-FALLBACK] ✅ AI Builder Space 转录成功")
             print(f"[v111-DEBUG] 返回文本长度: {len(text)}")
             return text, "ai_builder", metadata
             
@@ -975,7 +1087,7 @@ async def transcribe_with_fallback(
         errors.append("AI Builder: 配额已耗尽，跳过")
     
     # ============================================================================
-    # 3️⃣ 尝试 OpenAI Whisper API（最后手段）
+    # 2️⃣ 尝试 OpenAI Whisper API
     # ============================================================================
     print(f"[v111-DEBUG] 检查 OpenAI 是否可用...")
     openai_should_retry = should_retry_api("openai")
@@ -988,10 +1100,50 @@ async def transcribe_with_fallback(
                 audio_content, filename, language, duration, logger
             )
             
-            print(f"[v111-FALLBACK] ✅ OpenAI Whisper 转录成功 (Fallback #3 - 最后手段)")
+            print(f"[v111-FALLBACK] ✅ OpenAI Whisper 转录成功 (Fallback #2)")
             print(f"[v111-DEBUG] 返回文本长度: {len(text)}")
-            print(f"[v111-DEBUG] ⚠️⚠️⚠️ 警告：使用了最后一个 fallback！前面两个都失败了！")
             return text, "openai_whisper", metadata
+            
+        except Exception as e:
+            error_msg = str(e)
+            errors.append(f"OpenAI: {error_msg}")
+            print(f"[v111-FALLBACK] ❌ OpenAI Whisper 失败: {error_msg}")
+            
+            # 检查是否是配额问题
+            if is_quota_exceeded(None, error_msg):
+                API_FALLBACK_STATUS["openai_quota_exceeded"] = True
+                API_FALLBACK_STATUS["openai_last_check"] = time.time()
+    else:
+        print(f"[v111-FALLBACK] ⏭️ 跳过 OpenAI（配额已耗尽）")
+        errors.append("OpenAI: 配额已耗尽，跳过")
+    
+    # ============================================================================
+    # 3️⃣ 尝试 Deepgram Nova-2（备用）
+    # ============================================================================
+    print(f"[v111-DEBUG] 检查 Deepgram 是否可用...")
+    deepgram_should_retry = should_retry_api("deepgram")
+    print(f"[v111-DEBUG] should_retry_api('deepgram') = {deepgram_should_retry}")
+    
+    if deepgram_should_retry:
+        print(f"[v111-DEBUG] ✅ 开始尝试 Deepgram API (Fallback #3 - 备用)...")
+        try:
+            text, metadata = await _transcribe_deepgram(
+                audio_content, filename, language, duration, 
+                enable_diarization=False,  # 麦克风场景不需要多说话人识别
+                logger=logger
+            )
+            
+            print(f"[v111-FALLBACK] ✅ Deepgram Nova-2 转录成功 (Fallback #3 - 备用)")
+            print(f"[v111-DEBUG] 返回文本长度: {len(text)}")
+            return text, "deepgram_nova2_chinese", metadata
+            
+        except Exception as e:
+            error_msg = str(e)
+            errors.append(f"Deepgram: {error_msg}")
+            print(f"[v111-FALLBACK] ❌ Deepgram 失败: {error_msg}")
+            print(f"[v111-DEBUG] Deepgram 异常详情: {type(e).__name__}: {e}")
+            import traceback
+            print(f"[v111-DEBUG] Deepgram 堆栈跟踪:\n{traceback.format_exc()}")
             
         except Exception as e:
             error_msg = str(e)
@@ -1031,8 +1183,9 @@ async def transcribe_system_audio(
     🔊 v111: 系统/混合音频转录（支持多说话人识别）
     
     优先级：
-    1️⃣ Deepgram Nova-3 Multilingual + Diarization
+    1️⃣ OpenAI gpt-4o-transcribe-diarize (多说话人)
     2️⃣ Google Cloud Speech-to-Text + Diarization
+    3️⃣ Deepgram Nova-2 (备用)
     
     Args:
         audio_content: 音频文件内容（字节）
@@ -1048,40 +1201,29 @@ async def transcribe_system_audio(
     errors = []
     
     # ============================================================================
-    # 1️⃣ 尝试 Deepgram Nova-3 Multilingual + Diarization
+    # 1️⃣ 尝试 OpenAI gpt-4o-transcribe-diarize（主力）
     # ============================================================================
-    if should_retry_api("deepgram"):
-        try:
-            text, metadata = await _transcribe_deepgram(
-                audio_content=audio_content,
-                filename=filename,
-                language=language,
-                duration=duration,
-                enable_diarization=True,  # 🎤 启用多说话人识别
-                logger=logger
-            )
-            
-            # 成功！更新状态
-            API_FALLBACK_STATUS["last_successful_api"] = "deepgram"
-            API_FALLBACK_STATUS["api_usage_count"]["deepgram"] += 1
-            
-            print(f"[v111-SYSTEM] ✅ Deepgram Nova-3 转录成功（多说话人）")
-            
-            return text, "deepgram_nova3_multilingual", metadata
-            
-        except Exception as e:
-            error_msg = str(e)
-            errors.append(f"Deepgram: {error_msg}")
-            print(f"[v111-SYSTEM] ❌ Deepgram 失败: {error_msg}")
-            
-            # 检查是否是配额问题
-            if is_quota_exceeded(None, error_msg):
-                API_FALLBACK_STATUS["deepgram_quota_exceeded"] = True
-                API_FALLBACK_STATUS["deepgram_last_check"] = time.time()
-                print(f"[v111-SYSTEM] 🚨 Deepgram 配额耗尽，切换到 Google")
-    else:
-        print(f"[v111-SYSTEM] ⏭️ 跳过 Deepgram（配额已耗尽）")
-        errors.append("Deepgram: 配额已耗尽，跳过")
+    try:
+        text, metadata = await _transcribe_openai_diarize(
+            audio_content=audio_content,
+            filename=filename,
+            language=language,
+            duration=duration,
+            logger=logger
+        )
+        
+        # 成功！更新状态
+        API_FALLBACK_STATUS["last_successful_api"] = "openai_diarize"
+        API_FALLBACK_STATUS["api_usage_count"]["openai_diarize"] += 1
+        
+        print(f"[v111-SYSTEM] ✅ OpenAI Diarize 转录成功（多说话人）")
+        
+        return text, "openai_diarize", metadata
+        
+    except Exception as e:
+        error_msg = str(e)
+        errors.append(f"OpenAI Diarize: {error_msg}")
+        print(f"[v111-SYSTEM] ❌ OpenAI Diarize 失败: {error_msg}")
     
     # ============================================================================
     # 2️⃣ 尝试 Google Cloud Speech-to-Text + Diarization
@@ -1100,18 +1242,50 @@ async def transcribe_system_audio(
         API_FALLBACK_STATUS["last_successful_api"] = "google"
         API_FALLBACK_STATUS["api_usage_count"]["google"] += 1
         
-        print(f"[v111-SYSTEM] ✅ Google API 转录成功（多说话人）")
+        print(f"[v111-SYSTEM] ✅ Google API 转录成功（多说话人）(Fallback #2)")
         
         return text, "google", metadata
         
     except Exception as e:
         error_msg = str(e)
         errors.append(f"Google: {error_msg}")
-        
-        if logger:
-            logger.log_error("API_SYSTEM_ALL_FAILED", f"系统音频 API 全部失败")
-        
         print(f"[v111-SYSTEM] ❌ Google API 失败: {error_msg}")
+    
+    # ============================================================================
+    # 3️⃣ 尝试 Deepgram Nova-2 + Diarization（备用）
+    # ============================================================================
+    if should_retry_api("deepgram"):
+        try:
+            text, metadata = await _transcribe_deepgram(
+                audio_content=audio_content,
+                filename=filename,
+                language=language,
+                duration=duration,
+                enable_diarization=True,  # 🎤 启用多说话人识别
+                logger=logger
+            )
+            
+            # 成功！更新状态
+            API_FALLBACK_STATUS["last_successful_api"] = "deepgram"
+            API_FALLBACK_STATUS["api_usage_count"]["deepgram"] += 1
+            
+            print(f"[v111-SYSTEM] ✅ Deepgram Nova-2 转录成功（多说话人）(Fallback #3 - 备用)")
+            
+            return text, "deepgram_nova2_chinese", metadata
+            
+        except Exception as e:
+            error_msg = str(e)
+            errors.append(f"Deepgram: {error_msg}")
+            print(f"[v111-SYSTEM] ❌ Deepgram 失败: {error_msg}")
+            
+            # 检查是否是配额问题
+            if is_quota_exceeded(None, error_msg):
+                API_FALLBACK_STATUS["deepgram_quota_exceeded"] = True
+                API_FALLBACK_STATUS["deepgram_last_check"] = time.time()
+                print(f"[v111-SYSTEM] 🚨 Deepgram 配额耗尽")
+    else:
+        print(f"[v111-SYSTEM] ⏭️ 跳过 Deepgram（配额已耗尽）")
+        errors.append("Deepgram: 配额已耗尽，跳过")
     
     # ============================================================================
     # ❌ 所有 API 都失败
