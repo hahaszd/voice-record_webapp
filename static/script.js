@@ -1987,39 +1987,41 @@ document.addEventListener('DOMContentLoaded', async () => {
                         return;
                     }
                     
-                    // 🔥 新策略：直接计算目标增益
+                    // 🔥 v98: 改进的平衡策略 - 让系统音频和麦克风音量相当
                     if (systemActive && micActive) {
                         const currentRatio = systemLevel / micLevel;
-                        const targetRatio = 0.85;
+                        const targetRatio = 1.0;  // 🔥 改为1.0，让系统音频和麦克风相等
                         
-                        // 计算需要的增益调整
-                        const idealSystemGain = (micLevel * targetRatio) / systemLevel * systemGain.gain.value;
-                        
-                        // 限制增益范围：0.5x - 20.0x（扩大上限）
-                        const newSystemGain = Math.max(0.5, Math.min(20.0, idealSystemGain));
-                        
-                        // 🔥 立即跳转到目标增益（不再渐进）
-                        const gainChange = Math.abs(newSystemGain - systemGain.gain.value);
-                        
-                        // 只在变化显著时才调整（避免频繁微调）
-                        if (gainChange > 0.1) {
-                            systemGain.gain.value = newSystemGain;
-                            console.log('[BALANCE-AGGRESSIVE] 调整系统增益至:', newSystemGain.toFixed(2), 'x (比例:', currentRatio.toFixed(2), '→', (systemLevel * newSystemGain / systemGain.gain.value / micLevel).toFixed(2), ')');
+                        // 只有在差距明显时才调整（容差0.3，避免频繁变化）
+                        if (Math.abs(currentRatio - targetRatio) > 0.3) {
+                            // 计算需要的增益调整
+                            const idealSystemGain = (micLevel * targetRatio) / systemLevel * systemGain.gain.value;
                             
-                            adjustmentHistory.push({
-                                time: Date.now(),
-                                micLevel: micLevel.toFixed(3),
-                                systemLevel: systemLevel.toFixed(3),
-                                ratio: currentRatio.toFixed(3),
-                                newGain: newSystemGain.toFixed(2)
-                            });
+                            // 🔥 限制增益范围：3.0x - 20.0x（提高下限，防止系统音频太小）
+                            const newSystemGain = Math.max(3.0, Math.min(20.0, idealSystemGain));
+                            
+                            const gainChange = Math.abs(newSystemGain - systemGain.gain.value);
+                            
+                            // 只在变化显著时才调整（避免频繁微调）
+                            if (gainChange > 0.1) {
+                                systemGain.gain.value = newSystemGain;
+                                console.log('[BALANCE] 调整系统增益至:', newSystemGain.toFixed(2), 'x (比例:', currentRatio.toFixed(2), '→', targetRatio.toFixed(2), ', 麦克风:', (micLevel*100).toFixed(1), '%, 系统:', (systemLevel*100).toFixed(1), '%)');
+                                
+                                adjustmentHistory.push({
+                                    time: Date.now(),
+                                    micLevel: micLevel.toFixed(3),
+                                    systemLevel: systemLevel.toFixed(3),
+                                    ratio: currentRatio.toFixed(3),
+                                    newGain: newSystemGain.toFixed(2)
+                                });
+                            }
                         }
                     }
-                    // 只有系统音频，提升到最大
+                    // 只有系统音频，适度提升（如果电平太低）
                     else if (systemActive && !micActive) {
-                        if (systemLevel < 0.3 && systemGain.gain.value < 15.0) {
+                        if (systemLevel < 0.15 && systemGain.gain.value < 20.0) {
                             systemGain.gain.value = Math.min(20.0, systemGain.gain.value * 1.3);
-                            console.log('[BALANCE-BOOST] 只有系统音频，提升至:', systemGain.gain.value.toFixed(2), 'x');
+                            console.log('[BOOST] 只有系统音频，提升至:', systemGain.gain.value.toFixed(2), 'x (电平:', (systemLevel*100).toFixed(1), '%)');
                         }
                     }
                     
