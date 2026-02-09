@@ -209,53 +209,61 @@ async def _transcribe_deepgram(
         raise Exception("DEEPGRAM_API_KEY 未配置")
     
     try:
-        print(f"[v111-DEEPGRAM-DEBUG] 尝试导入 deepgram SDK...")
-        try:
-            # 尝试 SDK v5.x 的新导入方式
-            from deepgram import DeepgramClient
-            from deepgram.clients.prerecorded.v1 import PrerecordedOptions
-            print(f"[v111-DEEPGRAM-DEBUG] ✅ 使用 SDK v5.x 导入方式")
-        except ImportError:
-            # 回退到旧版本导入方式
-            from deepgram import DeepgramClient, PrerecordedOptions
-            print(f"[v111-DEEPGRAM-DEBUG] ✅ 使用旧版 SDK 导入方式")
-        print(f"[v111-DEEPGRAM-DEBUG] ✅ deepgram SDK 导入成功")
+        print(f"[v111-DEEPGRAM-DEBUG] 使用 REST API 直接调用 Deepgram")
         
         print(f"[v111-DEEPGRAM] 🚀 开始调用 Deepgram Nova-3 Multilingual API")
         print(f"[v111-DEEPGRAM] - 文件名: {filename}")
         print(f"[v111-DEEPGRAM] - 音频大小: {len(audio_content) / 1024:.2f} KB")
         if duration:
             print(f"[v111-DEEPGRAM] - 时长: {duration}秒")
-        print(f"[v111-DEEPGRAM] - 多说话人识别: {'✅ 启用' if enable_diarization else '❌ 禁用'}")
+        print(f"[v111-DEEPGRAM] - 多说话人识别: {'启用' if enable_diarization else '禁用'}")
         
-        # 初始化 Deepgram 客户端
-        deepgram = DeepgramClient(DEEPGRAM_API_KEY)
+        # 使用 REST API 直接调用
+        api_url = "https://api.deepgram.com/v1/listen"
         
-        # 配置转录选项
-        options = PrerecordedOptions(
-            model="nova-3",  # Nova-3 最新模型
-            language="multi",  # Multilingual 多语言模式
-            smart_format=True,  # 智能格式化（标点、大小写）
-            punctuate=True,  # 添加标点
-            diarize=enable_diarization,  # 多说话人识别
-            paragraphs=True,  # 段落分割
-        )
+        # 构建查询参数
+        params = {
+            "model": "nova-2",  # 使用 nova-2（更稳定）
+            "smart_format": "true",
+            "punctuate": "true",
+            "paragraphs": "true",
+        }
+        
+        if enable_diarization:
+            params["diarize"] = "true"
+        
+        headers = {
+            "Authorization": f"Token {DEEPGRAM_API_KEY}",
+            "Content-Type": "audio/wav"
+        }
         
         print(f"[v111-DEEPGRAM] 📤 发送转录请求...")
         start_time = time.time()
         
-        # 调用 Deepgram API
-        response = deepgram.listen.rest.v("1").transcribe_file(
-            {"buffer": audio_content},
-            options
+        # 发送请求
+        response = requests.post(
+            api_url,
+            headers=headers,
+            params=params,
+            data=audio_content,
+            timeout=300
         )
         
         api_time = time.time() - start_time
         print(f"[v111-DEEPGRAM] ⏱️ API 响应耗时: {api_time:.2f}秒")
         
+        if response.status_code != 200:
+            error_msg = f"Deepgram API 错误 [{response.status_code}]: {response.text}"
+            raise Exception(error_msg)
+        
         # 解析响应
-        result = response.results.channels[0].alternatives[0]
-        transcription_text = result.transcript
+        result = response.json()
+        
+        # 提取转录文本
+        try:
+            transcription_text = result['results']['channels'][0]['alternatives'][0]['transcript']
+        except (KeyError, IndexError) as e:
+            raise Exception(f"无法解析 Deepgram 响应: {e}")
         
         if not transcription_text or not transcription_text.strip():
             raise Exception("Deepgram 返回空转录结果")
@@ -265,53 +273,57 @@ async def _transcribe_deepgram(
         
         # 提取元数据
         metadata = {
-            "api": "deepgram_nova3_multilingual",
-            "model": "nova-3",
-            "language_mode": "multilingual",
-            "confidence": result.confidence if hasattr(result, 'confidence') else None,
+            "api": "deepgram_nova2",
+            "model": "nova-2",
             "api_response_time": round(api_time, 2),
             "audio_duration": duration,
             "diarization_enabled": enable_diarization,
         }
         
         # 如果启用了多说话人识别，处理说话人标签
-        if enable_diarization and hasattr(result, 'words') and result.words:
-            print(f"[v111-DEEPGRAM] 🎤 检测到多说话人信息")
-            speakers = set()
-            for word in result.words:
-                if hasattr(word, 'speaker'):
-                    speakers.add(word.speaker)
-            
-            if len(speakers) > 1:
-                print(f"[v111-DEEPGRAM] - 检测到 {len(speakers)} 个说话人")
-                metadata["num_speakers"] = len(speakers)
-                
-                # 格式化带说话人标签的文本
-                formatted_text = []
-                current_speaker = None
-                current_text = []
-                
-                for word in result.words:
-                    if hasattr(word, 'speaker'):
-                        if current_speaker is None:
-                            current_speaker = word.speaker
-                        elif word.speaker != current_speaker:
-                            # 切换说话人
-                            if current_text:
-                                formatted_text.append(f"Speaker {current_speaker}: {' '.join(current_text)}")
-                            current_speaker = word.speaker
-                            current_text = []
+        if enable_diarization:
+            try:
+                words = result['results']['channels'][0]['alternatives'][0].get('words', [])
+                if words:
+                    print(f"[v111-DEEPGRAM] 🎤 检测到多说话人信息")
+                    speakers = set()
+                    for word in words:
+                        if 'speaker' in word:
+                            speakers.add(word['speaker'])
                     
-                    if hasattr(word, 'punctuated_word'):
-                        current_text.append(word.punctuated_word)
-                
-                # 添加最后一个说话人的文本
-                if current_text:
-                    formatted_text.append(f"Speaker {current_speaker}: {' '.join(current_text)}")
-                
-                if formatted_text:
-                    transcription_text = "\n".join(formatted_text)
-                    print(f"[v111-DEEPGRAM] ✅ 已格式化多说话人文本")
+                    if len(speakers) > 1:
+                        print(f"[v111-DEEPGRAM] - 检测到 {len(speakers)} 个说话人")
+                        metadata["num_speakers"] = len(speakers)
+                        
+                        # 格式化带说话人标签的文本
+                        formatted_text = []
+                        current_speaker = None
+                        current_text = []
+                        
+                        for word in words:
+                            word_speaker = word.get('speaker')
+                            word_text = word.get('punctuated_word', word.get('word', ''))
+                            
+                            if current_speaker is None:
+                                current_speaker = word_speaker
+                            elif word_speaker != current_speaker:
+                                # 切换说话人
+                                if current_text:
+                                    formatted_text.append(f"Speaker {current_speaker}: {' '.join(current_text)}")
+                                current_speaker = word_speaker
+                                current_text = []
+                            
+                            current_text.append(word_text)
+                        
+                        # 添加最后一个说话人的文本
+                        if current_text:
+                            formatted_text.append(f"Speaker {current_speaker}: {' '.join(current_text)}")
+                        
+                        if formatted_text:
+                            transcription_text = "\n".join(formatted_text)
+                            print(f"[v111-DEEPGRAM] ✅ 已格式化多说话人文本")
+            except Exception as e:
+                print(f"[v111-DEEPGRAM] ⚠️ 多说话人处理失败: {e}")
         
         # 记录日志
         if logger:
