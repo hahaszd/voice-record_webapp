@@ -748,16 +748,16 @@ async def transcribe_segment(
     audio_file: UploadFile = File(...),
     duration: int = 60,
     needs_segmentation: str = None,
-    language: str = None  # 🌍 v105: 添加语言参数
+    language: str = None  # 🌍 v107: 语言参数（保留但默认自动识别）
 ):
     """
     转录音频片段（用于录音界面的转录功能）
     🔥 v96: 使用智能 API fallback 系统
-    🌍 v105: 支持自定义转录语言
+    🌍 v107: 默认自动识别语言（不指定语言）
     
     - **audio_file**: 上传的音频文件
     - **duration**: 音频时长（秒），用于信息显示
-    - **language**: 转录语言代码（如 'en', 'zh', 'es' 等），默认为 'en'
+    - **language**: 转录语言代码（如 'en', 'zh'），默认为 None（自动识别）
     
     返回转录结果
     """
@@ -809,7 +809,7 @@ async def transcribe_segment(
             transcription_text, api_used, metadata = await transcribe_with_fallback(
                 audio_content=audio_content,
                 filename=filename,
-                language=language or 'en',  # 🌍 v105: 使用前端传来的语言参数，默认英文
+                language=language,  # 🌍 v107: 默认 None（自动识别），也可以前端指定
                 duration=duration,
                 logger=logger
             )

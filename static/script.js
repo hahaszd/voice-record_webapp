@@ -1515,7 +1515,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // 当前选择的音频源
     let selectedAudioSource = 'microphone'; // 默认麦克风
-    let selectedLanguage = 'en'; // 默认英文
     const clearHistoryBtn = document.getElementById('clearHistoryBtn');
     const historyList = document.getElementById('historyList');
     
@@ -2809,12 +2808,10 @@ function cleanupAudioStreams(force = false) {
             
             formData.append('audio_file', audioToTranscribe, filename);
             formData.append('duration', String(requestedDuration));
-            formData.append('language', selectedLanguage); // 🌍 v105: 添加语言参数
             
             // 发送到服务器
             console.log(`[INFO] 发送转录请求到服务器...`);
             console.log(`[PERF] 文件大小: ${(audioToTranscribe.size / 1024 / 1024).toFixed(2)} MB`);
-            console.log(`[INFO] 转录语言: ${selectedLanguage}`);
             const uploadStartTime = Date.now();
             const requestStartTime = Date.now();
             const response = await fetch('/transcribe-segment', {
@@ -3419,27 +3416,6 @@ function cleanupAudioStreams(force = false) {
             }
         }
     });
-    
-    // ============================================
-    // 🌍 语言选择器事件监听
-    // ============================================
-    const languageSelect = document.getElementById('languageSelect');
-    if (languageSelect) {
-        languageSelect.addEventListener('change', () => {
-            selectedLanguage = languageSelect.value;
-            console.log('[INFO] 转录语言已切换:', selectedLanguage);
-            
-            // 📊 Google Analytics - 语言切换
-            if (typeof gtag !== 'undefined') {
-                gtag('event', 'language_changed', {
-                    'event_category': 'Settings',
-                    'event_label': `Changed to ${selectedLanguage}`,
-                    'language': selectedLanguage,
-                    'environment': gaEnvironment
-                });
-            }
-        });
-    }
     
     // 初始化完成标记
     console.log('[INFO] ✅ All event listeners registered successfully');
