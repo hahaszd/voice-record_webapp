@@ -224,6 +224,7 @@ async def _transcribe_deepgram(
         # 构建查询参数
         params = {
             "model": "nova-2",  # 使用 nova-2（更稳定）
+            "detect_language": "true",  # 🌍 自动检测语言（支持中文、英文等）
             "smart_format": "true",
             "punctuate": "true",
             "paragraphs": "true",
@@ -231,6 +232,8 @@ async def _transcribe_deepgram(
         
         if enable_diarization:
             params["diarize"] = "true"
+        
+        print(f"[v111-DEEPGRAM] 🌍 语言检测: 自动检测（支持中文、英文等多语言）")
         
         headers = {
             "Authorization": f"Token {DEEPGRAM_API_KEY}",
