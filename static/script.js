@@ -2886,82 +2886,21 @@ function cleanupAudioStreams(force = false) {
                     
                     // 如果开启了自动复制，则自动复制到剪贴板
                     if (autoCopyToggle.checked) {
+                        // 🔥 v104: 简化自动复制逻辑，统一使用 performAutoCopy
+                        console.log('[INFO] Auto-copy enabled, preparing to copy...');
+                        
+                        // 先将文本存储为 pending，然后调用统一的复制函数
+                        pendingAutoCopyText = result.text;
+                        
                         // 检查页面是否可见
                         if (document.hidden) {
-                            // 页面不可见，存储待复制文本，等用户返回时复制
-                            console.log('[INFO] Page hidden, storing text for pending auto-copy');
-                            pendingAutoCopyText = result.text;
+                            // 页面不可见，等待用户返回时自动触发（window.focus 事件）
+                            console.log('[INFO] Page hidden, text stored for auto-copy when page gains focus');
                         } else {
-                            // 页面可见，延迟一下确保页面有焦点（特别是移动端）
+                            // 页面可见，立即执行复制（统一使用 performAutoCopy）
                             setTimeout(async () => {
-                                try {
-                                    await navigator.clipboard.writeText(result.text);
-                                    console.log('[INFO] ✅ Auto-copy successful');
-                                    
-                                    // 📊 Google Analytics - 自动复制成功
-                                    if (typeof gtag !== 'undefined') {
-                                        gtag('event', 'auto_copy_success', {
-                                            'event_category': 'AutoCopy',
-                                            'event_label': 'Auto-copy successful (page visible)',
-                                            'text_length': result.text.length,
-                                            'environment': gaEnvironment
-                                        });
-                                    }
-                                    
-                                    // 显示复制成功提示
-                                    copyBtn.classList.add('success');
-                                    copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-                                    setTimeout(() => {
-                                        copyBtn.classList.remove('success');
-                                        copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-                                    }, 2000);
-                                } catch (err) {
-                                    // 如果剪贴板API失败，可能是文档失去焦点
-                                    if (err.message.includes('Document is not focused')) {
-                                        console.warn('[WARNING] ⚠️ Auto-copy failed (document not focused), will retry when page gains focus');
-                                        // 存储为待复制文本，等用户下次激活页面时复制
-                                        pendingAutoCopyText = result.text;
-                                        return;
-                                    }
-                                    
-                                    // Safari fallback: 使用 textarea 选择+复制方法
-                                    console.warn('[WARNING] Clipboard API failed, trying fallback method:', err.message);
-                                    
-                                    try {
-                                        // 创建临时 textarea
-                                        const textArea = document.createElement('textarea');
-                                        textArea.value = result.text;
-                                        textArea.style.position = 'fixed';
-                                        textArea.style.top = '-9999px';
-                                        textArea.style.left = '-9999px';
-                                        textArea.setAttribute('readonly', '');
-                                        document.body.appendChild(textArea);
-                                        
-                                        // 选择并复制
-                                        textArea.select();
-                                        textArea.setSelectionRange(0, 99999); // For mobile devices
-                                        
-                                        const successful = document.execCommand('copy');
-                                        document.body.removeChild(textArea);
-                                        
-                                        if (successful) {
-                                            console.log('[INFO] ✅ Auto-copy successful (fallback method)');
-                                            copyBtn.classList.add('success');
-                                            copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-                                            setTimeout(() => {
-                                                copyBtn.classList.remove('success');
-                                                copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-                                            }, 2000);
-                                        } else {
-                                            console.warn('[WARNING] ⚠️ Auto-copy fallback failed (user can copy manually)');
-                                            // 不显示错误提示，用户可以手动复制
-                                        }
-                                    } catch (fallbackErr) {
-                                        console.warn('[WARNING] ⚠️ Auto-copy fallback exception:', fallbackErr.message);
-                                        // 不显示错误提示，用户可以手动复制
-                                    }
-                                }
-                            }, 300); // 延迟300ms，确保页面有焦点
+                                await performAutoCopy('transcription_completed');
+                            }, 300); // 短暂延迟确保 UI 更新完成
                         }
                     }
                     
