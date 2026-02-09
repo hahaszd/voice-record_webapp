@@ -157,6 +157,13 @@ def get_ai_builder_token():
 # 获取 AI Builder Token（如果未配置，会在使用时给出明确错误）
 AI_BUILDER_TOKEN = get_ai_builder_token()
 
+# v111: 获取 Deepgram API Key
+DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
+if not DEEPGRAM_API_KEY:
+    print("[v111-CONFIG] WARNING: DEEPGRAM_API_KEY not configured, Deepgram service will be unavailable")
+else:
+    print("[v111-CONFIG] SUCCESS: DEEPGRAM_API_KEY configured")
+
 
 class NameRequest(BaseModel):
     name: str
@@ -766,7 +773,7 @@ async def transcribe_segment(
     """
     import datetime
     import traceback
-    from api_fallback import transcribe_with_fallback, transcribe_google_only, get_api_status
+    from api_fallback import transcribe_with_fallback, transcribe_system_audio, get_api_status
     
     # 初始化日志记录器
     logger = TranscriptionLogger("transcribe-segment-fallback")
@@ -820,8 +827,8 @@ async def transcribe_segment(
         try:
             # 🎙️ v110: 根据音频源选择 API 策略
             if use_google_only:
-                # 系统音频/混合：强制 Google API（支持多说话人）
-                transcription_text, api_used, metadata = await transcribe_google_only(
+                # 系统音频/混合：Deepgram Nova-3 + Google API（支持多说话人）
+                transcription_text, api_used, metadata = await transcribe_system_audio(
                     audio_content=audio_content,
                     filename=filename,
                     language=language,
