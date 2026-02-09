@@ -596,11 +596,18 @@ function sendTranscriptionNotification(text) {
             silent: false // 播放声音
         });
         
-        // 点击通知时聚焦到页面
+        // 点击通知时聚焦到页面并触发自动复制
         notification.onclick = function() {
-            console.log('[INFO] 用户点击了通知，聚焦页面');
+            console.log('[INFO] 用户点击了通知，聚焦页面并触发自动复制');
             window.focus();
             notification.close();
+            
+            // 🔥 v113: 点击通知后，延迟触发自动复制
+            // 等待页面完全获得焦点后再执行
+            setTimeout(async () => {
+                console.log('[NOTIFICATION] Triggering auto-copy after notification click');
+                await performAutoCopy('notification_click');
+            }, 500); // 给500ms让窗口完全激活
         };
         
         // 5秒后自动关闭

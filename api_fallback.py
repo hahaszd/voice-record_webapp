@@ -386,22 +386,27 @@ async def _transcribe_deepgram(
         # 使用 REST API 直接调用
         api_url = "https://api.deepgram.com/v1/listen"
         
-        # 🌍 使用 Nova-2 多语言模式（支持中英文混合）
-        # Nova-3 的 multilingual 模式不包含中文
-        # Nova-2 multilingual 支持：Spanish + English, 中文需要单独指定
-        # 最佳策略：使用 zh-CN 作为主语言，Nova-2 会自动处理英文单词
+        # 🌍 使用 Nova-2 支持自动语言识别或指定语言
+        # Nova-2 支持多种语言，可以自动检测或指定语言代码
         params = {
             "model": "nova-2",
-            "language": "zh-CN",  # 主语言：中文（会自动处理夹杂的英文）
             "smart_format": "true",
             "punctuate": "true",
             "paragraphs": "true",
         }
         
+        # 🔥 v113: 支持自动语言识别
+        if language:
+            # 用户指定了语言，使用指定语言
+            params["language"] = language
+            print(f"[v113-DEEPGRAM] 指定语言: {language}")
+        else:
+            # 不指定语言，让Deepgram自动检测（推荐）
+            # Deepgram Nova-2 支持自动语言检测
+            print(f"[v113-DEEPGRAM] 🌍 使用自动语言识别")
+        
         if enable_diarization:
             params["diarize"] = "true"
-        
-        print(f"[v111-DEEPGRAM] 🌍 模型: Nova-2 中文模式（自动处理夹杂的英文单词）")
         
         headers = {
             "Authorization": f"Token {DEEPGRAM_API_KEY}",
