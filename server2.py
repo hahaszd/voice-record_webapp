@@ -94,13 +94,15 @@ async def favicon():
 @app.get("/robots.txt")
 async def robots():
     """返回robots.txt"""
-    return FileResponse("static/robots.txt", media_type="text/plain")
+    robots_path = os.path.join("static", "robots.txt")
+    return FileResponse(robots_path, media_type="text/plain")
 
 # SEO: sitemap.xml
 @app.get("/sitemap.xml")
 async def sitemap():
     """返回sitemap.xml"""
-    return FileResponse("static/sitemap.xml", media_type="application/xml")
+    sitemap_path = os.path.join("static", "sitemap.xml")
+    return FileResponse(sitemap_path, media_type="application/xml")
 
 # 首先定义根路由，返回录音界面（必须在其他路由之前）
 @app.get("/")
