@@ -117,6 +117,32 @@ async def sitemap():
         return Response(content='<?xml version="1.0" encoding="UTF-8"?><urlset></urlset>', 
                        media_type="application/xml", status_code=404)
 
+# SEO: About page
+@app.get("/about.html")
+async def about():
+    """返回About页面"""
+    from fastapi.responses import HTMLResponse
+    about_path = os.path.join("static", "about.html")
+    if os.path.exists(about_path):
+        with open(about_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return HTMLResponse(content=content)
+    else:
+        return HTMLResponse(content="<h1>Page Not Found</h1>", status_code=404)
+
+# SEO: FAQ page
+@app.get("/faq.html")
+async def faq():
+    """返回FAQ页面"""
+    from fastapi.responses import HTMLResponse
+    faq_path = os.path.join("static", "faq.html")
+    if os.path.exists(faq_path):
+        with open(faq_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return HTMLResponse(content=content)
+    else:
+        return HTMLResponse(content="<h1>Page Not Found</h1>", status_code=404)
+
 # 首先定义根路由，返回录音界面（必须在其他路由之前）
 @app.get("/")
 async def root():
