@@ -94,15 +94,28 @@ async def favicon():
 @app.get("/robots.txt")
 async def robots():
     """返回robots.txt"""
+    from fastapi.responses import PlainTextResponse
     robots_path = os.path.join("static", "robots.txt")
-    return FileResponse(robots_path, media_type="text/plain")
+    if os.path.exists(robots_path):
+        with open(robots_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return PlainTextResponse(content=content)
+    else:
+        return PlainTextResponse(content="User-agent: *\nAllow: /", status_code=404)
 
 # SEO: sitemap.xml
 @app.get("/sitemap.xml")
 async def sitemap():
     """返回sitemap.xml"""
+    from fastapi.responses import Response
     sitemap_path = os.path.join("static", "sitemap.xml")
-    return FileResponse(sitemap_path, media_type="application/xml")
+    if os.path.exists(sitemap_path):
+        with open(sitemap_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return Response(content=content, media_type="application/xml")
+    else:
+        return Response(content='<?xml version="1.0" encoding="UTF-8"?><urlset></urlset>', 
+                       media_type="application/xml", status_code=404)
 
 # 首先定义根路由，返回录音界面（必须在其他路由之前）
 @app.get("/")
