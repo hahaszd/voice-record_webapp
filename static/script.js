@@ -2702,8 +2702,27 @@ function cleanupAudioStreams(force = false) {
                 return;
             }
             
+            // 🔥 检查chunks数量和时间范围
+            if (chunksToUse.length < 5) {
+                console.warn(`[WARN] Chunks数量过少 (${chunksToUse.length})，音频可能不完整`);
+                const timestamps = chunksToUse.map(c => c.timestamp);
+                const timeRange = Math.max(...timestamps) - Math.min(...timestamps);
+                if (timeRange < 500) {
+                    alert('录音时间太短（少于0.5秒），请录制至少1秒的音频后再转录');
+                    return;
+                }
+            }
+            
             // 创建音频blob
             const audioBlob = new Blob(chunksToUse.map(c => c.data), { type: recordedMimeType });
+            
+            // 🔥 检查音频大小
+            const minSizeKB = 10; // 最小10KB
+            if (audioBlob.size < minSizeKB * 1024) {
+                console.error(`[ERROR] 音频文件过小 (${(audioBlob.size / 1024).toFixed(2)} KB < ${minSizeKB} KB)`);
+                alert(`录音数据不足（${(audioBlob.size / 1024).toFixed(2)} KB），请确保已正确录音至少1秒`);
+                return;
+            }
             
             console.log(`[INFO] 音频 Blob:`);
             console.log(`  - 大小: ${(audioBlob.size / 1024).toFixed(2)} KB`);
