@@ -2571,7 +2571,13 @@ function cleanupAudioStreams(force = false) {
             const defaultDuration = parseInt(activeDurationBtn.dataset.duration);
             console.log(`[INFO] 检测到转录时长: ${defaultDuration}秒，自动开始转录`);
             
-            // 立即开始转录
+            // 🔥 关键修复：等待500ms确保IndexedDB写入完成
+            // MediaRecorder的最后一个dataavailable事件需要时间处理
+            console.log('[INFO] 等待500ms确保所有音频数据写入IndexedDB...');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            console.log('[INFO] 等待完成，开始转录');
+            
+            // 开始转录
             generateAndPlayAudio(defaultDuration);
             
             // 如果自动录音开启，立即开始新录音
