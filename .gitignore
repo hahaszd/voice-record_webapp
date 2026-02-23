@@ -52,6 +52,7 @@ service-account*.json
 
 # AI Builder config with API keys
 aibuilder_config.json
+deploy-config.json
 
 # Database
 *.db
