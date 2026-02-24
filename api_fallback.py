@@ -28,6 +28,43 @@ import requests
 from typing import Tuple, Dict, Any, Optional
 from logging_helper import TranscriptionLogger
 
+
+def get_audio_content_type(filename: str) -> str:
+    """根据文件名推断正确的音频 MIME 类型"""
+    name = (filename or '').lower()
+    if name.endswith('.mp4') or name.endswith('.m4a'):
+        return 'audio/mp4'
+    elif name.endswith('.webm'):
+        return 'audio/webm'
+    elif name.endswith('.mp3'):
+        return 'audio/mpeg'
+    elif name.endswith('.flac'):
+        return 'audio/flac'
+    elif name.endswith('.wav'):
+        return 'audio/wav'
+    else:
+        return 'audio/wav'
+
+
+def detect_google_encoding(audio_content: bytes, filename: str) -> tuple:
+    """
+    根据音频内容和文件名检测 Google STT 所需的编码格式。
+    返回 (encoding, sample_rate_hertz)，sample_rate_hertz 为 None 时不设置该字段。
+    """
+    # 通过文件头字节检测格式
+    if len(audio_content) >= 12:
+        if audio_content[:4] == b'RIFF' and audio_content[8:12] == b'WAVE':
+            return ('LINEAR16', 48000)
+        elif audio_content[:4] in (b'\x1aE\xdf\xa3', b'\x1a\x45\xdf\xa3'):
+            return ('WEBM_OPUS', None)  # WEBM_OPUS 不需要指定采样率
+    # fallback：根据文件名判断
+    name = (filename or '').lower()
+    if name.endswith('.webm'):
+        return ('WEBM_OPUS', None)
+    elif name.endswith('.mp3'):
+        return ('MP3', None)
+    return ('LINEAR16', 48000)
+
 # ================================================================================
 # 全局状态管理（服务器重启后重置）
 # ================================================================================
@@ -220,7 +257,7 @@ async def _transcribe_openai_diarize(
     
     # 准备请求
     files = {
-        'file': (filename, audio_content, 'audio/wav')
+        'file': (filename, audio_content, get_audio_content_type(filename))
     }
     
     # 🔥 v112: 使用 diarized_json 格式以获取完整的多说话人转录
@@ -572,7 +609,7 @@ async def _transcribe_ai_builder(
     
     # 🔥 AI Builder Space 使用 'audio_file' 作为字段名（不是 'file'）
     files = {
-        'audio_file': (filename, audio_content, 'audio/wav')
+        'audio_file': (filename, audio_content, get_audio_content_type(filename))
     }
     
     # 🔧 v109: 添加 prompt 参数，解决内容截断问题
@@ -669,7 +706,7 @@ async def _transcribe_openai(
     
     # 准备请求
     files = {
-        'file': (filename, audio_content, 'audio/wav')
+        'file': (filename, audio_content, get_audio_content_type(filename))
     }
     
     # 🔧 v109: 添加 prompt 参数
@@ -954,13 +991,18 @@ async def _transcribe_google(
     # 编码音频
     audio_base64 = base64.b64encode(audio_content).decode('utf-8')
     
+    # 自动检测编码格式（支持 WAV/LINEAR16 和 WebM/WEBM_OPUS）
+    google_encoding, sample_rate = detect_google_encoding(audio_content, filename)
+    print(f"[GOOGLE-STT] 检测到编码格式: {google_encoding}" + (f", 采样率: {sample_rate}Hz" if sample_rate else "（采样率自动检测）"))
+    
     # 构建基础配置
     config = {
-        "encoding": "LINEAR16",
-        "sampleRateHertz": 48000,
+        "encoding": google_encoding,
         "enableAutomaticPunctuation": True,
         "model": "default"
     }
+    if sample_rate:
+        config["sampleRateHertz"] = sample_rate
     
     # 🌍 语言设置（支持英文+中文双语自动检测）
     if language:

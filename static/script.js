@@ -2332,16 +2332,16 @@ function cleanupAudioStreams(force = false) {
             stream = await getAudioStreams();
             
             // 使用 MediaRecorder API
-            const options = {
-                mimeType: 'audio/webm;codecs=opus'
-            };
-            
-            // 如果不支持 webm，尝试其他格式
-            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                options.mimeType = 'audio/webm';
-                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                    options.mimeType = 'audio/mp4';
-                }
+            // 优先 AAC/MP4 64kbps（文件小、上传快），Firefox 不支持时 fallback 到 WebM/Opus
+            let options = {};
+            if (MediaRecorder.isTypeSupported('audio/mp4;codecs=aac')) {
+                options = { mimeType: 'audio/mp4;codecs=aac', audioBitsPerSecond: 64000 };
+            } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                options = { mimeType: 'audio/mp4', audioBitsPerSecond: 64000 };
+            } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                options = { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 64000 };
+            } else {
+                options = { mimeType: 'audio/webm', audioBitsPerSecond: 64000 };
             }
             
             mediaRecorder = new MediaRecorder(stream, options);
@@ -2735,68 +2735,12 @@ function cleanupAudioStreams(force = false) {
             console.log(`  - 类型: ${audioBlob.type}`);
             console.log(`  - Chunks数量: ${chunksToUse.length}`);
             
-            // 生成可播放的音频文件
-            // 策略：尝试解码WebM并转换为WAV格式
-            let audioBlobToPlay;
-            let decodedDuration = 0;
+            // 直接使用原始录音格式上传（AAC/MP4 或 WebM/Opus），无需转换为 WAV
+            // 录音时已设置 64kbps，5分钟录音仅约 2-5 MB，远低于服务器 30MB 限制
+            const audioToTranscribe = audioBlob;
             
-            // 首先尝试解码WebM以获取实际时长和验证格式
-            const decodeStart = Date.now();
-            try {
-                console.log(`[INFO] 尝试解码WebM验证格式完整性`);
-                const arrayBuffer = await audioBlob.arrayBuffer();
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
-                decodedDuration = audioBuffer.duration;
-                await audioContext.close();
-                const decodeTime = Date.now() - decodeStart;
-                console.log(`[INFO] ✅ WebM格式验证成功，实际音频时长: ${decodedDuration.toFixed(2)}秒`);
-                console.log(`[PERF] 音频解码耗时: ${decodeTime}ms`);
-            } catch (decodeError) {
-                console.error(`[ERROR] WebM解码失败: ${decodeError.name} - ${decodeError.message}`);
-                throw new Error(`音频格式损坏或不完整: ${decodeError.message}`);
-            }
-            
-            // 确定要提取的时长（根据用户选择的时长，但不超过实际录音时长）
-            const targetDuration = Math.min(decodedDuration, requestedDuration);
-            console.log(`[INFO] 请求时长: ${requestedDuration}秒，实际时长: ${decodedDuration.toFixed(2)}秒，目标时长: ${targetDuration.toFixed(2)}秒`);
-            
-            // 尝试提取目标时长并转换为WAV
-            const extractStart = Date.now();
-            try {
-                console.log(`[INFO] 尝试提取 ${targetDuration.toFixed(2)}秒音频并转换为WAV`);
-                audioBlobToPlay = await extractAudioSegment(audioBlob, targetDuration);
-                const extractTime = Date.now() - extractStart;
-                console.log(`[INFO] ✅ 成功提取并转换音频为WAV，时长: ${targetDuration.toFixed(2)}秒`);
-                console.log(`[PERF] 音频提取转换耗时: ${extractTime}ms`);
-            } catch (extractError) {
-                console.error('[ERROR] 提取音频失败:', extractError.message);
-                // 如果提取失败，尝试直接转换整个WebM到WAV
-                try {
-                    console.log(`[INFO] 尝试直接转换整个WebM到WAV`);
-                    const wavBlob = await convertWebMToWAV(audioBlob);
-                    
-                    // 如果转换成功，但需要截取指定时长
-                    if (decodedDuration > requestedDuration) {
-                        console.log(`[INFO] WAV转换成功，现在提取最后${requestedDuration}秒`);
-                        audioBlobToPlay = await extractAudioSegment(wavBlob, requestedDuration);
-                    } else {
-                        audioBlobToPlay = wavBlob;
-                    }
-                    console.log(`[INFO] ✅ WebM转WAV成功`);
-                } catch (convertError) {
-                    console.error('[ERROR] WebM转WAV也失败:', convertError.message);
-                    // 如果都失败，抛出错误，不返回无法播放的WebM
-                    throw new Error(`无法转换音频格式: ${convertError.message}`);
-                }
-            }
-            
-            console.log(`[INFO] ✅ 音频准备完成`);
-            console.log(`[INFO] 音频类型: ${audioBlobToPlay.type}`);
-            console.log(`[INFO] 音频大小: ${(audioBlobToPlay.size / 1024).toFixed(2)} KB`);
-            
-            // 🔥 v104: 保存音频用于播放/下载
-            lastRecordedAudioBlob = audioBlobToPlay;
+            // 保存音频用于本地播放/下载（浏览器原生支持 AAC/MP4 和 WebM 播放）
+            lastRecordedAudioBlob = audioBlob;
             
             // 🔥 v112: 隐藏调试用的播放和下载按钮（已在 HTML 中注释掉）
             // if (playAudioBtn && downloadAudioBtn) {
@@ -2806,70 +2750,15 @@ function cleanupAudioStreams(force = false) {
             //     downloadAudioBtn.disabled = false;
             // }
             
+            console.log(`[INFO] ✅ 音频准备完成（直传模式，跳过 WAV 转换）`);
+            console.log(`[INFO] 音频类型: ${audioBlob.type}`);
+            console.log(`[INFO] 音频大小: ${(audioBlob.size / 1024).toFixed(2)} KB`);
+            
             const frontendProcessTime = Date.now() - totalStartTime;
             console.log(`\n${'='.repeat(80)}`);
-            console.log(`[INFO] 音频生成完成，开始转录`);
+            console.log(`[INFO] 音频准备完成，开始转录`);
             console.log(`[PERF] 前端处理总耗时: ${frontendProcessTime}ms (${(frontendProcessTime/1000).toFixed(2)}秒)`);
             console.log(`${'='.repeat(80)}\n`);
-            
-            // 🔥 检查文件大小，如果超过25 MB，尝试压缩
-            const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
-            let audioToTranscribe = audioBlobToPlay;
-            const originalSize = audioBlobToPlay.size;
-            
-            console.log(`[INFO] 检查文件大小: ${(originalSize / 1024 / 1024).toFixed(2)} MB`);
-            
-            if (originalSize > MAX_FILE_SIZE) {
-                console.warn(`[WARNING] ⚠️ 文件过大 (${(originalSize / 1024 / 1024).toFixed(2)} MB)，超过25 MB限制`);
-                console.log(`[INFO] 尝试降低音频质量以减小文件大小...`);
-                
-                const compressStart = Date.now();
-                try {
-                    // 降低采样率和比特深度来压缩音频
-                    const arrayBuffer = await audioBlobToPlay.arrayBuffer();
-                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
-                    
-                    // 降低采样率到16kHz（语音识别足够）
-                    const targetSampleRate = 16000;
-                    const offlineContext = new OfflineAudioContext(
-                        1, // 单声道
-                        audioBuffer.duration * targetSampleRate,
-                        targetSampleRate
-                    );
-                    
-                    const source = offlineContext.createBufferSource();
-                    source.buffer = audioBuffer;
-                    source.connect(offlineContext.destination);
-                    source.start();
-                    
-                    const compressedBuffer = await offlineContext.startRendering();
-                    audioContext.close();
-                    
-                    // 转换为WAV（但采样率更低，单声道）
-                    const compressedWav = audioBufferToWav(compressedBuffer);
-                    audioToTranscribe = new Blob([compressedWav], { type: 'audio/wav' });
-                    
-                    const compressedSize = audioToTranscribe.size;
-                    const compressTime = Date.now() - compressStart;
-                    console.log(`[INFO] ✅ 压缩完成: ${(originalSize / 1024 / 1024).toFixed(2)} MB → ${(compressedSize / 1024 / 1024).toFixed(2)} MB`);
-                    console.log(`[INFO] 压缩比: ${((1 - compressedSize / originalSize) * 100).toFixed(1)}%`);
-                    console.log(`[PERF] 音频压缩耗时: ${compressTime}ms`);
-                    
-                    // 如果压缩后仍然太大，提示用户
-                    if (compressedSize > MAX_FILE_SIZE) {
-                        const errorMsg = `Audio file too large (${(compressedSize / 1024 / 1024).toFixed(2)}MB). Limit: 25MB. Try shorter duration.`;
-                        console.error(`[ERROR] ${errorMsg}`);
-                        transcriptionResult.value = `错误: ${errorMsg}`;
-                        return;
-                    }
-                } catch (compressionError) {
-                    console.error('[ERROR] 压缩失败:', compressionError.message);
-                    const errorMsg = `Audio file too large (${(originalSize / 1024 / 1024).toFixed(2)}MB). Limit: 25MB. Try shorter duration.`;
-                    transcriptionResult.value = `错误: ${errorMsg}`;
-                    return;
-                }
-            }
             
             // 发送到服务器进行转录
             const formData = new FormData();

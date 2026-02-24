@@ -156,8 +156,10 @@ def detect_audio_format(content: bytes, filename: str, content_type: str) -> tup
             return ('WAV', 'audio/wav')
         elif content[:4] == b'\xff\xfb' or content[:3] == b'ID3':
             return ('MP3', 'audio/mpeg')
-        elif content[:4] == b'\x1aE\xdf\xa3' or content[:4] == b'\x1a\x45\xdf\xa3':
+        elif content[:4] in (b'\x1aE\xdf\xa3', b'\x1a\x45\xdf\xa3'):
             return ('WebM', 'audio/webm')
+        elif len(content) >= 8 and content[4:8] == b'ftyp':
+            return ('MP4', 'audio/mp4')
     
     # 如果文件头无法识别，根据文件名和 content_type 判断
     filename_lower = filename.lower() if filename else ''
@@ -171,7 +173,7 @@ def detect_audio_format(content: bytes, filename: str, content_type: str) -> tup
         return ('WebM', 'audio/webm')
     elif filename_lower.endswith('.flac') or 'flac' in content_type_lower:
         return ('FLAC', 'audio/flac')
-    elif filename_lower.endswith('.m4a') or 'm4a' in content_type_lower:
-        return ('M4A', 'audio/m4a')
+    elif filename_lower.endswith('.mp4') or filename_lower.endswith('.m4a') or 'mp4' in content_type_lower or 'm4a' in content_type_lower:
+        return ('MP4', 'audio/mp4')
     else:
         return ('Unknown', content_type or 'application/octet-stream')
