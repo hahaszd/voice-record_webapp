@@ -651,40 +651,35 @@ async def _transcribe_ai_builder(
     result = response.json()
     print(f"[AI-BUILDER-RAW] JSON解析后类型: {type(result)}, 值: {repr(str(result)[:200])}")
     
-    # v109: 支持多种响应格式，兼容不同 key 名称
-    # 处理双重 JSON 编码的情况：response.json() 返回字符串而非 dict
-    if isinstance(result, str):
-        try:
-            import json as _json
-            nested = _json.loads(result)
-            if isinstance(nested, dict):
-                result = nested  # 替换为解析后的 dict，继续走 dict 分支
-        except Exception:
-            pass
+    # 解析转录文本 - 健壮处理 AI Builder 的多种响应格式
+    # AI Builder 可能返回: dict, 双重编码的 JSON 字符串, 或纯文本字符串
+    import json as _json, re as _re
 
-    if isinstance(result, dict) and 'text' in result:
-        text = result.get('text', '')
-    elif isinstance(result, dict) and 'query' in result:
-        text = result.get('query', '')
-    elif isinstance(result, str):
-        text = result
-    else:
-        text = str(result)
-    
-    # 清理文本：去除首尾引号、\n转义符号等格式残留
-    text = text.strip()
-    # 去除开头的引号
-    if text.startswith('"'):
-        text = text[1:]
-    # 去除开头的 \n 转义字符（字面量 backslash-n）
-    text = text.lstrip('\\n').strip()
-    # 去除开头的实际换行符
-    text = text.lstrip('\n').strip()
-    # 去除结尾的 "} 或 " 格式残留（AI Builder 响应尾部）
-    if text.endswith('"}'):
-        text = text[:-2].strip()
-    elif text.endswith('"'):
-        text = text[:-1].strip()
+    def _extract_text_from_result(r):
+        # 如果是字符串，先尝试解析为 JSON（处理双重编码情况）
+        if isinstance(r, str):
+            try:
+                r = _json.loads(r)
+            except Exception:
+                # 不是 JSON，当作纯文本处理
+                return r.strip().lstrip('\\n').lstrip('\n').strip()
+
+        # 现在 r 应该是 dict
+        if isinstance(r, dict):
+            # 按优先级尝试常见的 key 名称
+            for key in ('text', 'query', 'content', 'result', 'transcription'):
+                if key in r and isinstance(r[key], str):
+                    return r[key].strip().lstrip('\\n').lstrip('\n').strip()
+            # 没找到已知 key，用正则从字符串中提取第一个字符串值
+            s = _json.dumps(r, ensure_ascii=False)
+            m = _re.search(r'"(?:text|query|content|result|transcription)"\s*:\s*"((?:[^"\\]|\\.)*)"', s)
+            if m:
+                return m.group(1).strip()
+            return s  # 实在没有，返回整个 JSON 字符串
+
+        return str(r)
+
+    text = _extract_text_from_result(result)
     
     print(f"[AI-BUILDER-CLEANED] 清理后文本前100字符: {repr(text[:100])}")
     
