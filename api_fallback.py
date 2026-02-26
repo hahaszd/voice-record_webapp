@@ -652,6 +652,16 @@ async def _transcribe_ai_builder(
     print(f"[AI-BUILDER-RAW] JSON解析后类型: {type(result)}, 值: {repr(str(result)[:200])}")
     
     # v109: 支持多种响应格式，兼容不同 key 名称
+    # 处理双重 JSON 编码的情况：response.json() 返回字符串而非 dict
+    if isinstance(result, str):
+        try:
+            import json as _json
+            nested = _json.loads(result)
+            if isinstance(nested, dict):
+                result = nested  # 替换为解析后的 dict，继续走 dict 分支
+        except Exception:
+            pass
+
     if isinstance(result, dict) and 'text' in result:
         text = result.get('text', '')
     elif isinstance(result, dict) and 'query' in result:
