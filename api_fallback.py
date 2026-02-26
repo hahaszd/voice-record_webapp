@@ -1176,7 +1176,38 @@ async def transcribe_with_fallback(
     print(f"[v111-DEBUG] 时长: {duration}")
     
     # ============================================================================
-    # 1️⃣ 尝试 AI Builder Space
+    # 1️⃣ [DEV-TEST] 优先尝试 OpenAI Whisper（临时调整，用于排查 AI Builder 格式问题）
+    # ============================================================================
+    print(f"[v111-DEBUG] 检查 OpenAI 是否可用...")
+    openai_should_retry = should_retry_api("openai")
+    print(f"[v111-DEBUG] should_retry_api('openai') = {openai_should_retry}")
+    
+    if openai_should_retry:
+        print(f"[v111-DEBUG] ✅ 开始尝试 OpenAI Whisper API...")
+        try:
+            text, metadata = await _transcribe_openai(
+                audio_content, filename, language, duration, logger
+            )
+            
+            print(f"[v111-FALLBACK] ✅ OpenAI Whisper 转录成功 (#1 DEV优先)")
+            print(f"[v111-DEBUG] 返回文本长度: {len(text)}")
+            return text, "openai_whisper", metadata
+            
+        except Exception as e:
+            error_msg = str(e)
+            errors.append(f"OpenAI: {error_msg}")
+            print(f"[v111-FALLBACK] ❌ OpenAI Whisper 失败: {error_msg}")
+            
+            # 检查是否是配额问题
+            if is_quota_exceeded(None, error_msg):
+                API_FALLBACK_STATUS["openai_quota_exceeded"] = True
+                API_FALLBACK_STATUS["openai_last_check"] = time.time()
+    else:
+        print(f"[v111-FALLBACK] ⏭️ 跳过 OpenAI（配额已耗尽）")
+        errors.append("OpenAI: 配额已耗尽，跳过")
+
+    # ============================================================================
+    # 2️⃣ [DEV-TEST] 次选 AI Builder Space（原第一优先级，临时降级）
     # ============================================================================
     print(f"[v111-DEBUG] 检查 AI Builder 是否可用...")
     ai_builder_should_retry = should_retry_api("ai_builder")
@@ -1204,43 +1235,12 @@ async def transcribe_with_fallback(
             # 检查是否是配额问题
             if is_quota_exceeded(None, error_msg):
                 API_FALLBACK_STATUS["ai_builder_quota_exceeded"] = True
-                API_FALLBACK_STATUS["ai_builder_last_check"] = time.time()
+                API_BUILDER_STATUS["ai_builder_last_check"] = time.time()
                 print(f"[v111-FALLBACK] 🚨 AI Builder 配额耗尽，切换到下一个 API")
     else:
         print(f"[v111-FALLBACK] ⏭️ 跳过 AI Builder（配额已耗尽）")
         print(f"[v111-DEBUG] AI Builder quota_exceeded: {API_FALLBACK_STATUS['ai_builder_quota_exceeded']}")
         errors.append("AI Builder: 配额已耗尽，跳过")
-    
-    # ============================================================================
-    # 2️⃣ 尝试 OpenAI Whisper API
-    # ============================================================================
-    print(f"[v111-DEBUG] 检查 OpenAI 是否可用...")
-    openai_should_retry = should_retry_api("openai")
-    print(f"[v111-DEBUG] should_retry_api('openai') = {openai_should_retry}")
-    
-    if openai_should_retry:
-        print(f"[v111-DEBUG] ✅ 开始尝试 OpenAI Whisper API...")
-        try:
-            text, metadata = await _transcribe_openai(
-                audio_content, filename, language, duration, logger
-            )
-            
-            print(f"[v111-FALLBACK] ✅ OpenAI Whisper 转录成功 (Fallback #2)")
-            print(f"[v111-DEBUG] 返回文本长度: {len(text)}")
-            return text, "openai_whisper", metadata
-            
-        except Exception as e:
-            error_msg = str(e)
-            errors.append(f"OpenAI: {error_msg}")
-            print(f"[v111-FALLBACK] ❌ OpenAI Whisper 失败: {error_msg}")
-            
-            # 检查是否是配额问题
-            if is_quota_exceeded(None, error_msg):
-                API_FALLBACK_STATUS["openai_quota_exceeded"] = True
-                API_FALLBACK_STATUS["openai_last_check"] = time.time()
-    else:
-        print(f"[v111-FALLBACK] ⏭️ 跳过 OpenAI（配额已耗尽）")
-        errors.append("OpenAI: 配额已耗尽，跳过")
     
     # ============================================================================
     # 3️⃣ 尝试 Deepgram Nova-2（备用）
