@@ -1192,9 +1192,9 @@ async def transcribe_with_fallback(
                 audio_content, filename, language, duration, logger
             )
             
-            print(f"[v111-FALLBACK] ✅ OpenAI Whisper 转录成功 (#1 DEV优先)")
+            print(f"[v111-FALLBACK] ✅ OpenAI gpt-4o-transcribe 转录成功 (#1 DEV优先)")
             print(f"[v111-DEBUG] 返回文本长度: {len(text)}")
-            return text, "openai_whisper", metadata
+            return text, "openai_gpt4o_transcribe", metadata
             
         except Exception as e:
             error_msg = str(e)
