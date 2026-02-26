@@ -663,16 +663,18 @@ async def _transcribe_ai_builder(
     
     # 清理文本：去除首尾引号、\n转义符号等格式残留
     text = text.strip()
-    # 去除首尾的引号（如果整个字符串被引号包裹）
-    if text.startswith('"') and text.endswith('"') and len(text) > 2:
-        text = text[1:-1]
-    elif text.startswith('"') and '"}' in text:
-        # 处理如 "\n\ntext"} 的格式
-        text = text.lstrip('"').rstrip('}"').strip()
+    # 去除开头的引号
+    if text.startswith('"'):
+        text = text[1:]
     # 去除开头的 \n 转义字符（字面量 backslash-n）
     text = text.lstrip('\\n').strip()
     # 去除开头的实际换行符
     text = text.lstrip('\n').strip()
+    # 去除结尾的 "} 或 " 格式残留（AI Builder 响应尾部）
+    if text.endswith('"}'):
+        text = text[:-2].strip()
+    elif text.endswith('"'):
+        text = text[:-1].strip()
     
     print(f"[AI-BUILDER-CLEANED] 清理后文本前100字符: {repr(text[:100])}")
     
