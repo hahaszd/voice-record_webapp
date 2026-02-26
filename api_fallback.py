@@ -738,19 +738,19 @@ async def _transcribe_openai(
         'file': (filename, audio_content, get_audio_content_type(filename))
     }
     
+    # 使用 gpt-4o-transcribe，幻觉率远低于 whisper-1，对 AAC/MP4 格式更宽容
     data = {
-        'model': 'whisper-1',
+        'model': 'gpt-4o-transcribe',
         'response_format': 'verbose_json',
-        # 短提示词：仅作为上下文格式提示，不用英文指令（避免 Whisper 回显 prompt）
-        'prompt': '以下是录音内容。'
+        'chunking_strategy': 'auto',  # 长音频必需（>30s 时自动分段）
     }
     
-    # 🌍 v110: 如果指定了语言，则使用指定语言；否则自动检测
+    # 如果指定了语言，则使用指定语言；否则自动检测
     if language:
         data['language'] = language
-        print(f"[v110-WHISPER] 指定语言: {language}")
+        print(f"[OPENAI-TRANSCRIBE] 指定语言: {language}")
     else:
-        print(f"[v110-WHISPER] 🌍 使用自动语言识别")
+        print(f"[OPENAI-TRANSCRIBE] 🌍 使用自动语言识别")
     
     # 发送请求
     response = requests.post(
