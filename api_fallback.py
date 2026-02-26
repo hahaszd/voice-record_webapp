@@ -612,12 +612,11 @@ async def _transcribe_ai_builder(
         'audio_file': (filename, audio_content, get_audio_content_type(filename))
     }
     
-    # 🔧 v109: 添加 prompt 参数，解决内容截断问题
-    # 🌍 v110: 恢复自动语言识别（移除 v108-TEST 强制英文）
     form_data = {
         'model': 'whisper-1',
-        'response_format': 'verbose_json',  # v109: 改为 verbose 获取更多信息
-        'prompt': 'This is a continuous recording containing both human speech and video/audio playback (such as YouTube). Please transcribe all audio content completely and accurately, including all speech, video audio, and background sounds throughout the entire recording.'  # v109: 引导完整转录
+        'response_format': 'verbose_json',
+        # 短提示词：仅作为上下文格式提示，不用英文指令（避免 Whisper 回显 prompt）
+        'prompt': '以下是录音内容。'
     }
     
     # 🌍 v110: 如果指定了语言，则使用指定语言；否则自动检测
@@ -739,12 +738,11 @@ async def _transcribe_openai(
         'file': (filename, audio_content, get_audio_content_type(filename))
     }
     
-    # 🔧 v109: 添加 prompt 参数
-    # 🌍 v110: 恢复自动语言识别（移除 v108-TEST 强制英文）
     data = {
         'model': 'whisper-1',
-        'response_format': 'verbose_json',  # v109: 改为 verbose
-        'prompt': 'This is a continuous recording containing both human speech and video/audio playback (such as YouTube). Please transcribe all audio content completely and accurately, including all speech, video audio, and background sounds throughout the entire recording.'  # v109: 引导完整转录
+        'response_format': 'verbose_json',
+        # 短提示词：仅作为上下文格式提示，不用英文指令（避免 Whisper 回显 prompt）
+        'prompt': '以下是录音内容。'
     }
     
     # 🌍 v110: 如果指定了语言，则使用指定语言；否则自动检测
@@ -781,6 +779,10 @@ async def _transcribe_openai(
     
     if not text:
         raise Exception("OpenAI API 返回空文本")
+    
+    # 检测 prompt 回显：如果返回的是 prompt 本身，说明 Whisper 没有识别到音频内容
+    if '以下是录音内容' in text and len(text) < 20:
+        raise Exception("OpenAI Whisper 返回了 prompt 提示词而非转录内容，音频可能无法识别")
     
     # v109: 记录 verbose 信息（如果有）
     if 'segments' in result and result['segments'] is not None:
