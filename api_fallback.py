@@ -647,11 +647,15 @@ async def _transcribe_ai_builder(
     # 解析响应
     result = response.json()
     
-    # v109: 支持 verbose_json 格式
+    # v109: 支持 verbose_json 格式，兼容不同 key 名称
     if isinstance(result, dict) and 'text' in result:
         text = result.get('text', '')
+    elif isinstance(result, dict) and 'query' in result:
+        text = result.get('query', '')
+    elif isinstance(result, str):
+        text = result
     else:
-        text = result if isinstance(result, str) else str(result)
+        text = str(result)
     
     if not text:
         raise Exception("AI Builder Space API 返回空文本")
