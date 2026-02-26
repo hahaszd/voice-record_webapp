@@ -644,10 +644,14 @@ async def _transcribe_ai_builder(
         error_msg = f"AI Builder Space API 错误 [{response.status_code}]: {response.text}"
         raise Exception(error_msg)
     
-    # 解析响应
-    result = response.json()
+    # 解析响应 - 先记录原始响应便于调试
+    raw_text = response.text
+    print(f"[AI-BUILDER-RAW] 原始响应前200字符: {repr(raw_text[:200])}")
     
-    # v109: 支持 verbose_json 格式，兼容不同 key 名称
+    result = response.json()
+    print(f"[AI-BUILDER-RAW] JSON解析后类型: {type(result)}, 值: {repr(str(result)[:200])}")
+    
+    # v109: 支持多种响应格式，兼容不同 key 名称
     if isinstance(result, dict) and 'text' in result:
         text = result.get('text', '')
     elif isinstance(result, dict) and 'query' in result:
@@ -656,6 +660,21 @@ async def _transcribe_ai_builder(
         text = result
     else:
         text = str(result)
+    
+    # 清理文本：去除首尾引号、\n转义符号等格式残留
+    text = text.strip()
+    # 去除首尾的引号（如果整个字符串被引号包裹）
+    if text.startswith('"') and text.endswith('"') and len(text) > 2:
+        text = text[1:-1]
+    elif text.startswith('"') and '"}' in text:
+        # 处理如 "\n\ntext"} 的格式
+        text = text.lstrip('"').rstrip('}"').strip()
+    # 去除开头的 \n 转义字符（字面量 backslash-n）
+    text = text.lstrip('\\n').strip()
+    # 去除开头的实际换行符
+    text = text.lstrip('\n').strip()
+    
+    print(f"[AI-BUILDER-CLEANED] 清理后文本前100字符: {repr(text[:100])}")
     
     if not text:
         raise Exception("AI Builder Space API 返回空文本")
