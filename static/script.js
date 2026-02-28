@@ -2332,13 +2332,9 @@ function cleanupAudioStreams(force = false) {
             stream = await getAudioStreams();
             
             // 使用 MediaRecorder API
-            // 优先 AAC/MP4 64kbps（文件小、上传快），Firefox 不支持时 fallback 到 WebM/Opus
+            // 优先 WebM/Opus（全浏览器兼容，幻觉率更低），AAC 已弃用
             let options = {};
-            if (MediaRecorder.isTypeSupported('audio/mp4;codecs=aac')) {
-                options = { mimeType: 'audio/mp4;codecs=aac', audioBitsPerSecond: 64000 };
-            } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-                options = { mimeType: 'audio/mp4', audioBitsPerSecond: 64000 };
-            } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+            if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
                 options = { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 64000 };
             } else {
                 options = { mimeType: 'audio/webm', audioBitsPerSecond: 64000 };
