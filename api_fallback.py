@@ -24,6 +24,7 @@ import os
 import time
 import json
 import base64
+import asyncio
 import requests
 from typing import Tuple, Dict, Any, Optional
 from logging_helper import TranscriptionLogger
@@ -626,30 +627,6 @@ async def _transcribe_ai_builder(
     else:
         print(f"[v110-WHISPER] 🌍 使用自动语言识别")
     
-    # 发送请求
-    response = requests.post(
-        api_url,
-        headers={
-            "Authorization": f"Bearer {AI_BUILDER_TOKEN}",
-            "Accept": "application/json"
-        },
-        files=files,
-        data=form_data,
-        timeout=300  # v109: 增加超时到 5 分钟，避免长音频被截断
-    )
-    
-    # 检查响应
-    if response.status_code != 200:
-        error_msg = f"AI Builder Space API 错误 [{response.status_code}]: {response.text}"
-        raise Exception(error_msg)
-    
-    # 解析响应 - 先记录原始响应便于调试
-    raw_text = response.text
-    print(f"[AI-BUILDER-RAW] 原始响应前200字符: {repr(raw_text[:200])}")
-    
-    result = response.json()
-    print(f"[AI-BUILDER-RAW] JSON解析后类型: {type(result)}, 值: {repr(str(result)[:200])}")
-    
     # 解析转录文本 - 健壮处理 AI Builder 的多种响应格式
     # AI Builder 可能返回: dict, 双重编码的 JSON 字符串, 或纯文本字符串
     import json as _json, re as _re
@@ -678,12 +655,47 @@ async def _transcribe_ai_builder(
 
         return str(r)
 
-    text = _extract_text_from_result(result)
-    
-    print(f"[AI-BUILDER-CLEANED] 清理后文本前100字符: {repr(text[:100])}")
-    
+    # 发送请求，冷启动时自动重试一次
+    # AI Builder Space (Koyeb) 冷启动后第一次请求可能返回空内容，等待后重试即可恢复正常
+    text = ""
+    for attempt in range(2):
+        if attempt > 0:
+            print(f"[AI-BUILDER-RETRY] ⚠️ 第一次返回空文本（可能是冷启动），等待3秒后重试...")
+            await asyncio.sleep(3)
+
+        response = requests.post(
+            api_url,
+            headers={
+                "Authorization": f"Bearer {AI_BUILDER_TOKEN}",
+                "Accept": "application/json"
+            },
+            files=files,
+            data=form_data,
+            timeout=300
+        )
+
+        # 检查响应状态
+        if response.status_code != 200:
+            error_msg = f"AI Builder Space API 错误 [{response.status_code}]: {response.text}"
+            raise Exception(error_msg)
+
+        # 解析响应
+        raw_text = response.text
+        print(f"[AI-BUILDER-RAW] 原始响应前200字符 (attempt {attempt+1}): {repr(raw_text[:200])}")
+
+        result = response.json()
+        print(f"[AI-BUILDER-RAW] JSON解析后类型: {type(result)}, 值: {repr(str(result)[:200])}")
+
+        text = _extract_text_from_result(result)
+        print(f"[AI-BUILDER-CLEANED] 清理后文本前100字符: {repr(text[:100])}")
+
+        if text:
+            if attempt > 0:
+                print(f"[AI-BUILDER-RETRY] ✅ 重试成功，冷启动恢复正常")
+            break  # 有内容，跳出重试
+
     if not text:
-        raise Exception("AI Builder Space API 返回空文本")
+        raise Exception("AI Builder Space API 返回空文本（已重试一次）")
     
     # v109: 记录 verbose 信息（如果有）
     if 'segments' in result and result['segments'] is not None:
