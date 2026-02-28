@@ -749,12 +749,10 @@ async def _transcribe_openai(
         'file': (filename, audio_content, get_audio_content_type(filename))
     }
     
-    # 使用 gpt-4o-transcribe，幻觉率远低于 whisper-1，对 AAC/MP4 格式更宽容
-    # 注意：gpt-4o-transcribe 只支持 'json' 格式，不支持 'verbose_json'（verbose_json 仅限 whisper-1）
+    # 使用 whisper-1：中文准确率比 gpt-4o-transcribe 更稳定，社区反馈 gpt-4o-transcribe 在中文上有误识别问题
     data = {
-        'model': 'gpt-4o-transcribe',
-        'response_format': 'json',
-        'chunking_strategy': 'auto',  # 长音频必需（>30s 时自动分段）
+        'model': 'whisper-1',
+        'response_format': 'verbose_json',
     }
     
     # 如果指定了语言，则使用指定语言；否则自动检测
@@ -811,7 +809,7 @@ async def _transcribe_openai(
     
     metadata = {
         "api": "openai",
-        "model": "gpt-4o-transcribe",
+        "model": "whisper-1",
         "status_code": response.status_code
     }
     
