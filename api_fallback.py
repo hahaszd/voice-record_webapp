@@ -630,27 +630,47 @@ async def _transcribe_ai_builder(
     # AI Builder 可能返回: dict, 双重编码的 JSON 字符串, 或纯文本字符串
     import json as _json, re as _re
 
+    # 判断字段值是否是指令文本而非真实转录（AI Builder Realtime bug）
+    def _is_instruction_text(v: str) -> bool:
+        instruction_patterns = [
+            "I will remove", "transcribed content", "non-lexical filler",
+            "speech recognition", "I will transcribe", "Please transcribe",
+        ]
+        return any(p.lower() in v.lower() for p in instruction_patterns)
+
     def _extract_text_from_result(r):
         # 如果是字符串，先尝试解析为 JSON（处理双重编码情况）
         if isinstance(r, str):
             try:
                 r = _json.loads(r)
             except Exception:
-                # 不是 JSON，当作纯文本处理
                 return r.strip().lstrip('\\n').lstrip('\n').strip()
 
         # 现在 r 应该是 dict
         if isinstance(r, dict):
-            # 按优先级尝试常见的 key 名称（final 是 AI Builder Realtime 返回的实际转录字段）
-            for key in ('final', 'text', 'query', 'content', 'result', 'transcription'):
-                if key in r and isinstance(r[key], str) and r[key].strip():
-                    return r[key].strip().lstrip('\\n').lstrip('\n').strip()
-            # 没找到已知 key，用正则从字符串中提取第一个字符串值
+            # 官方字段：text（必填）。其他字段是 Realtime provider 泄露的非标准字段。
+            # 若 text 字段存在但内容是指令文本（AI Builder bug），则尝试 final/query 作为备用
+            candidates = []
+            for key in ('text', 'final', 'query', 'content', 'result', 'transcription'):
+                v = r.get(key)
+                if v and isinstance(v, str) and v.strip():
+                    candidates.append((key, v.strip().lstrip('\\n').lstrip('\n').strip()))
+
+            # 优先返回非指令文本的候选值
+            for key, v in candidates:
+                if not _is_instruction_text(v):
+                    return v
+
+            # 都像指令文本？退而求其次返回最长的那个
+            if candidates:
+                return max(candidates, key=lambda x: len(x[1]))[1]
+
+            # 完全没有已知 key，用正则兜底
             s = _json.dumps(r, ensure_ascii=False)
-            m = _re.search(r'"(?:final|text|query|content|result|transcription)"\s*:\s*"((?:[^"\\]|\\.)*)"', s)
+            m = _re.search(r'"(?:text|final|query|content|result|transcription)"\s*:\s*"((?:[^"\\]|\\.)*)"', s)
             if m:
                 return m.group(1).strip()
-            return s  # 实在没有，返回整个 JSON 字符串
+            return s
 
         return str(r)
 
@@ -1156,10 +1176,13 @@ async def _transcribe_google(
 
 def _strip_json_artifacts(text: str) -> str:
     """
-    清除转录文本中混入的 JSON 格式残留，例如：
-      - 整个字符串是 JSON：{"query": "实际内容"}
-      - 文本中夹带 JSON 片段：实际内容 {"language": "zh"} 继续内容
-      - 行尾残留的引号+花括号：实际内容"}  或  实际内容", "final": "..."}
+    清除转录文本中混入的 JSON 格式残留。
+
+    AI Builder Space 官方响应格式 (TranscriptionResponse)：
+      { "request_id": "...", "text": "转录内容", "segments": [...], "detected_language": "...", ... }
+
+    但 Realtime provider 有时会把内部字段（如 "final", "query"）泄露到输出里，
+    或者在 text 字段中混入指令文本。本函数负责把这些杂质清除干净。
     """
     import re as _re, json as _json
 
@@ -1168,32 +1191,47 @@ def _strip_json_artifacts(text: str) -> str:
 
     t = text.strip()
 
-    # 1. 整个文本就是一个 JSON 对象 —— 尝试提取常见文本字段
+    # ── 1. 整个文本是 JSON 对象：提取 text / final / query 字段 ──────────────
     if t.startswith('{') and t.endswith('}'):
         try:
             obj = _json.loads(t)
-            for key in ('final', 'text', 'query', 'content', 'result', 'transcription'):
-                if key in obj and isinstance(obj[key], str) and obj[key].strip():
-                    return obj[key].strip()
+            for key in ('text', 'final', 'query', 'content', 'result', 'transcription'):
+                v = obj.get(key)
+                if v and isinstance(v, str) and v.strip():
+                    t = v.strip()
+                    break
         except Exception:
             pass
 
-    # 2. 去除行尾残留的 JSON 收尾符，如  "}  或  ", "key": "value"}
-    t = _re.sub(r'",\s*"[^"]+"\s*:\s*"[^"]*"\s*\}?\s*$', '', t)  # 末尾的 ", "key": "val"}
-    t = _re.sub(r'"\s*\}\s*$', '', t)   # 末尾的 "}
-    t = _re.sub(r'\}\s*$', '', t)        # 末尾孤立的 }
+    # ── 2. 检测并提取 Realtime 泄露格式：
+    #       '指令文字...', "final": "实际转录"
+    #       这种格式出现时，final 字段才是真正的转录内容
+    final_match = _re.search(r'"final"\s*:\s*"((?:[^"\\]|\\.)*)"', t)
+    if final_match:
+        t = final_match.group(1)
 
-    # 3. 文本中夹带独立的 JSON 对象片段（支持更大块，最多2000字符）
+    # ── 3. 去掉行首的指令前缀（单引号开头 + 指令文字 + 逗号）─────────────────
+    # 例：' followed by the transcribed content. I will remove...',
+    t = _re.sub(r"^'[^']{0,300}',\s*", '', t)
+
+    # ── 4. 去掉行尾残留的 JSON 收尾符 ─────────────────────────────────────────
+    # 例：...内容", "key": "val"}  或  ...内容"}  或  ...内容"}
+    t = _re.sub(r'",\s*"[^"]{1,40}"\s*:\s*"[^"]*"\s*\}?\s*$', '', t)
+    t = _re.sub(r'"\s*\}\s*$', '', t)
+    t = _re.sub(r'\}\s*$', '', t)
+
+    # ── 5. 去掉正文中夹带的独立 JSON 片段 ────────────────────────────────────
+    # 例：实际内容 {"language": "zh", "confidence": 0.9} 继续内容
     t = _re.sub(r'\{[^{}]{0,2000}\}', '', t)
 
-    # 4. 把字面量 \n（两个字符：反斜杠+n）替换为空格
+    # ── 6. 把字面量 \n 替换为空格 ────────────────────────────────────────────
     t = t.replace('\\n', ' ')
 
-    # 5. 清理多余空白/标点
+    # ── 7. 清理多余空白/标点 ──────────────────────────────────────────────────
     t = _re.sub(r'\s{2,}', ' ', t)
-    t = t.strip(' \n\t,;"')
+    t = t.strip(' \n\t,;"\'')
 
-    return t if t else text  # 如果清理后变空，保留原文
+    return t if t else text  # 清理后变空则保留原文
 
 
 # ================================================================================
