@@ -616,8 +616,7 @@ async def _transcribe_ai_builder(
     form_data = {
         'model': 'whisper-1',
         'response_format': 'verbose_json',
-        # 短提示词：仅作为上下文格式提示，不用英文指令（避免 Whisper 回显 prompt）
-        'prompt': '以下是录音内容。'
+        # 不传 prompt：AI Builder Space (Realtime provider) 会把 prompt 内容回显在输出里
     }
     
     # 🌍 v110: 如果指定了语言，则使用指定语言；否则自动检测
@@ -642,13 +641,13 @@ async def _transcribe_ai_builder(
 
         # 现在 r 应该是 dict
         if isinstance(r, dict):
-            # 按优先级尝试常见的 key 名称
-            for key in ('text', 'query', 'content', 'result', 'transcription'):
-                if key in r and isinstance(r[key], str):
+            # 按优先级尝试常见的 key 名称（final 是 AI Builder Realtime 返回的实际转录字段）
+            for key in ('final', 'text', 'query', 'content', 'result', 'transcription'):
+                if key in r and isinstance(r[key], str) and r[key].strip():
                     return r[key].strip().lstrip('\\n').lstrip('\n').strip()
             # 没找到已知 key，用正则从字符串中提取第一个字符串值
             s = _json.dumps(r, ensure_ascii=False)
-            m = _re.search(r'"(?:text|query|content|result|transcription)"\s*:\s*"((?:[^"\\]|\\.)*)"', s)
+            m = _re.search(r'"(?:final|text|query|content|result|transcription)"\s*:\s*"((?:[^"\\]|\\.)*)"', s)
             if m:
                 return m.group(1).strip()
             return s  # 实在没有，返回整个 JSON 字符串
@@ -1162,7 +1161,7 @@ def _strip_json_artifacts(text: str) -> str:
     清除转录文本中混入的 JSON 格式残留，例如：
       - 整个字符串是 JSON：{"query": "实际内容"}
       - 文本中夹带 JSON 片段：实际内容 {"language": "zh"} 继续内容
-      - 行首/行尾的孤立 JSON 括号或键值
+      - 行尾残留的引号+花括号：实际内容"}  或  实际内容", "final": "..."}
     """
     import re as _re, json as _json
 
@@ -1175,19 +1174,23 @@ def _strip_json_artifacts(text: str) -> str:
     if t.startswith('{') and t.endswith('}'):
         try:
             obj = _json.loads(t)
-            for key in ('text', 'query', 'content', 'result', 'transcription'):
+            for key in ('final', 'text', 'query', 'content', 'result', 'transcription'):
                 if key in obj and isinstance(obj[key], str) and obj[key].strip():
                     return obj[key].strip()
         except Exception:
             pass
 
-    # 2. 文本中夹带独立的 JSON 对象片段（如 {"language":"zh"} 或 {"confidence":0.9}）
-    #    用正则删除嵌套不深的 {...} 块（只处理单层，避免误伤中文括号）
-    t = _re.sub(r'\{[^{}]{0,200}\}', '', t)
+    # 2. 去除行尾残留的 JSON 收尾符，如  "}  或  ", "key": "value"}
+    t = _re.sub(r'",\s*"[^"]+"\s*:\s*"[^"]*"\s*\}?\s*$', '', t)  # 末尾的 ", "key": "val"}
+    t = _re.sub(r'"\s*\}\s*$', '', t)   # 末尾的 "}
+    t = _re.sub(r'\}\s*$', '', t)        # 末尾孤立的 }
 
-    # 3. 清理因删除 JSON 块而产生的多余空白/标点
+    # 3. 文本中夹带独立的 JSON 对象片段（支持更大块，最多2000字符）
+    t = _re.sub(r'\{[^{}]{0,2000}\}', '', t)
+
+    # 4. 清理因删除 JSON 块而产生的多余空白/标点
     t = _re.sub(r'\s{2,}', ' ', t)
-    t = t.strip(' \n\t,;')
+    t = t.strip(' \n\t,;"')
 
     return t if t else text  # 如果清理后变空，保留原文
 
