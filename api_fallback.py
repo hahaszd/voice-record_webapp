@@ -1142,6 +1142,45 @@ async def _transcribe_google(
 
 
 # ================================================================================
+# 转录文本后处理：去除 JSON 残留符号
+# ================================================================================
+
+def _strip_json_artifacts(text: str) -> str:
+    """
+    清除转录文本中混入的 JSON 格式残留，例如：
+      - 整个字符串是 JSON：{"query": "实际内容"}
+      - 文本中夹带 JSON 片段：实际内容 {"language": "zh"} 继续内容
+      - 行首/行尾的孤立 JSON 括号或键值
+    """
+    import re as _re, json as _json
+
+    if not text:
+        return text
+
+    t = text.strip()
+
+    # 1. 整个文本就是一个 JSON 对象 —— 尝试提取常见文本字段
+    if t.startswith('{') and t.endswith('}'):
+        try:
+            obj = _json.loads(t)
+            for key in ('text', 'query', 'content', 'result', 'transcription'):
+                if key in obj and isinstance(obj[key], str) and obj[key].strip():
+                    return obj[key].strip()
+        except Exception:
+            pass
+
+    # 2. 文本中夹带独立的 JSON 对象片段（如 {"language":"zh"} 或 {"confidence":0.9}）
+    #    用正则删除嵌套不深的 {...} 块（只处理单层，避免误伤中文括号）
+    t = _re.sub(r'\{[^{}]{0,200}\}', '', t)
+
+    # 3. 清理因删除 JSON 块而产生的多余空白/标点
+    t = _re.sub(r'\s{2,}', ' ', t)
+    t = t.strip(' \n\t,;')
+
+    return t if t else text  # 如果清理后变空，保留原文
+
+
+# ================================================================================
 # 核心 Fallback 函数
 # ================================================================================
 
@@ -1193,6 +1232,7 @@ async def transcribe_with_fallback(
             )
             
             print(f"[v111-FALLBACK] ✅ OpenAI gpt-4o-transcribe 转录成功 (#1 DEV优先)")
+            text = _strip_json_artifacts(text)
             print(f"[v111-DEBUG] 返回文本长度: {len(text)}")
             return text, "openai_gpt4o_transcribe", metadata
             
@@ -1224,6 +1264,7 @@ async def transcribe_with_fallback(
             )
             
             print(f"[v111-FALLBACK] ✅ AI Builder Space 转录成功")
+            text = _strip_json_artifacts(text)
             print(f"[v111-DEBUG] 返回文本长度: {len(text)}")
             return text, "ai_builder", metadata
             
@@ -1262,6 +1303,7 @@ async def transcribe_with_fallback(
             )
             
             print(f"[v111-FALLBACK] ✅ Deepgram Nova-2 转录成功 (Fallback #3 - 备用)")
+            text = _strip_json_artifacts(text)
             print(f"[v111-DEBUG] 返回文本长度: {len(text)}")
             return text, "deepgram_nova2_chinese", metadata
             
@@ -1347,7 +1389,7 @@ async def transcribe_system_audio(
         API_FALLBACK_STATUS["api_usage_count"]["openai_diarize"] += 1
         
         print(f"[v112-SYSTEM] ✅ OpenAI Diarize 转录成功（多说话人，无标签）")
-        
+        text = _strip_json_artifacts(text)
         return text, "openai_diarize", metadata
         
     except Exception as e:
@@ -1373,7 +1415,7 @@ async def transcribe_system_audio(
         API_FALLBACK_STATUS["api_usage_count"]["google"] += 1
         
         print(f"[v112-SYSTEM] ✅ Google API 转录成功（多说话人，无标签）(Fallback #2)")
-        
+        text = _strip_json_artifacts(text)
         return text, "google", metadata
         
     except Exception as e:
@@ -1400,7 +1442,7 @@ async def transcribe_system_audio(
             API_FALLBACK_STATUS["api_usage_count"]["deepgram"] += 1
             
             print(f"[v112-SYSTEM] ✅ Deepgram Nova-2 转录成功（多说话人）(Fallback #3 - 备用)")
-            
+            text = _strip_json_artifacts(text)
             return text, "deepgram_nova2_chinese", metadata
             
         except Exception as e:
