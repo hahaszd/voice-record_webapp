@@ -1230,7 +1230,39 @@ async def transcribe_with_fallback(
     print(f"[v111-DEBUG] 时长: {duration}")
     
     # ============================================================================
-    # 1️⃣ AI Builder Space（主力，OpenAI Realtime 质量）
+    # 1️⃣ [DEV] OpenAI gpt-4o-transcribe（dev 优先，用于对比测试）
+    # ============================================================================
+    print(f"[v111-DEBUG] 检查 OpenAI 是否可用...")
+    openai_should_retry = should_retry_api("openai")
+    print(f"[v111-DEBUG] should_retry_api('openai') = {openai_should_retry}")
+    
+    if openai_should_retry:
+        print(f"[v111-DEBUG] ✅ 开始尝试 OpenAI gpt-4o-transcribe API...")
+        try:
+            text, metadata = await _transcribe_openai(
+                audio_content, filename, language, duration, logger
+            )
+            
+            print(f"[v111-FALLBACK] ✅ OpenAI gpt-4o-transcribe 转录成功 (#1 DEV优先)")
+            text = _strip_json_artifacts(text)
+            print(f"[v111-DEBUG] 返回文本长度: {len(text)}")
+            return text, "openai_gpt4o_transcribe", metadata
+            
+        except Exception as e:
+            error_msg = str(e)
+            errors.append(f"OpenAI: {error_msg}")
+            print(f"[v111-FALLBACK] ❌ OpenAI 失败: {error_msg}")
+            
+            # 检查是否是配额问题
+            if is_quota_exceeded(None, error_msg):
+                API_FALLBACK_STATUS["openai_quota_exceeded"] = True
+                API_FALLBACK_STATUS["openai_last_check"] = time.time()
+    else:
+        print(f"[v111-FALLBACK] ⏭️ 跳过 OpenAI（配额已耗尽）")
+        errors.append("OpenAI: 配额已耗尽，跳过")
+
+    # ============================================================================
+    # 2️⃣ [DEV] AI Builder Space（备用）
     # ============================================================================
     print(f"[v111-DEBUG] 检查 AI Builder 是否可用...")
     ai_builder_should_retry = should_retry_api("ai_builder")
@@ -1243,7 +1275,7 @@ async def transcribe_with_fallback(
                 audio_content, filename, language, duration, logger
             )
             
-            print(f"[v111-FALLBACK] ✅ AI Builder Space 转录成功 (#1)")
+            print(f"[v111-FALLBACK] ✅ AI Builder Space 转录成功 (#2 备用)")
             text = _strip_json_artifacts(text)
             print(f"[v111-DEBUG] 返回文本长度: {len(text)}")
             return text, "ai_builder", metadata
@@ -1265,38 +1297,6 @@ async def transcribe_with_fallback(
         print(f"[v111-FALLBACK] ⏭️ 跳过 AI Builder（配额已耗尽）")
         print(f"[v111-DEBUG] AI Builder quota_exceeded: {API_FALLBACK_STATUS['ai_builder_quota_exceeded']}")
         errors.append("AI Builder: 配额已耗尽，跳过")
-
-    # ============================================================================
-    # 2️⃣ OpenAI gpt-4o-transcribe（备用）
-    # ============================================================================
-    print(f"[v111-DEBUG] 检查 OpenAI 是否可用...")
-    openai_should_retry = should_retry_api("openai")
-    print(f"[v111-DEBUG] should_retry_api('openai') = {openai_should_retry}")
-    
-    if openai_should_retry:
-        print(f"[v111-DEBUG] ✅ 开始尝试 OpenAI gpt-4o-transcribe API...")
-        try:
-            text, metadata = await _transcribe_openai(
-                audio_content, filename, language, duration, logger
-            )
-            
-            print(f"[v111-FALLBACK] ✅ OpenAI gpt-4o-transcribe 转录成功 (#2 备用)")
-            text = _strip_json_artifacts(text)
-            print(f"[v111-DEBUG] 返回文本长度: {len(text)}")
-            return text, "openai_gpt4o_transcribe", metadata
-            
-        except Exception as e:
-            error_msg = str(e)
-            errors.append(f"OpenAI: {error_msg}")
-            print(f"[v111-FALLBACK] ❌ OpenAI 失败: {error_msg}")
-            
-            # 检查是否是配额问题
-            if is_quota_exceeded(None, error_msg):
-                API_FALLBACK_STATUS["openai_quota_exceeded"] = True
-                API_FALLBACK_STATUS["openai_last_check"] = time.time()
-    else:
-        print(f"[v111-FALLBACK] ⏭️ 跳过 OpenAI（配额已耗尽）")
-        errors.append("OpenAI: 配额已耗尽，跳过")
     
     # ============================================================================
     # 3️⃣ 尝试 Deepgram Nova-2（备用）
