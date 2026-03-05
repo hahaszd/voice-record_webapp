@@ -1272,30 +1272,48 @@ async def transcribe_with_fallback(
     print(f"[v111-DEBUG] 时长: {duration}")
     
     # ============================================================================
-    # 1️⃣ [DEV] OpenAI gpt-4o-transcribe（dev 优先，用于对比测试）
+    # 1️⃣ [DEV] AI Builder Space（主力）
+    # ============================================================================
+    print(f"[v111-DEBUG] 检查 AI Builder 是否可用...")
+    if should_retry_api("ai_builder"):
+        print(f"[v111-DEBUG] ✅ 开始尝试 AI Builder API...")
+        try:
+            text, metadata = await _transcribe_ai_builder(
+                audio_content, filename, language, duration, logger
+            )
+            print(f"[v111-FALLBACK] ✅ AI Builder Space 转录成功 (#1)")
+            text = _strip_json_artifacts(text)
+            print(f"[v111-DEBUG] 返回文本长度: {len(text)}")
+            return text, "ai_builder", metadata
+        except Exception as e:
+            error_msg = str(e)
+            errors.append(f"AI Builder: {error_msg}")
+            print(f"[v111-FALLBACK] ❌ AI Builder 失败: {error_msg}")
+            if is_quota_exceeded(None, error_msg):
+                API_FALLBACK_STATUS["ai_builder_quota_exceeded"] = True
+                API_BUILDER_STATUS["ai_builder_last_check"] = time.time()
+    else:
+        print(f"[v111-FALLBACK] ⏭️ 跳过 AI Builder（配额已耗尽）")
+        errors.append("AI Builder: 配额已耗尽，跳过")
+
+    # ============================================================================
+    # 2️⃣ [DEV] OpenAI Whisper（备用）
     # ============================================================================
     print(f"[v111-DEBUG] 检查 OpenAI 是否可用...")
-    openai_should_retry = should_retry_api("openai")
-    print(f"[v111-DEBUG] should_retry_api('openai') = {openai_should_retry}")
-    
-    if openai_should_retry:
-        print(f"[v111-DEBUG] ✅ 开始尝试 OpenAI gpt-4o-transcribe API...")
+    if should_retry_api("openai"):
+        print(f"[v111-DEBUG] ✅ 开始尝试 OpenAI Whisper API...")
         try:
             text, metadata = await _transcribe_openai(
                 audio_content, filename, language, duration, logger
             )
-            
-            print(f"[v111-FALLBACK] ✅ OpenAI gpt-4o-transcribe 转录成功 (#1 DEV优先)")
+            print(f"[v111-FALLBACK] ✅ OpenAI Whisper 转录成功 (#2 备用)")
             text = _strip_json_artifacts(text)
             print(f"[v111-DEBUG] 返回文本长度: {len(text)}")
-            return text, "openai_gpt4o_transcribe", metadata
-            
+            return text, "openai_whisper", metadata
         except Exception as e:
             error_msg = str(e)
             errors.append(f"OpenAI: {error_msg}")
             print(f"[v111-FALLBACK] ❌ OpenAI 失败: {error_msg}")
-            
-            # 检查是否是配额问题
             if is_quota_exceeded(None, error_msg):
                 API_FALLBACK_STATUS["openai_quota_exceeded"] = True
                 API_FALLBACK_STATUS["openai_last_check"] = time.time()
@@ -1304,83 +1322,23 @@ async def transcribe_with_fallback(
         errors.append("OpenAI: 配额已耗尽，跳过")
 
     # ============================================================================
-    # 2️⃣ [DEV] AI Builder Space（备用）
+    # 3️⃣ [DEV] Google Cloud Speech-to-Text（最后备用）
     # ============================================================================
-    print(f"[v111-DEBUG] 检查 AI Builder 是否可用...")
-    ai_builder_should_retry = should_retry_api("ai_builder")
-    print(f"[v111-DEBUG] should_retry_api('ai_builder') = {ai_builder_should_retry}")
-    
-    if ai_builder_should_retry:
-        print(f"[v111-DEBUG] ✅ 开始尝试 AI Builder API...")
-        try:
-            text, metadata = await _transcribe_ai_builder(
-                audio_content, filename, language, duration, logger
-            )
-            
-            print(f"[v111-FALLBACK] ✅ AI Builder Space 转录成功 (#2 备用)")
-            text = _strip_json_artifacts(text)
-            print(f"[v111-DEBUG] 返回文本长度: {len(text)}")
-            return text, "ai_builder", metadata
-            
-        except Exception as e:
-            error_msg = str(e)
-            errors.append(f"AI Builder: {error_msg}")
-            print(f"[v111-FALLBACK] ❌ AI Builder 失败: {error_msg}")
-            print(f"[v111-DEBUG] AI Builder 异常详情: {type(e).__name__}: {e}")
-            import traceback
-            print(f"[v111-DEBUG] AI Builder 堆栈跟踪:\n{traceback.format_exc()}")
-            
-            # 检查是否是配额问题
-            if is_quota_exceeded(None, error_msg):
-                API_FALLBACK_STATUS["ai_builder_quota_exceeded"] = True
-                API_BUILDER_STATUS["ai_builder_last_check"] = time.time()
-                print(f"[v111-FALLBACK] 🚨 AI Builder 配额耗尽，切换到下一个 API")
-    else:
-        print(f"[v111-FALLBACK] ⏭️ 跳过 AI Builder（配额已耗尽）")
-        print(f"[v111-DEBUG] AI Builder quota_exceeded: {API_FALLBACK_STATUS['ai_builder_quota_exceeded']}")
-        errors.append("AI Builder: 配额已耗尽，跳过")
-    
-    # ============================================================================
-    # 3️⃣ 尝试 Deepgram Nova-2（备用）
-    # ============================================================================
-    print(f"[v111-DEBUG] 检查 Deepgram 是否可用...")
-    deepgram_should_retry = should_retry_api("deepgram")
-    print(f"[v111-DEBUG] should_retry_api('deepgram') = {deepgram_should_retry}")
-    
-    if deepgram_should_retry:
-        print(f"[v111-DEBUG] ✅ 开始尝试 Deepgram API (Fallback #3 - 备用)...")
-        try:
-            text, metadata = await _transcribe_deepgram(
-                audio_content, filename, language, duration, 
-                enable_diarization=False,  # 麦克风场景不需要多说话人识别
-                logger=logger
-            )
-            
-            print(f"[v111-FALLBACK] ✅ Deepgram Nova-2 转录成功 (Fallback #3 - 备用)")
-            text = _strip_json_artifacts(text)
-            print(f"[v111-DEBUG] 返回文本长度: {len(text)}")
-            return text, "deepgram_nova2_chinese", metadata
-            
-        except Exception as e:
-            error_msg = str(e)
-            errors.append(f"Deepgram: {error_msg}")
-            print(f"[v111-FALLBACK] ❌ Deepgram 失败: {error_msg}")
-            print(f"[v111-DEBUG] Deepgram 异常详情: {type(e).__name__}: {e}")
-            import traceback
-            print(f"[v111-DEBUG] Deepgram 堆栈跟踪:\n{traceback.format_exc()}")
-            
-        except Exception as e:
-            error_msg = str(e)
-            errors.append(f"OpenAI: {error_msg}")
-            print(f"[v111-FALLBACK] ❌ OpenAI Whisper 失败: {error_msg}")
-            
-            # 检查是否是配额问题
-            if is_quota_exceeded(None, error_msg):
-                API_FALLBACK_STATUS["openai_quota_exceeded"] = True
-                API_FALLBACK_STATUS["openai_last_check"] = time.time()
-    else:
-        print(f"[v111-FALLBACK] ⏭️ 跳过 OpenAI（配额已耗尽）")
-        errors.append("OpenAI: 配额已耗尽，跳过")
+    print(f"[v111-DEBUG] 检查 Google 是否可用...")
+    try:
+        text, metadata = await _transcribe_google(
+            audio_content, filename, language, logger,
+            enable_diarization=False,
+            remove_speaker_labels=False
+        )
+        print(f"[v111-FALLBACK] ✅ Google STT 转录成功 (#3 最后备用)")
+        text = _strip_json_artifacts(text)
+        print(f"[v111-DEBUG] 返回文本长度: {len(text)}")
+        return text, "google", metadata
+    except Exception as e:
+        error_msg = str(e)
+        errors.append(f"Google: {error_msg}")
+        print(f"[v111-FALLBACK] ❌ Google 失败: {error_msg}")
     
     # ============================================================================
     # ❌ 所有 API 都失败
