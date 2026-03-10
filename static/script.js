@@ -802,6 +802,178 @@ function stopWaveform() {
 
 // ==================== End Waveform Visualization ====================
 
+// ==================== Client-side VAD (Voice Activity Detection) ====================
+
+/**
+ * 检测音频中语音的起始点，裁掉前导静音/噪音，返回裁剪后的 WAV Blob。
+ * 若语音在前 500ms 内即起始，则直接返回原始 Blob 不做处理。
+ *
+ * @param {Blob} audioBlob - 原始录音 Blob（WebM/Opus）
+ * @param {Object} opts
+ * @param {number} opts.threshold       - RMS 能量阈值，默认 0.008（可适当调低以捕捉轻声）
+ * @param {number} opts.windowMs        - 检测窗口大小（ms），默认 30ms
+ * @param {number} opts.triggerCount    - 连续多少个窗口超阈值才算语音起始，默认 3
+ * @param {number} opts.paddingMs       - 语音起始前保留的缓冲（ms），默认 350ms
+ * @param {number} opts.minTrimMs       - 最少裁掉多长静噪才值得处理（ms），默认 600ms
+ * @returns {Promise<Blob>} 裁剪后的 WAV Blob，或原始 Blob（无需裁剪时）
+ */
+async function trimLeadingSilence(audioBlob, opts = {}) {
+    const {
+        threshold    = 0.008,
+        windowMs     = 30,
+        triggerCount = 3,
+        paddingMs    = 350,
+        minTrimMs    = 600,
+    } = opts;
+
+    let audioCtx;
+    try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        let audioBuffer;
+        try {
+            audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        } catch (decodeErr) {
+            console.warn('[VAD] 音频解码失败，跳过裁剪:', decodeErr.message);
+            return audioBlob;
+        }
+
+        const sampleRate    = audioBuffer.sampleRate;
+        const windowSamples = Math.floor(sampleRate * windowMs / 1000);
+        const totalSamples  = audioBuffer.length;
+
+        // 混合所有声道到单声道进行 VAD 分析
+        const mono = new Float32Array(totalSamples);
+        for (let c = 0; c < audioBuffer.numberOfChannels; c++) {
+            const ch = audioBuffer.getChannelData(c);
+            for (let i = 0; i < totalSamples; i++) {
+                mono[i] += ch[i] / audioBuffer.numberOfChannels;
+            }
+        }
+
+        // 滑动窗口 RMS 检测
+        let consecutiveAbove = 0;
+        let speechStartSample = -1;
+
+        for (let i = 0; i < totalSamples - windowSamples; i += windowSamples) {
+            let sumSq = 0;
+            for (let j = i; j < i + windowSamples; j++) {
+                sumSq += mono[j] * mono[j];
+            }
+            const rms = Math.sqrt(sumSq / windowSamples);
+
+            if (rms > threshold) {
+                consecutiveAbove++;
+                if (consecutiveAbove >= triggerCount) {
+                    // 回溯到连续段的起点
+                    speechStartSample = i - (triggerCount - 1) * windowSamples;
+                    break;
+                }
+            } else {
+                consecutiveAbove = 0;
+            }
+        }
+
+        if (speechStartSample < 0) {
+            // 全程未检测到语音，返回原始 Blob
+            console.log('[VAD] 未检测到语音，返回原始音频');
+            return audioBlob;
+        }
+
+        // 向前留 paddingMs 缓冲，确保不切掉开头辅音
+        const paddingSamples = Math.floor(sampleRate * paddingMs / 1000);
+        speechStartSample = Math.max(0, speechStartSample - paddingSamples);
+
+        const minTrimSamples = Math.floor(sampleRate * minTrimMs / 1000);
+        if (speechStartSample < minTrimSamples) {
+            console.log(`[VAD] 语音起始于 ${(speechStartSample / sampleRate * 1000).toFixed(0)}ms，无需裁剪`);
+            return audioBlob;
+        }
+
+        const trimmedMs = (speechStartSample / sampleRate * 1000).toFixed(0);
+        const remainingMs = ((totalSamples - speechStartSample) / sampleRate * 1000).toFixed(0);
+        console.log(`[VAD] ✂️ 裁剪前导静噪 ${trimmedMs}ms，保留 ${remainingMs}ms 音频`);
+
+        // 构造裁剪后的 AudioBuffer
+        const trimmedLength = totalSamples - speechStartSample;
+        const trimmedBuffer = audioCtx.createBuffer(
+            audioBuffer.numberOfChannels,
+            trimmedLength,
+            sampleRate
+        );
+        for (let c = 0; c < audioBuffer.numberOfChannels; c++) {
+            trimmedBuffer.copyToChannel(
+                audioBuffer.getChannelData(c).slice(speechStartSample),
+                c
+            );
+        }
+
+        return encodeAudioBufferToWav(trimmedBuffer);
+
+    } catch (err) {
+        console.warn('[VAD] 处理出错，返回原始音频:', err.message);
+        return audioBlob;
+    } finally {
+        if (audioCtx) audioCtx.close().catch(() => {});
+    }
+}
+
+/**
+ * 将 AudioBuffer 编码为 16-bit PCM WAV Blob（单声道，保持原始采样率）
+ * @param {AudioBuffer} audioBuffer
+ * @returns {Blob} audio/wav Blob
+ */
+function encodeAudioBufferToWav(audioBuffer) {
+    const numChannels = 1; // 输出单声道，Whisper 效果最佳
+    const sampleRate  = audioBuffer.sampleRate;
+    const numSamples  = audioBuffer.length;
+    const bitsPerSample = 16;
+    const blockAlign  = numChannels * bitsPerSample / 8;
+    const byteRate    = sampleRate * blockAlign;
+    const dataSize    = numSamples * blockAlign;
+
+    // 混合到单声道
+    const mono = new Float32Array(numSamples);
+    for (let c = 0; c < audioBuffer.numberOfChannels; c++) {
+        const ch = audioBuffer.getChannelData(c);
+        for (let i = 0; i < numSamples; i++) {
+            mono[i] += ch[i] / audioBuffer.numberOfChannels;
+        }
+    }
+
+    const buffer = new ArrayBuffer(44 + dataSize);
+    const view   = new DataView(buffer);
+
+    const writeStr = (offset, str) => {
+        for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+    };
+
+    writeStr(0,  'RIFF');
+    view.setUint32(4,  36 + dataSize, true);
+    writeStr(8,  'WAVE');
+    writeStr(12, 'fmt ');
+    view.setUint32(16, 16, true);         // PCM chunk size
+    view.setUint16(20, 1,  true);         // PCM format
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, byteRate,   true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitsPerSample, true);
+    writeStr(36, 'data');
+    view.setUint32(40, dataSize, true);
+
+    let offset = 44;
+    for (let i = 0; i < numSamples; i++) {
+        const s = Math.max(-1, Math.min(1, mono[i]));
+        view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        offset += 2;
+    }
+
+    return new Blob([buffer], { type: 'audio/wav' });
+}
+
+// ==================== End VAD ====================
+
 // 检查并请求麦克风权限
 async function checkMicrophonePermission() {
     console.log('[INFO] 检查麦克风权限');
@@ -2731,24 +2903,16 @@ function cleanupAudioStreams(force = false) {
             console.log(`  - 类型: ${audioBlob.type}`);
             console.log(`  - Chunks数量: ${chunksToUse.length}`);
             
-            // 直接使用原始录音格式上传（AAC/MP4 或 WebM/Opus），无需转换为 WAV
-            // 录音时已设置 64kbps，5分钟录音仅约 2-5 MB，远低于服务器 30MB 限制
-            const audioToTranscribe = audioBlob;
-            
-            // 保存音频用于本地播放/下载（浏览器原生支持 AAC/MP4 和 WebM 播放）
+            // 保存原始音频用于本地播放/下载（浏览器原生支持 WebM 播放）
             lastRecordedAudioBlob = audioBlob;
+
+            // 客户端 VAD：裁剪前导静音/噪音，帮助 Whisper 准确检测语言
+            // 若语音起始于前 600ms 内则不裁剪，否则裁剪并重编为 WAV
+            const audioToTranscribe = await trimLeadingSilence(audioBlob);
             
-            // 🔥 v112: 隐藏调试用的播放和下载按钮（已在 HTML 中注释掉）
-            // if (playAudioBtn && downloadAudioBtn) {
-            //     playAudioBtn.style.display = 'flex';
-            //     downloadAudioBtn.style.display = 'flex';
-            //     playAudioBtn.disabled = false;
-            //     downloadAudioBtn.disabled = false;
-            // }
-            
-            console.log(`[INFO] ✅ 音频准备完成（直传模式，跳过 WAV 转换）`);
-            console.log(`[INFO] 音频类型: ${audioBlob.type}`);
-            console.log(`[INFO] 音频大小: ${(audioBlob.size / 1024).toFixed(2)} KB`);
+            console.log(`[INFO] ✅ 音频准备完成（VAD 裁剪模式）`);
+            console.log(`[INFO] 原始: ${audioBlob.type} ${(audioBlob.size / 1024).toFixed(2)} KB`);
+            console.log(`[INFO] 转录: ${audioToTranscribe.type} ${(audioToTranscribe.size / 1024).toFixed(2)} KB`);
             
             const frontendProcessTime = Date.now() - totalStartTime;
             console.log(`\n${'='.repeat(80)}`);
