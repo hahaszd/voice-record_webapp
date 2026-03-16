@@ -1532,6 +1532,66 @@ async def transcribe_system_audio(
 
 
 # ================================================================================
+# 指定 API 直连函数（不走 fallback）
+# ================================================================================
+
+async def transcribe_with_preferred_api(
+    audio_content: bytes,
+    filename: str,
+    preferred_api: str,
+    language: Optional[str] = None,
+    duration: Optional[int] = None,
+    logger: Optional[TranscriptionLogger] = None,
+    audio_source: str = "microphone"
+) -> Tuple[str, str, Dict[str, Any]]:
+    """
+    按用户指定 API 进行转录（不走 fallback 链）。
+    支持: openai / ai_builder / google
+    """
+    api = (preferred_api or "").strip().lower()
+    if not api:
+        raise Exception("preferred_api 不能为空")
+
+    if api in ("openai", "openai_whisper"):
+        text, metadata = await _transcribe_openai(
+            audio_content=audio_content,
+            filename=filename,
+            language=language,
+            duration=duration,
+            logger=logger
+        )
+        text = _strip_json_artifacts(text)
+        return text, "openai", metadata
+
+    if api in ("ai_builder", "aibuilder", "abs"):
+        text, metadata = await _transcribe_ai_builder(
+            audio_content=audio_content,
+            filename=filename,
+            language=language,
+            duration=duration,
+            logger=logger
+        )
+        text = _strip_json_artifacts(text)
+        return text, "ai_builder", metadata
+
+    if api in ("google", "google_stt", "gcp"):
+        # 系统/混合音频优先开启多说话人并移除标签，麦克风音频走普通模式
+        use_diarization = audio_source in ["system", "both"]
+        text, metadata = await _transcribe_google(
+            audio_content=audio_content,
+            filename=filename,
+            language=language,
+            logger=logger,
+            enable_diarization=use_diarization,
+            remove_speaker_labels=use_diarization
+        )
+        text = _strip_json_artifacts(text)
+        return text, "google", metadata
+
+    raise Exception(f"不支持的 preferred_api: {preferred_api}")
+
+
+# ================================================================================
 # 状态查询函数
 # ================================================================================
 
