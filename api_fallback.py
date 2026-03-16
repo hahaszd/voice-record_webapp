@@ -770,9 +770,11 @@ async def _transcribe_openai(
     }
     
     # 使用 whisper-1：中文准确率比 gpt-4o-transcribe 更稳定，社区反馈 gpt-4o-transcribe 在中文上有误识别问题
+    # temperature=0：固定贪心解码，大幅减少幻觉（Whisper 官方推荐对非实时场景使用）
     data = {
         'model': 'whisper-1',
         'response_format': 'verbose_json',
+        'temperature': 0,
     }
     
     # 如果指定了语言，则使用指定语言；否则自动检测
@@ -813,19 +815,67 @@ async def _transcribe_openai(
     # 检测 prompt 回显：如果返回的是 prompt 本身，说明 Whisper 没有识别到音频内容
     if '以下是录音内容' in text and len(text) < 20:
         raise Exception("OpenAI Whisper 返回了 prompt 提示词而非转录内容，音频可能无法识别")
-    
-    # v109: 记录 verbose 信息（如果有）
+
+    # 幻觉模式检测：Whisper 对噪音/静音常见的幻觉输出（递增数字列表、版权声明、感谢订阅等）
+    import re as _re
+    _hallucination_patterns = [
+        r'^(PSTD\s+\d+[\.\d]*\s*){3,}',           # PSTD 1.0 PSTD 2.0 ...
+        r'(\bPSTD\b.*){5,}',                         # 重复 PSTD
+        r'(字幕|Subtitle|subtitle).*(版权|Copyright)', # 字幕版权声明
+        r'(请.*订阅|感谢.*观看|点赞.*关注){2,}',       # 反复出现的 YouTube 套话
+        r'^(\d+[\.,]\d+\s+){5,}',                    # 反复出现的纯数字
+    ]
+    for _pat in _hallucination_patterns:
+        if _re.search(_pat, text):
+            print(f"[OPENAI-HALLUCINATION] 检测到幻觉模式，丢弃结果: {text[:80]!r}")
+            raise Exception("OpenAI Whisper 输出疑似幻觉（噪音/静音触发），跳过此结果")
+
+    # 使用 verbose_json 段落过滤：
+    # - no_speech_prob > 0.8   → 该段基本是静音/噪音，丢弃
+    # - compression_ratio > 2.4 → 输出高度重复，典型幻觉特征，丢弃
+    # - avg_logprob < -1.0      → 置信度极低，丢弃
     if 'segments' in result and result['segments'] is not None:
-        segments_count = len(result['segments'])
-        print(f"[v109-DEBUG] OpenAI 转录包含 {segments_count} 个音频段落")
-        
-        # 检查是否有段落被标记为"非语音"
-        for i, seg in enumerate(result['segments']):
-            no_speech_prob = seg.get('no_speech_prob', 0)
-            if no_speech_prob > 0.5:
-                start = seg.get('start', 0)
-                end = seg.get('end', 0)
-                print(f"[v109-WARNING] 段落 {i} ({start:.1f}s-{end:.1f}s) 被判断为非语音 (概率: {no_speech_prob:.2f})")
+        segments = result['segments']
+        segments_count = len(segments)
+        print(f"[OPENAI-DEBUG] 转录包含 {segments_count} 个音频段落")
+
+        valid_texts = []
+        filtered_count = 0
+        for i, seg in enumerate(segments):
+            no_speech_prob   = seg.get('no_speech_prob', 0)
+            compression_ratio = seg.get('compression_ratio', 1.0)
+            avg_logprob      = seg.get('avg_logprob', 0)
+            seg_text         = seg.get('text', '').strip()
+            start            = seg.get('start', 0)
+            end              = seg.get('end', 0)
+
+            # 逐段判断是否为幻觉/非语音
+            is_hallucination = False
+            reason = ''
+            if no_speech_prob > 0.8:
+                is_hallucination = True
+                reason = f'no_speech_prob={no_speech_prob:.2f}'
+            elif compression_ratio > 2.4:
+                is_hallucination = True
+                reason = f'compression_ratio={compression_ratio:.2f}'
+            elif avg_logprob < -1.0:
+                is_hallucination = True
+                reason = f'avg_logprob={avg_logprob:.2f}'
+
+            if is_hallucination:
+                filtered_count += 1
+                print(f"[OPENAI-FILTER] 丢弃段落 {i} ({start:.1f}s-{end:.1f}s) [{reason}]: {seg_text[:40]!r}")
+            else:
+                valid_texts.append(seg_text)
+
+        if filtered_count > 0:
+            print(f"[OPENAI-FILTER] 共过滤 {filtered_count}/{segments_count} 个幻觉段落")
+
+        if valid_texts:
+            text = ' '.join(valid_texts).strip()
+            print(f"[OPENAI-FILTER] 过滤后保留 {len(valid_texts)} 个段落")
+        elif filtered_count == segments_count:
+            raise Exception("所有段落均为非语音/幻觉内容，音频可能全为静音或噪音")
     
     metadata = {
         "api": "openai",
