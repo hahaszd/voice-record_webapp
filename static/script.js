@@ -2996,7 +2996,11 @@ function cleanupAudioStreams(force = false) {
                 
                 // 🔥 添加到历史记录
                 if (result.text) {
-                    addToHistory(result.text);
+                    addToHistory(
+                        result.text,
+                        audioToTranscribe,
+                        currentAudioSource || 'microphone'
+                    );
                 }
                 
                 // 🔥 发送浏览器通知
@@ -3269,13 +3273,15 @@ function cleanupAudioStreams(force = false) {
     // ================================
     
     // 添加转录到历史记录
-    function addToHistory(text) {
+    function addToHistory(text, audioBlob = null, audioSource = 'microphone') {
         if (!text || text.trim() === '') return;
         
         const historyItem = {
             id: Date.now(),
             timestamp: new Date(),
-            text: text.trim()
+            text: text.trim(),
+            audioBlob: audioBlob || null,
+            audioSource: audioSource || 'microphone'
         };
         
         transcriptionHistory.unshift(historyItem); // 添加到开头（最新的在前）
@@ -3337,6 +3343,99 @@ function cleanupAudioStreams(force = false) {
         });
     }
     
+    function findHistoryItemById(itemId) {
+        return transcriptionHistory.find(item => String(item.id) === String(itemId));
+    }
+
+    async function retranscribeHistoryItem(itemId, preferredApi = 'auto') {
+        const item = findHistoryItemById(itemId);
+        if (!item || !item.audioBlob) {
+            console.warn('[HISTORY] 未找到可重转录的音频');
+            return;
+        }
+
+        const resultBox = historyList.querySelector(`.history-item-retranscribe-result[data-id="${item.id}"]`);
+        const itemTextEl = historyList.querySelector(`.history-item[data-id="${item.id}"] .history-item-text`);
+        const apiLabelMap = {
+            auto: 'Auto',
+            openai: 'OpenAI Whisper',
+            ai_builder: 'AI Builder',
+            google: 'Google STT'
+        };
+
+        if (resultBox) {
+            resultBox.classList.remove('hidden');
+            resultBox.classList.add('loading');
+            resultBox.textContent = `Re-transcribing with ${apiLabelMap[preferredApi] || preferredApi}...`;
+        }
+
+        try {
+            const formData = new FormData();
+            const mimeType = item.audioBlob.type || 'audio/wav';
+            const extension = mimeType.includes('wav') ? 'wav' :
+                            mimeType.includes('webm') ? 'webm' :
+                            mimeType.includes('mp3') ? 'mp3' : 'mp4';
+
+            formData.append('audio_file', item.audioBlob, `history_retry.${extension}`);
+            formData.append('duration', '300');
+            formData.append('audio_source', item.audioSource || 'microphone');
+            if (preferredApi && preferredApi !== 'auto') {
+                formData.append('preferred_api', preferredApi);
+            }
+
+            const response = await fetch('/transcribe-segment', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 300)}`);
+            }
+
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.message || 'Transcription failed');
+            }
+
+            const newText = (result.text || '').trim();
+            if (!newText) {
+                throw new Error('Empty transcription text');
+            }
+
+            // 更新历史项文本 + 主结果区
+            item.text = newText;
+            if (itemTextEl) itemTextEl.textContent = newText;
+            transcriptionResult.value = newText;
+
+            if (resultBox) {
+                resultBox.classList.remove('loading');
+                resultBox.classList.add('success');
+                resultBox.textContent = `Done via ${apiLabelMap[result.api_used] || result.api_used || apiLabelMap[preferredApi]}.`;
+            }
+            console.log(`[HISTORY] 重转录成功: item=${item.id}, api=${result.api_used || preferredApi}`);
+
+        } catch (error) {
+            console.error('[HISTORY] 重转录失败:', error);
+            if (resultBox) {
+                resultBox.classList.remove('loading', 'success');
+                resultBox.classList.add('error');
+                resultBox.textContent = `Failed: ${error.message}`;
+            }
+        }
+    }
+
+    async function playHistoryAudio(itemId) {
+        const item = findHistoryItemById(itemId);
+        if (!item || !item.audioBlob) return;
+
+        const audioUrl = URL.createObjectURL(item.audioBlob);
+        const audio = new Audio(audioUrl);
+        audio.onended = () => URL.revokeObjectURL(audioUrl);
+        audio.onerror = () => URL.revokeObjectURL(audioUrl);
+        await audio.play();
+    }
+
     // 渲染历史记录列表
     function renderHistoryList() {
         if (transcriptionHistory.length === 0) {
@@ -3352,15 +3451,32 @@ function cleanupAudioStreams(force = false) {
             <div class="history-item" data-id="${item.id}">
                 <div class="history-item-header">
                     <span class="history-item-time">${formatTimestamp(item.timestamp)}</span>
-                    <button class="history-item-copy" data-text="${encodeURIComponent(item.text)}" title="Copy to clipboard">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                        </svg>
-                        Copy
-                    </button>
+                    <div class="history-item-actions">
+                        <button class="history-item-copy" data-text="${encodeURIComponent(item.text)}" title="Copy to clipboard">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                            </svg>
+                            Copy
+                        </button>
+                        ${item.audioBlob ? `
+                        <button class="history-item-play" data-id="${item.id}" title="Play audio">Play</button>
+                        <div class="history-item-retry-wrap">
+                            <button class="history-item-retry-toggle" data-id="${item.id}" title="Retry with different API">
+                                Re-transcribe
+                            </button>
+                            <div class="history-item-retry-menu hidden" data-id="${item.id}">
+                                <button class="history-item-retry-option" data-id="${item.id}" data-api="auto">Auto (fallback)</button>
+                                <button class="history-item-retry-option" data-id="${item.id}" data-api="openai">OpenAI Whisper</button>
+                                <button class="history-item-retry-option" data-id="${item.id}" data-api="ai_builder">AI Builder</button>
+                                <button class="history-item-retry-option" data-id="${item.id}" data-api="google">Google STT</button>
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
                 </div>
                 <div class="history-item-text">${item.text}</div>
+                <div class="history-item-retranscribe-result hidden" data-id="${item.id}"></div>
             </div>
         `).join('');
         
@@ -3395,6 +3511,56 @@ function cleanupAudioStreams(force = false) {
                 }
             });
         });
+
+        // 播放按钮
+        historyList.querySelectorAll('.history-item-play').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                try {
+                    await playHistoryAudio(btn.dataset.id);
+                } catch (err) {
+                    console.error('[HISTORY] 播放失败:', err);
+                }
+            });
+        });
+
+        // 关闭所有重试菜单
+        const closeAllRetryMenus = () => {
+            historyList.querySelectorAll('.history-item-retry-menu').forEach(menu => {
+                menu.classList.add('hidden');
+            });
+        };
+
+        // 切换菜单显示
+        historyList.querySelectorAll('.history-item-retry-toggle').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const menu = historyList.querySelector(`.history-item-retry-menu[data-id="${btn.dataset.id}"]`);
+                if (!menu) return;
+                const willShow = menu.classList.contains('hidden');
+                closeAllRetryMenus();
+                if (willShow) menu.classList.remove('hidden');
+            });
+        });
+
+        // 点击具体 API 重试
+        historyList.querySelectorAll('.history-item-retry-option').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                closeAllRetryMenus();
+                await retranscribeHistoryItem(btn.dataset.id, btn.dataset.api || 'auto');
+            });
+        });
+
+        // 点击 historyList 空白区域关闭菜单（只绑定一次，避免重复绑定）
+        if (!historyList.dataset.retryMenuCloseBound) {
+            historyList.addEventListener('click', () => {
+                historyList.querySelectorAll('.history-item-retry-menu').forEach(menu => {
+                    menu.classList.add('hidden');
+                });
+            });
+            historyList.dataset.retryMenuCloseBound = '1';
+        }
     }
     
     // 打开历史记录Modal

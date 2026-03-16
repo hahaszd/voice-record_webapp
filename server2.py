@@ -809,24 +809,32 @@ async def transcribe_segment(
     duration: int = Form(default=60),
     needs_segmentation: str = Form(default=None),
     language: str = Form(default=None),  # 🌍 v107: 语言参数（保留但默认自动识别）
-    audio_source: str = Form(default='microphone')  # 🎙️ v110: 音频源（microphone/system/both）
+    audio_source: str = Form(default='microphone'),  # 🎙️ v110: 音频源（microphone/system/both）
+    preferred_api: str = Form(default=None)  # 🆕 用户手动指定 API（openai/ai_builder/google）
 ):
     """
     转录音频片段（用于录音界面的转录功能）
     🔥 v96: 使用智能 API fallback 系统
     🌍 v107: 默认自动识别语言（不指定语言）
     🎙️ v110: 根据音频源智能选择 API（麦克风=Whisper fallback，系统/混合=Google only）
+    🆕 支持 preferred_api，允许前端重试时手动指定 API
     
     - **audio_file**: 上传的音频文件
     - **duration**: 音频时长（秒），用于信息显示
     - **language**: 转录语言代码（如 'en', 'zh'），默认为 None（自动识别）
     - **audio_source**: 音频源类型（'microphone', 'system', 'both'），默认 'microphone'
+    - **preferred_api**: 指定 API（'openai'/'ai_builder'/'google'），默认 None（自动 fallback）
     
     返回转录结果
     """
     import datetime
     import traceback
-    from api_fallback import transcribe_with_fallback, transcribe_system_audio, get_api_status
+    from api_fallback import (
+        transcribe_with_fallback,
+        transcribe_system_audio,
+        transcribe_with_preferred_api,
+        get_api_status
+    )
     
     # 初始化日志记录器
     logger = TranscriptionLogger("transcribe-segment-fallback")
@@ -842,6 +850,8 @@ async def transcribe_segment(
         logger.log_request_info(filename, content_type, file_size, duration)
         print(f"[API_FALLBACK] 开始智能 API fallback 转录")
         print(f"[v110-ROUTING] 🎙️ 音频源: {audio_source}")
+        if preferred_api:
+            print(f"[v114-ROUTING] 🎯 手动指定 API: {preferred_api}")
         print(f"[API_FALLBACK] 当前 API 状态: {get_api_status()}")
         
         # 🎙️ v110: 根据音频源智能路由
@@ -878,25 +888,37 @@ async def transcribe_segment(
         # 🔥 使用智能 fallback 进行转录
         request_start_time = datetime.datetime.now()
         try:
-            # 🎙️ v110: 根据音频源选择 API 策略
-            if use_google_only:
-                # 系统音频/混合：Deepgram Nova-3 + Google API（支持多说话人）
-                transcription_text, api_used, metadata = await transcribe_system_audio(
+            # 🆕 v114: 手动指定 API（历史记录重试场景）
+            if preferred_api:
+                transcription_text, api_used, metadata = await transcribe_with_preferred_api(
                     audio_content=audio_content,
                     filename=filename,
+                    preferred_api=preferred_api,
                     language=language,
                     duration=duration,
-                    logger=logger
+                    logger=logger,
+                    audio_source=audio_source
                 )
             else:
-                # 纯麦克风：标准 Fallback（AI Builder → OpenAI → Google）
-                transcription_text, api_used, metadata = await transcribe_with_fallback(
-                    audio_content=audio_content,
-                    filename=filename,
-                    language=language,
-                    duration=duration,
-                    logger=logger
-                )
+                # 🎙️ v110: 根据音频源选择 API 策略
+                if use_google_only:
+                    # 系统音频/混合：Deepgram Nova-3 + Google API（支持多说话人）
+                    transcription_text, api_used, metadata = await transcribe_system_audio(
+                        audio_content=audio_content,
+                        filename=filename,
+                        language=language,
+                        duration=duration,
+                        logger=logger
+                    )
+                else:
+                    # 纯麦克风：标准 Fallback（AI Builder → OpenAI → Google）
+                    transcription_text, api_used, metadata = await transcribe_with_fallback(
+                        audio_content=audio_content,
+                        filename=filename,
+                        language=language,
+                        duration=duration,
+                        logger=logger
+                    )
             
             request_end_time = datetime.datetime.now()
             request_duration = (request_end_time - request_start_time).total_seconds()
