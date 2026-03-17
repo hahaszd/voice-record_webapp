@@ -3126,7 +3126,7 @@ function cleanupAudioStreams(force = false) {
             // 如果音频时长小于请求的时长，转换为WAV后返回完整音频
             if (totalDuration <= durationSeconds) {
                 console.log(`音频时长 (${totalDuration.toFixed(2)}秒) 小于等于请求时长 (${durationSeconds}秒)，转换为WAV后返回完整音频`);
-                const wavBlob = audioBufferToWav(audioBuffer);
+                const wavBlob = await audioBufferToWav(audioBuffer);
                 audioContext.close();
                 return wavBlob;
             }
@@ -3159,7 +3159,7 @@ function cleanupAudioStreams(force = false) {
             }
             
             // 转换为 WAV
-            const wavBlob = audioBufferToWav(segmentBuffer);
+            const wavBlob = await audioBufferToWav(segmentBuffer);
             console.log(`WAV 文件大小: ${(wavBlob.size / 1024).toFixed(2)} KB`);
             
             audioContext.close();
@@ -3197,57 +3197,69 @@ function cleanupAudioStreams(force = false) {
         }
     }
 
-    // AudioBuffer 转 WAV Blob
-    function audioBufferToWav(buffer) {
-        const length = buffer.length;
-        const sampleRate = buffer.sampleRate;
-        const channels = buffer.numberOfChannels;
+    // AudioBuffer 转 WAV Blob（降采样到 16kHz 单声道以控制文件大小）
+    async function audioBufferToWav(buffer, targetSampleRate = 16000, mono = true) {
+        // 使用 OfflineAudioContext 进行重采样和混音，Whisper/Deepgram 只需 16kHz 单声道
+        const outChannels = mono ? 1 : buffer.numberOfChannels;
+        const outLength = Math.ceil(buffer.length * targetSampleRate / buffer.sampleRate);
+
+        const offlineCtx = new OfflineAudioContext(outChannels, outLength, targetSampleRate);
+        const source = offlineCtx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(offlineCtx.destination);
+        source.start(0);
+
+        const rendered = await offlineCtx.startRendering();
+
+        const length = rendered.length;
+        const sampleRate = rendered.sampleRate;
+        const channels = rendered.numberOfChannels;
         const bytesPerSample = 2; // 16-bit
         const blockAlign = channels * bytesPerSample;
         const dataSize = length * blockAlign;
         const arrayBuffer = new ArrayBuffer(44 + dataSize);
         const view = new DataView(arrayBuffer);
-        
+
         // WAV 文件头
         const writeString = (offset, string) => {
             for (let i = 0; i < string.length; i++) {
                 view.setUint8(offset + i, string.charCodeAt(i));
             }
         };
-        
+
         // RIFF header
         writeString(0, 'RIFF');
-        view.setUint32(4, 36 + dataSize, true); // File size - 8
+        view.setUint32(4, 36 + dataSize, true);
         writeString(8, 'WAVE');
-        
+
         // fmt chunk
         writeString(12, 'fmt ');
-        view.setUint32(16, 16, true); // fmt chunk size
-        view.setUint16(20, 1, true); // Audio format (1 = PCM)
-        view.setUint16(22, channels, true); // Number of channels
-        view.setUint32(24, sampleRate, true); // Sample rate
-        view.setUint32(28, sampleRate * blockAlign, true); // Byte rate
-        view.setUint16(32, blockAlign, true); // Block align
-        view.setUint16(34, 16, true); // Bits per sample
-        
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true); // PCM
+        view.setUint16(22, channels, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * blockAlign, true);
+        view.setUint16(32, blockAlign, true);
+        view.setUint16(34, 16, true);
+
         // data chunk
         writeString(36, 'data');
-        view.setUint32(40, dataSize, true); // Data size
-        
-        // 写入音频数据（交错格式：L, R, L, R, ...）
+        view.setUint32(40, dataSize, true);
+
+        // 写入音频数据
         let offset = 44;
         for (let i = 0; i < length; i++) {
             for (let channel = 0; channel < channels; channel++) {
-                const channelData = buffer.getChannelData(channel);
+                const channelData = rendered.getChannelData(channel);
                 const sample = Math.max(-1, Math.min(1, channelData[i]));
-                const int16Sample = sample < 0 
+                const int16Sample = sample < 0
                     ? Math.max(-32768, Math.round(sample * 0x8000))
                     : Math.min(32767, Math.round(sample * 0x7FFF));
                 view.setInt16(offset, int16Sample, true);
                 offset += 2;
             }
         }
-        
+
         return new Blob([arrayBuffer], { type: 'audio/wav' });
     }
     
