@@ -805,26 +805,43 @@ function stopWaveform() {
 // ==================== Client-side VAD (Voice Activity Detection) ====================
 
 /**
- * 检测音频中语音的起始点，裁掉前导静音/噪音，返回裁剪后的 WAV Blob。
- * 若语音在前 500ms 内即起始，则直接返回原始 Blob 不做处理。
+ * 检测音频中语音的起始点，裁掉前导静音/噪音，返回处理结果。
+ *
+ * 核心思路（尾段基准）：录音结尾通常是用户刚说完的真实人声，能量可靠。
+ * 用尾段能量标定“语音参考值 speechRef”，结合全局底噪 noiseFloor 动态算阈值，
+ * 而不是用一个对不同麦克风/底噪都不鲁棒的固定阈值。
  *
  * @param {Blob} audioBlob - 原始录音 Blob（WebM/Opus）
  * @param {Object} opts
- * @param {number} opts.threshold       - RMS 能量阈值，默认 0.008（可适当调低以捕捉轻声）
- * @param {number} opts.windowMs        - 检测窗口大小（ms），默认 30ms
- * @param {number} opts.triggerCount    - 连续多少个窗口超阈值才算语音起始，默认 3
- * @param {number} opts.paddingMs       - 语音起始前保留的缓冲（ms），默认 350ms
- * @param {number} opts.minTrimMs       - 最少裁掉多长静噪才值得处理（ms），默认 600ms
- * @returns {Promise<Blob>} 裁剪后的 WAV Blob，或原始 Blob（无需裁剪时）
+ * @param {number}  opts.windowMs        - 检测窗口大小（ms），默认 30ms
+ * @param {number}  opts.triggerCount    - 连续多少个窗口超阈值才算语音起始，默认 3
+ * @param {number}  opts.paddingMs       - 语音起始前保留的缓冲（ms），默认 350ms
+ * @param {number}  opts.minTrimMs       - 最少裁掉多长静噪才值得处理（ms），默认 600ms
+ * @param {number}  opts.tailRefMs       - 用作基准的尾段长度（ms），默认 1500ms
+ * @param {number}  opts.tailMaxRatio    - 尾段占整段的最大比例，默认 0.4
+ * @param {number}  opts.k               - 自适应阈值系数（0~1），默认 0.2
+ * @param {number}  opts.absMinThreshold - 绝对阈值下限，默认 0.004
+ * @param {number}  opts.silenceMargin   - speechRef 必须高于 noiseFloor 的倍数，否则判为全静音，默认 1.6
+ * @param {?number} opts.threshold       - 可选硬覆盖阈值（旧行为），默认 null 走自适应
+ * @returns {Promise<{blob: Blob, allSilence: boolean, trimmed: boolean, reason: string}>}
+ *          blob: 处理后（或原始）音频；allSilence: 整段基本无人声；trimmed: 是否真正裁剪过
  */
 async function trimLeadingSilence(audioBlob, opts = {}) {
     const {
-        threshold    = 0.008,
-        windowMs     = 30,
-        triggerCount = 3,
-        paddingMs    = 350,
-        minTrimMs    = 600,
+        windowMs        = 30,
+        triggerCount    = 3,
+        paddingMs       = 350,
+        minTrimMs       = 600,
+        tailRefMs       = 1500,
+        tailMaxRatio    = 0.4,
+        k               = 0.2,
+        absMinThreshold = 0.004,
+        silenceMargin   = 1.6,
+        threshold       = null,
     } = opts;
+
+    // 失败/不裁剪时统一返回原始 blob
+    const passthrough = (reason) => ({ blob: audioBlob, allSilence: false, trimmed: false, reason });
 
     let audioCtx;
     try {
@@ -834,12 +851,12 @@ async function trimLeadingSilence(audioBlob, opts = {}) {
         try {
             audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
         } catch (decodeErr) {
-            console.warn('[VAD] 音频解码失败，跳过裁剪:', decodeErr.message);
-            return audioBlob;
+            console.error('[VAD] ❌ 音频解码失败，跳过裁剪（前导空白可能被送入 API）:', decodeErr && decodeErr.message);
+            return passthrough('decode_failed');
         }
 
         const sampleRate    = audioBuffer.sampleRate;
-        const windowSamples = Math.floor(sampleRate * windowMs / 1000);
+        const windowSamples = Math.max(1, Math.floor(sampleRate * windowMs / 1000));
         const totalSamples  = audioBuffer.length;
 
         // 混合所有声道到单声道进行 VAD 分析
@@ -851,22 +868,66 @@ async function trimLeadingSilence(audioBlob, opts = {}) {
             }
         }
 
-        // 滑动窗口 RMS 检测
-        let consecutiveAbove = 0;
-        let speechStartSample = -1;
-
-        for (let i = 0; i < totalSamples - windowSamples; i += windowSamples) {
+        // 全程逐窗口 RMS
+        const windowCount = Math.floor(totalSamples / windowSamples);
+        if (windowCount < 3) {
+            console.log('[VAD] 音频过短，跳过裁剪');
+            return passthrough('too_short');
+        }
+        const rmsList = new Float32Array(windowCount);
+        for (let w = 0; w < windowCount; w++) {
+            const start = w * windowSamples;
             let sumSq = 0;
-            for (let j = i; j < i + windowSamples; j++) {
+            for (let j = start; j < start + windowSamples; j++) {
                 sumSq += mono[j] * mono[j];
             }
-            const rms = Math.sqrt(sumSq / windowSamples);
+            rmsList[w] = Math.sqrt(sumSq / windowSamples);
+        }
 
-            if (rms > threshold) {
+        const percentile = (arr, p) => {
+            const sorted = Array.from(arr).sort((a, b) => a - b);
+            const idx = Math.min(sorted.length - 1, Math.max(0, Math.round((sorted.length - 1) * p)));
+            return sorted[idx];
+        };
+
+        // 尾段基准 speechRef：最后 tailRefMs（且不超过整段 tailMaxRatio）窗口的 75 分位
+        const tailWindowsByMs    = Math.ceil(tailRefMs / windowMs);
+        const tailWindowsByRatio = Math.floor(windowCount * tailMaxRatio);
+        const tailWindows = Math.max(1, Math.min(tailWindowsByMs, tailWindowsByRatio || tailWindowsByMs));
+        const tailSlice   = rmsList.slice(windowCount - tailWindows);
+        let speechRef = percentile(tailSlice, 0.75);
+        // 尾段过弱时退化为全局高分位
+        const globalHigh = percentile(rmsList, 0.9);
+        if (speechRef <= 0) speechRef = globalHigh;
+
+        // 全局底噪：10 分位
+        const noiseFloor = percentile(rmsList, 0.1);
+
+        // 自适应阈值（threshold 非空则硬覆盖）
+        let thr;
+        if (threshold != null) {
+            thr = threshold;
+        } else {
+            thr = noiseFloor + k * Math.max(0, speechRef - noiseFloor);
+            thr = Math.max(thr, absMinThreshold);
+        }
+
+        console.log(`[VAD] 📊 speechRef=${speechRef.toFixed(4)} noiseFloor=${noiseFloor.toFixed(4)} threshold=${thr.toFixed(4)} (k=${k}, windows=${windowCount}, tailWindows=${tailWindows})`);
+
+        // 全静音判定：尾段“人声”都接近底噪，说明整段没有有效语音
+        if (speechRef < noiseFloor * silenceMargin || speechRef < absMinThreshold) {
+            console.warn('[VAD] 🔇 整段疑似全静音/无有效人声（speechRef 接近底噪）');
+            return { blob: audioBlob, allSilence: true, trimmed: false, reason: 'all_silence' };
+        }
+
+        // 从前往后找语音起点
+        let consecutiveAbove = 0;
+        let speechStartWindow = -1;
+        for (let w = 0; w < windowCount; w++) {
+            if (rmsList[w] > thr) {
                 consecutiveAbove++;
                 if (consecutiveAbove >= triggerCount) {
-                    // 回溯到连续段的起点
-                    speechStartSample = i - (triggerCount - 1) * windowSamples;
+                    speechStartWindow = w - (triggerCount - 1);
                     break;
                 }
             } else {
@@ -874,25 +935,23 @@ async function trimLeadingSilence(audioBlob, opts = {}) {
             }
         }
 
-        if (speechStartSample < 0) {
-            // 全程未检测到语音，返回原始 Blob
-            console.log('[VAD] 未检测到语音，返回原始音频');
-            return audioBlob;
+        if (speechStartWindow < 0) {
+            console.warn('[VAD] 🔇 全程未检测到超阈值语音，视为全静音');
+            return { blob: audioBlob, allSilence: true, trimmed: false, reason: 'no_speech' };
         }
 
         // 向前留 paddingMs 缓冲，确保不切掉开头辅音
         const paddingSamples = Math.floor(sampleRate * paddingMs / 1000);
-        speechStartSample = Math.max(0, speechStartSample - paddingSamples);
+        let speechStartSample = Math.max(0, speechStartWindow * windowSamples - paddingSamples);
 
         const minTrimSamples = Math.floor(sampleRate * minTrimMs / 1000);
         if (speechStartSample < minTrimSamples) {
-            console.log(`[VAD] 语音起始于 ${(speechStartSample / sampleRate * 1000).toFixed(0)}ms，无需裁剪`);
-            return audioBlob;
+            console.log(`[VAD] 语音起始于 ${(speechStartSample / sampleRate * 1000).toFixed(0)}ms，未超过 ${minTrimMs}ms，无需裁剪`);
+            return passthrough('below_min_trim');
         }
 
-        const trimmedMs = (speechStartSample / sampleRate * 1000).toFixed(0);
+        const trimmedMs   = (speechStartSample / sampleRate * 1000).toFixed(0);
         const remainingMs = ((totalSamples - speechStartSample) / sampleRate * 1000).toFixed(0);
-        console.log(`[VAD] ✂️ 裁剪前导静噪 ${trimmedMs}ms，保留 ${remainingMs}ms 音频`);
 
         // 构造裁剪后的 AudioBuffer
         const trimmedLength = totalSamples - speechStartSample;
@@ -908,11 +967,36 @@ async function trimLeadingSilence(audioBlob, opts = {}) {
             );
         }
 
-        return encodeAudioBufferToWav(trimmedBuffer);
+        // 重采样到 16kHz 单声道再编码 WAV：
+        // 48kHz 原采样率编码会让长录音 WAV 超过服务端 25MB 限制（280s ≈ 27MB），
+        // 而 Whisper/Deepgram/Google 内部都按 16kHz 处理，16kHz 足够（满 5 分钟 ≈ 9.6MB）
+        const targetSampleRate = 16000;
+        const offlineCtx = new OfflineAudioContext(
+            1,
+            Math.ceil(trimmedLength / sampleRate * targetSampleRate),
+            targetSampleRate
+        );
+        const src = offlineCtx.createBufferSource();
+        src.buffer = trimmedBuffer;
+        src.connect(offlineCtx.destination);
+        src.start(0);
+        const resampled = await offlineCtx.startRendering();
+
+        const wavBlob = encodeAudioBufferToWav(resampled);
+
+        // 大小兜底：理论上 16kHz 下不可能超限，纯保险
+        const maxWavBytes = 24 * 1024 * 1024;
+        if (wavBlob.size > maxWavBytes) {
+            console.error(`[VAD] ❌ 裁剪后 WAV 仍过大 (${(wavBlob.size / 1024 / 1024).toFixed(2)}MB > 24MB)，回退原始音频`);
+            return passthrough('wav_too_large');
+        }
+
+        console.log(`[VAD] ✂️ 裁剪前导静噪 ${trimmedMs}ms，保留 ${remainingMs}ms；${sampleRate}Hz → ${targetSampleRate}Hz；大小 ${(audioBlob.size / 1024).toFixed(1)}KB → ${(wavBlob.size / 1024).toFixed(1)}KB`);
+        return { blob: wavBlob, allSilence: false, trimmed: true, reason: 'trimmed' };
 
     } catch (err) {
-        console.warn('[VAD] 处理出错，返回原始音频:', err.message);
-        return audioBlob;
+        console.error('[VAD] ❌ 处理出错，返回原始音频:', err && err.message);
+        return passthrough('error');
     } finally {
         if (audioCtx) audioCtx.close().catch(() => {});
     }
@@ -2906,11 +2990,20 @@ function cleanupAudioStreams(force = false) {
             // 保存原始音频用于本地播放/下载（浏览器原生支持 WebM 播放）
             lastRecordedAudioBlob = audioBlob;
 
-            // 客户端 VAD：裁剪前导静音/噪音，帮助 Whisper 准确检测语言
-            // 若语音起始于前 600ms 内则不裁剪，否则裁剪并重编为 WAV
-            const audioToTranscribe = await trimLeadingSilence(audioBlob);
-            
-            console.log(`[INFO] ✅ 音频准备完成（VAD 裁剪模式）`);
+            // 客户端 VAD：用尾段真实人声做基准，动态裁剪前导静音/噪音
+            // 若整段几乎无有效人声，直接跳过上传，从源头避免 OpenAI 对静音产生幻觉
+            const vadResult = await trimLeadingSilence(audioBlob);
+
+            if (vadResult.allSilence) {
+                console.warn('[VAD] 🔇 整段几乎无有效人声，已跳过转录（避免幻觉）');
+                transcriptionResult.value = '';
+                alert('未检测到有效语音（整段几乎是静音），已跳过转录。请确认麦克风/音量后重试。');
+                return;
+            }
+
+            const audioToTranscribe = vadResult.blob;
+
+            console.log(`[INFO] ✅ 音频准备完成（VAD: ${vadResult.reason}, trimmed=${vadResult.trimmed}）`);
             console.log(`[INFO] 原始: ${audioBlob.type} ${(audioBlob.size / 1024).toFixed(2)} KB`);
             console.log(`[INFO] 转录: ${audioToTranscribe.type} ${(audioToTranscribe.size / 1024).toFixed(2)} KB`);
             
