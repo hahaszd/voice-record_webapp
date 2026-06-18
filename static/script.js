@@ -832,7 +832,7 @@ async function trimLeadingSilence(audioBlob, opts = {}) {
         triggerCount    = 3,
         paddingMs       = 350,
         minTrimMs       = 600,
-        tailRefMs       = 1500,
+        tailRefMs       = 4000,
         tailMaxRatio    = 0.4,
         k               = 0.2,
         absMinThreshold = 0.004,
@@ -890,15 +890,15 @@ async function trimLeadingSilence(audioBlob, opts = {}) {
             return sorted[idx];
         };
 
-        // 尾段基准 speechRef：最后 tailRefMs（且不超过整段 tailMaxRatio）窗口的 75 分位
+        // 人声能量基准 speechRef：全程高分位为主、延长尾段为辅，两者取大。
+        // 只要整段任意位置有响亮人声，基准就被抬上去，避免“说了很久却被判静音”。
+        const globalHigh = percentile(rmsList, 0.9);
         const tailWindowsByMs    = Math.ceil(tailRefMs / windowMs);
         const tailWindowsByRatio = Math.floor(windowCount * tailMaxRatio);
         const tailWindows = Math.max(1, Math.min(tailWindowsByMs, tailWindowsByRatio || tailWindowsByMs));
         const tailSlice   = rmsList.slice(windowCount - tailWindows);
-        let speechRef = percentile(tailSlice, 0.75);
-        // 尾段过弱时退化为全局高分位
-        const globalHigh = percentile(rmsList, 0.9);
-        if (speechRef <= 0) speechRef = globalHigh;
+        const tailHigh    = percentile(tailSlice, 0.75);
+        const speechRef   = Math.max(globalHigh, tailHigh);
 
         // 全局底噪：10 分位
         const noiseFloor = percentile(rmsList, 0.1);
@@ -912,11 +912,13 @@ async function trimLeadingSilence(audioBlob, opts = {}) {
             thr = Math.max(thr, absMinThreshold);
         }
 
-        console.log(`[VAD] 📊 speechRef=${speechRef.toFixed(4)} noiseFloor=${noiseFloor.toFixed(4)} threshold=${thr.toFixed(4)} (k=${k}, windows=${windowCount}, tailWindows=${tailWindows})`);
+        console.log(`[VAD] 📊 speechRef=${speechRef.toFixed(4)} globalHigh=${globalHigh.toFixed(4)} tailHigh=${tailHigh.toFixed(4)} noiseFloor=${noiseFloor.toFixed(4)} threshold=${thr.toFixed(4)} (k=${k}, windows=${windowCount}, tailWindows=${tailWindows})`);
 
-        // 全静音判定：尾段“人声”都接近底噪，说明整段没有有效语音
-        if (speechRef < noiseFloor * silenceMargin || speechRef < absMinThreshold) {
-            console.warn('[VAD] 🔇 整段疑似全静音/无有效人声（speechRef 接近底噪）');
+        // 全静音判定（收紧）：只有“全程最高能量都接近 0”才算真正空录音（麦克风没录进东西）。
+        // 不再用尾段相对底噪的脆弱判定，避免把正常长语音误判为静音。
+        const isTrulyEmpty = globalHigh < absMinThreshold;
+        if (isTrulyEmpty) {
+            console.warn('[VAD] 🔇 整段全程能量极低，疑似麦克风无输入（真空录音）');
             return { blob: audioBlob, allSilence: true, trimmed: false, reason: 'all_silence' };
         }
 
@@ -2990,15 +2992,13 @@ function cleanupAudioStreams(force = false) {
             // 保存原始音频用于本地播放/下载（浏览器原生支持 WebM 播放）
             lastRecordedAudioBlob = audioBlob;
 
-            // 客户端 VAD：用尾段真实人声做基准，动态裁剪前导静音/噪音
-            // 若整段几乎无有效人声，直接跳过上传，从源头避免 OpenAI 对静音产生幻觉
+            // 客户端 VAD：动态裁剪前导静音/噪音。
+            // 注意：即使 VAD 怀疑是静音，也绝不丢弃录音——仍照常上传转录，
+            // 真静音交给后端既有的 no_speech_prob / compression_ratio / avg_logprob 过滤兜底。
             const vadResult = await trimLeadingSilence(audioBlob);
 
             if (vadResult.allSilence) {
-                console.warn('[VAD] 🔇 整段几乎无有效人声，已跳过转录（避免幻觉）');
-                transcriptionResult.value = '';
-                alert('未检测到有效语音（整段几乎是静音），已跳过转录。请确认麦克风/音量后重试。');
-                return;
+                console.warn('[VAD] 🔇 VAD 怀疑整段静音，但仍继续上传转录（避免误判丢弃录音），交后端过滤兜底');
             }
 
             const audioToTranscribe = vadResult.blob;
