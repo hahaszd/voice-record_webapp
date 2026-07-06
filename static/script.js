@@ -3496,26 +3496,24 @@ function cleanupAudioStreams(force = false) {
         return transcriptionHistory.find(item => String(item.id) === String(itemId));
     }
 
-    async function retranscribeHistoryItem(itemId, preferredApi = 'auto') {
+    async function retranscribeHistoryItem(itemId, langOverride = null) {
         const item = findHistoryItemById(itemId);
         if (!item || !item.audioBlob) {
             console.warn('[HISTORY] 未找到可重转录的音频');
             return;
         }
 
+        // 🌍 重转语言：优先用本次菜单选择的语言，否则沿用全局设置
+        const lang = langOverride || transcriptionLanguage || 'auto';
+        const langLabelMap = { auto: 'Auto-detect', zh: '中文', en: 'English' };
+
         const resultBox = historyList.querySelector(`.history-item-retranscribe-result[data-id="${item.id}"]`);
         const itemTextEl = historyList.querySelector(`.history-item[data-id="${item.id}"] .history-item-text`);
-        const apiLabelMap = {
-            auto: 'Auto',
-            openai: 'OpenAI Whisper',
-            ai_builder: 'AI Builder',
-            google: 'Google STT'
-        };
 
         if (resultBox) {
-            resultBox.classList.remove('hidden');
+            resultBox.classList.remove('hidden', 'success', 'error');
             resultBox.classList.add('loading');
-            resultBox.textContent = `Re-transcribing with ${apiLabelMap[preferredApi] || preferredApi}...`;
+            resultBox.textContent = `Re-transcribing in ${langLabelMap[lang] || lang}...`;
         }
 
         try {
@@ -3528,12 +3526,9 @@ function cleanupAudioStreams(force = false) {
             formData.append('audio_file', item.audioBlob, `history_retry.${extension}`);
             formData.append('duration', '300');
             formData.append('audio_source', item.audioSource || 'microphone');
-            // 🌍 重新转录时沿用当前选择的转录语言（非 auto 才传）
-            if (transcriptionLanguage && transcriptionLanguage !== 'auto') {
-                formData.append('language', transcriptionLanguage);
-            }
-            if (preferredApi && preferredApi !== 'auto') {
-                formData.append('preferred_api', preferredApi);
+            // 🌍 按本次选择的语言重转（非 auto 才传，auto 让后端自动识别）
+            if (lang && lang !== 'auto') {
+                formData.append('language', lang);
             }
 
             const response = await fetch('/transcribe-segment', {
@@ -3564,9 +3559,9 @@ function cleanupAudioStreams(force = false) {
             if (resultBox) {
                 resultBox.classList.remove('loading');
                 resultBox.classList.add('success');
-                resultBox.textContent = `Done via ${apiLabelMap[result.api_used] || result.api_used || apiLabelMap[preferredApi]}.`;
+                resultBox.textContent = `Done (${langLabelMap[lang] || lang}).`;
             }
-            console.log(`[HISTORY] 重转录成功: item=${item.id}, api=${result.api_used || preferredApi}`);
+            console.log(`[HISTORY] 重转录成功: item=${item.id}, lang=${lang}, api=${result.api_used || 'auto'}`);
 
         } catch (error) {
             console.error('[HISTORY] 重转录失败:', error);
@@ -3613,16 +3608,25 @@ function cleanupAudioStreams(force = false) {
                             Copy
                         </button>
                         ${item.audioBlob ? `
-                        <button class="history-item-play" data-id="${item.id}" title="Play audio">Play</button>
+                        <button class="history-item-play" data-id="${item.id}" title="Play your original recording — check what was captured">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                                <polygon points="6 4 20 12 6 20 6 4"/>
+                            </svg>
+                            Play
+                        </button>
                         <div class="history-item-retry-wrap">
-                            <button class="history-item-retry-toggle" data-id="${item.id}" title="Retry with different API">
+                            <button class="history-item-retry-toggle" data-id="${item.id}" title="Re-transcribe this recording in a specific language">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="23 4 23 10 17 10"/>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                </svg>
                                 Re-transcribe
                             </button>
                             <div class="history-item-retry-menu hidden" data-id="${item.id}">
-                                <button class="history-item-retry-option" data-id="${item.id}" data-api="auto">Auto (fallback)</button>
-                                <button class="history-item-retry-option" data-id="${item.id}" data-api="openai">OpenAI Whisper</button>
-                                <button class="history-item-retry-option" data-id="${item.id}" data-api="ai_builder">AI Builder</button>
-                                <button class="history-item-retry-option" data-id="${item.id}" data-api="google">Google STT</button>
+                                <div class="history-item-retry-menu-label">Re-transcribe in:</div>
+                                <button class="history-item-retry-option ${transcriptionLanguage === 'auto' ? 'active' : ''}" data-id="${item.id}" data-lang="auto">🌐 Auto-detect</button>
+                                <button class="history-item-retry-option ${transcriptionLanguage === 'zh' ? 'active' : ''}" data-id="${item.id}" data-lang="zh">中文</button>
+                                <button class="history-item-retry-option ${transcriptionLanguage === 'en' ? 'active' : ''}" data-id="${item.id}" data-lang="en">English</button>
                             </div>
                         </div>
                         ` : ''}
@@ -3701,7 +3705,7 @@ function cleanupAudioStreams(force = false) {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 closeAllRetryMenus();
-                await retranscribeHistoryItem(btn.dataset.id, btn.dataset.api || 'auto');
+                await retranscribeHistoryItem(btn.dataset.id, btn.dataset.lang || 'auto');
             });
         });
 

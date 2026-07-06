@@ -1483,6 +1483,24 @@ h1.header-with-icon .header-text {
     font-size: 0.85em;
     transition: all 0.2s ease;
     white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Play 按钮：更显眼一点，用主色调，强调"可以回听确认录音" */
+.history-item-play {
+    color: #2d7ef7;
+    border-color: #bcd4fb;
+}
+
+.history-item-play:hover {
+    border-color: #2d7ef7;
+    background: #f5f9ff;
+}
+
+.history-item-play svg {
+    flex-shrink: 0;
 }
 
 .history-item-play:hover,
@@ -1526,6 +1544,24 @@ h1.header-with-icon .header-text {
 
 .history-item-retry-option:hover {
     background: #f1f3f5;
+}
+
+.history-item-retry-option.active {
+    background: #2d3436;
+    color: #fff;
+    font-weight: 600;
+}
+
+.history-item-retry-option.active:hover {
+    background: #1a1f21;
+}
+
+.history-item-retry-menu-label {
+    padding: 4px 10px 6px;
+    font-size: 0.72em;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #95a5a6;
 }
 
 .history-item-retranscribe-result {
