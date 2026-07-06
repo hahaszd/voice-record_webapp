@@ -99,10 +99,18 @@ test.describe('按钮测试', () => {
 
   test('历史按钮应该打开历史模态框', async ({ page }) => {
     await page.goto('/');
-    
+    await page.waitForTimeout(300);
+
+    // History 按钮在历史为空时是禁用的（真实行为）；先塞一条历史再测"打开模态框"
+    await page.evaluate(() => {
+      // @ts-ignore — transcriptionHistory 是 script.js 的顶层变量
+      transcriptionHistory.unshift({ id: 1, timestamp: new Date(), text: 'seed', audioBlob: null, audioSource: 'microphone' });
+      (document.getElementById('historyBtn') as HTMLButtonElement).disabled = false;
+    });
+
     const historyBtn = page.locator('#historyBtn');
     const historyModal = page.locator('#historyModal');
-    
+
     // 点击历史按钮
     await historyBtn.click();
     
@@ -127,18 +135,18 @@ test.describe('开关测试', () => {
     await page.goto('/');
     
     const autoCopyToggle = page.locator('#autoCopyToggle');
-    
+
     // 获取初始状态
     const initialChecked = await autoCopyToggle.isChecked();
     console.log(`自动复制初始状态: ${initialChecked ? '开启' : '关闭'}`);
-    
-    // 切换状态
-    await autoCopyToggle.click();
-    
+
+    // 真实用户点的是可见的 slider（input 本身 display:none），点它会切换 checkbox
+    await page.locator('.auto-copy-switch .slider').click();
+
     // 验证状态改变
     const newChecked = await autoCopyToggle.isChecked();
     expect(newChecked).toBe(!initialChecked);
-    
+
     console.log('✅ 自动复制开关可以切换');
   });
 
@@ -146,18 +154,18 @@ test.describe('开关测试', () => {
     await page.goto('/');
     
     const autoRecordToggle = page.locator('#autoRecordToggle');
-    
+
     // 获取初始状态
     const initialChecked = await autoRecordToggle.isChecked();
     console.log(`自动录音初始状态: ${initialChecked ? '开启' : '关闭'}`);
-    
-    // 切换状态
-    await autoRecordToggle.click();
-    
+
+    // 真实用户点的是可见的 slider（input 本身 display:none），点它会切换 checkbox
+    await page.locator('.auto-record-switch .slider').click();
+
     // 验证状态改变
     const newChecked = await autoRecordToggle.isChecked();
     expect(newChecked).toBe(!initialChecked);
-    
+
     console.log('✅ 自动录音开关可以切换');
   });
 });
