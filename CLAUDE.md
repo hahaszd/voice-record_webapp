@@ -101,8 +101,8 @@ Tests live in `tests/{smoke,functional,mobile}`. `playwright.config.ts` at root.
 ## Deployment & branching (see ARCHITECTURE.md)
 
 - `dev` branch → auto-deploys to Railway **development** (`voicespark-dev.up.railway.app`).
-- `main` branch → **manual** deploy to Railway **production** (`voicespark.app`).
-- Normal flow: develop/test on `dev` → merge to `main` → manually Redeploy in Railway.
+- `main` branch → **auto-deploys** to Railway **production** (`voicespark.app`). (ARCHITECTURE.md says "manual" but in practice production auto-deploys on push to main — confirmed by the owner 2026-07-06. No manual Redeploy needed.)
+- Normal flow: develop/test on `dev` → merge to `main` → push → it goes live automatically.
 - Rollback prod via Railway dashboard → Redeploy a previous deployment.
 - The dual commits (same message twice) in git history come from committing to both branches.
 
@@ -110,6 +110,7 @@ Tests live in `tests/{smoke,functional,mobile}`. `playwright.config.ts` at root.
 
 - **~150 Markdown docs at repo root** are historical change-logs / analyses (e.g. `AUTO_COPY_*.md`, `V1xx_*.md`, `TEST_REPORT_*.md`, `VERSION_HISTORY.md`). Reference, not source of truth — the code wins. `VERSION_HISTORY.md` is the closest thing to a changelog.
 - Feature "versions" are tracked as `vNNN` tags in code comments/UI (currently ~v113 in `script.js`). Keep them consistent when touching related logic.
+- **CACHE-BUST when editing `static/style.css` or `static/script.js`:** `index.html` links them with a version query (`style.css?v=NNN`, `script.js?v=NNN`). Returning visitors (and the CDN) cache by that exact URL, so if you don't bump the number, your CSS/JS change won't reach anyone who already loaded the site — it silently serves the stale file. ALWAYS bump both `?v=` numbers in `index.html` in the same change. (This bit us once: language selector shipped but rendered as unstyled native buttons in prod because `?v=` wasn't bumped.)
 - Code comments and commit messages are frequently in **Chinese**; match the surrounding language when editing.
 - Recent work focus (git log): client-side **VAD** to trim leading/trailing silence, 16kHz mono downsampling to stay under the 25MB upload limit, Whisper hallucination filtering, transcription history + re-transcribe with API selection.
 - No linter/formatter config committed. Match existing style.
