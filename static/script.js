@@ -1803,10 +1803,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     transcribeLangBtns.forEach(btn => {
         btn.addEventListener('click', () => {
-            if (isRecording) {
-                console.log('[WARNING] 录音期间无法切换转录语言');
-                return;
-            }
+            // 转录语言只在上传转录那一刻才被读取，对正在进行的采集无影响，
+            // 因此录音期间也允许切换（切换会应用到当前这段录音完成时的转录）。
             transcribeLangBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             transcriptionLanguage = btn.dataset.lang; // 'auto' | 'zh' | 'en'
