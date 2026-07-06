@@ -354,6 +354,17 @@ h1.header-with-icon .header-text {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
+/* 🩺 点击后到录音真正开始之间的"准备中"反馈（取流可能需要一小会儿） */
+.record-btn.arming {
+    opacity: 0.75;
+    animation: arming-pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes arming-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(0.93); }
+}
+
 @keyframes pulse {
     0%, 100% {
         transform: scale(1);

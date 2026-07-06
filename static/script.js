@@ -28,6 +28,43 @@ let transcriptionLanguage = (function () {
 let audioStreamsReady = false; // 音频流是否已准备好
 let pendingStorageClear = null; // 待清空IndexedDB的回调
 
+// ============================================================================
+// 🩺 音频流健康检查（修复"长时间挂机/系统休眠后录到静音或点不上"）
+// 关键点：系统休眠或标签页长时间后台后，麦克风轨道常变成 muted=true，但
+// readyState 仍是 'live' —— 只看 readyState 会误判为"可用"从而录到一片静音。
+// ============================================================================
+function isTrackUsable(track) {
+    return !!track && track.readyState === 'live' && track.muted === false;
+}
+
+function isStreamUsable(stream) {
+    if (!stream) return false;
+    const tracks = stream.getAudioTracks();
+    return tracks.length > 0 && isTrackUsable(tracks[0]);
+}
+
+// 给音轨挂上失效监听，便于诊断（并在下次取流时重新获取）
+function attachTrackHealthHandlers(stream, label) {
+    if (!stream) return;
+    stream.getAudioTracks().forEach(track => {
+        track.onmute = () => console.warn(`[AUDIO-HEALTH] ${label} 轨道被静音 muted (readyState=${track.readyState})`);
+        track.onunmute = () => console.log(`[AUDIO-HEALTH] ${label} 轨道恢复 unmuted`);
+        track.onended = () => console.warn(`[AUDIO-HEALTH] ${label} 轨道结束 ended`);
+    });
+}
+
+// 诊断日志：一次性打印各流/轨道健康状态 + AudioContext 状态
+function logAudioHealth(label) {
+    const desc = (s) => {
+        if (!s) return 'null';
+        const t = s.getAudioTracks()[0];
+        return t ? `readyState=${t.readyState} muted=${t.muted} enabled=${t.enabled}` : 'no-audio-track';
+    };
+    try {
+        console.log(`[AUDIO-HEALTH] ${label} | mic: ${desc(micStream)} | system: ${desc(systemStream)} | combined: ${desc(combinedStream)} | audioContext: ${audioContext ? audioContext.state : 'null'} | hidden=${document.hidden}`);
+    } catch (e) { /* 忽略日志异常 */ }
+}
+
 // 🌍 GA Environment - 从 index.html 中的全局变量获取（避免重复声明）
 // deployEnvironment 在 index.html 的 GA 初始化脚本中已定义
 // 使用 try-catch 确保移动端也能正常工作
@@ -238,7 +275,22 @@ document.addEventListener('visibilitychange', () => {
     } else if (!document.hidden && isRecording) {
         console.log('[INFO] Page visible again, recording should resume');
     }
-    
+
+    // 🩺 页面重新可见（尤其挂机/休眠后回来）：校验麦克风流健康，必要时清理
+    // 目的：修复"回来后第一次点录音点不上 / 录到静音"
+    if (!document.hidden && !isRecording) {
+        logAudioHealth('visibilitychange:visible');
+        if (audioContext && audioContext.state === 'suspended') {
+            audioContext.resume().catch(() => {});
+        }
+        if (micStream && !isStreamUsable(micStream)) {
+            console.warn('[AUDIO-HEALTH] 回到前台发现麦克风流已失效（muted/ended），清理以便下次重新获取');
+            try { micStream.getTracks().forEach(t => t.stop()); } catch (e) {}
+            micStream = null;
+            audioStreamsReady = false;
+        }
+    }
+
     // 🎯 v71优化：不再在visibilitychange时执行auto-copy
     // window.focus事件会在Tab切换回来时自动触发，且保证有焦点
     // 这样可以避免"Document is not focused"错误，提升成功率到99%+
@@ -1072,7 +1124,14 @@ function encodeAudioBufferToWav(audioBuffer) {
 // 检查并请求麦克风权限
 async function checkMicrophonePermission() {
     console.log('[INFO] 检查麦克风权限');
-    
+
+    // 🩺 已持有可用的麦克风流 → 直接放行，避免多余的 getUserMedia 测试
+    // （长时间挂机后这个测试可能变慢，造成"点了没反应"的错觉）
+    if (isStreamUsable(micStream)) {
+        console.log('[INFO] ✅ 已有可用麦克风流，跳过权限测试');
+        return true;
+    }
+
     try {
         // 尝试使用 Permissions API 检查权限
         if (navigator.permissions && navigator.permissions.query) {
@@ -2002,13 +2061,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 录音按钮点击事件
     recordBtn.addEventListener('click', async () => {
         if (!isRecording) {
-            // 开始录音前检查麦克风权限
-            const hasMicPermission = await checkMicrophonePermission();
-            if (!hasMicPermission) {
-                console.error('[ERROR] 麦克风权限未授予，无法开始录音');
-                return;
+            logAudioHealth('record-click');
+            recordBtn.classList.add('arming'); // 立即给视觉反馈，避免"点了没反应"的错觉
+            try {
+                // 开始录音前检查麦克风权限
+                const hasMicPermission = await checkMicrophonePermission();
+                if (!hasMicPermission) {
+                    console.error('[ERROR] 麦克风权限未授予，无法开始录音');
+                    return;
+                }
+                await startRecording();
+            } finally {
+                recordBtn.classList.remove('arming');
             }
-            await startRecording();
         } else {
             // 如果正在转录，阻止转录并显示提示
             if (isTranscribing) {
@@ -2196,13 +2261,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function getAudioStreams() {
         const audioSource = selectedAudioSource;
         
-        // 检查流是否真正可用（不仅存在，而且处于活跃状态）
-        const isMicStreamActive = micStream && micStream.getAudioTracks().length > 0 && 
-                                   micStream.getAudioTracks()[0].readyState === 'live';
-        const isSystemStreamActive = systemStream && systemStream.getAudioTracks().length > 0 && 
-                                      systemStream.getAudioTracks()[0].readyState === 'live';
-        const isCombinedStreamActive = combinedStream && combinedStream.getAudioTracks().length > 0 && 
-                                        combinedStream.getAudioTracks()[0].readyState === 'live';
+        // 检查流是否真正可用（存在、live、且未被系统静音 muted）
+        // muted 检查很关键：休眠/长时间后台后轨道常 muted 但 readyState 仍为 'live'
+        logAudioHealth('getAudioStreams:enter');
+        const isMicStreamActive = isStreamUsable(micStream);
+        const isSystemStreamActive = isStreamUsable(systemStream);
+        const isCombinedStreamActive = isStreamUsable(combinedStream);
         
         // 如果音频源未变化且流真正活跃，直接返回现有流
         if (currentAudioSource === audioSource) {
@@ -2235,7 +2299,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     console.log('[INFO] ✅ 复用现有麦克风流');
                     return micStream;
                 }
+                // 旧流失效（ended / muted / 休眠后）→ 先停掉再重新获取，避免录到静音或泄漏
+                if (micStream) {
+                    console.warn('[AUDIO-HEALTH] 麦克风流不可用，重新获取');
+                    try { micStream.getTracks().forEach(t => t.stop()); } catch (e) {}
+                    micStream = null;
+                }
                 micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                attachTrackHealthHandlers(micStream, 'microphone');
                 audioStreamsReady = true;
                 return micStream;
             } else if (audioSource === 'system') {
@@ -2623,7 +2694,15 @@ function cleanupAudioStreams(force = false) {
             
             // 获取音频流
             stream = await getAudioStreams();
-            
+
+            // 🩺 若 AudioContext 被浏览器挂起（后台/挂机后常见），恢复它
+            // 否则"麦克风+系统"混音模式会录不到声、波形也会卡住
+            if (audioContext && audioContext.state === 'suspended') {
+                console.warn('[AUDIO-HEALTH] AudioContext 处于 suspended，尝试 resume');
+                try { await audioContext.resume(); } catch (e) { console.warn('[AUDIO-HEALTH] resume 失败:', e); }
+            }
+            logAudioHealth('startRecording:after-getStreams');
+
             // 使用 MediaRecorder API
             // 优先 WebM/Opus（全浏览器兼容，幻觉率更低），AAC 已弃用
             let options = {};
@@ -2930,6 +3009,7 @@ function cleanupAudioStreams(force = false) {
         }
         
         // 🔥 设置转录状态（禁用转录按钮）
+        logAudioHealth('transcribe-start');
         isTranscribing = true;
         recordBtn.disabled = true;
         console.log('[INFO] 转录开始，禁用转录按钮');
