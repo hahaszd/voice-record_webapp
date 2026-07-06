@@ -3571,19 +3571,96 @@ function cleanupAudioStreams(force = false) {
         }
     }
 
-    async function playHistoryAudio(itemId) {
+    // 🎧 历史录音迷你播放器：同一时刻只允许一条在播放
+    let historyPlayer = null; // { id, audio, url }
+
+    const HP_PLAY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 4 20 12 6 20 6 4"/></svg>';
+    const HP_PAUSE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+
+    function hpFormatTime(sec) {
+        if (!isFinite(sec) || sec < 0) sec = 0;
+        const m = Math.floor(sec / 60);
+        const s = Math.floor(sec % 60);
+        return `${m}:${String(s).padStart(2, '0')}`;
+    }
+
+    function hpSetPlayIcon(itemId, playing) {
+        const btn = historyList.querySelector(`.history-item-play[data-id="${itemId}"]`);
+        if (!btn) return;
+        btn.classList.toggle('playing', playing);
+        btn.innerHTML = playing ? HP_PAUSE_SVG : HP_PLAY_SVG;
+    }
+
+    function hpUpdateUI(itemId, cur, dur) {
+        const seek = historyList.querySelector(`.history-item-seek[data-id="${itemId}"]`);
+        const time = historyList.querySelector(`.history-item-time-label[data-id="${itemId}"]`);
+        if (seek && isFinite(dur) && dur > 0) seek.value = String((cur / dur) * 100);
+        if (time) time.textContent = (isFinite(dur) && dur > 0) ? `${hpFormatTime(cur)} / ${hpFormatTime(dur)}` : hpFormatTime(cur);
+    }
+
+    // 停止当前播放并清理（可选保留 UI：ended 时重置进度条到 0）
+    function stopHistoryPlayback(resetUI = true) {
+        if (!historyPlayer) return;
+        const { id, audio, url } = historyPlayer;
+        try { audio.pause(); } catch (e) {}
+        try { URL.revokeObjectURL(url); } catch (e) {}
+        historyPlayer = null;
+        hpSetPlayIcon(id, false);
+        if (resetUI) {
+            const seek = historyList.querySelector(`.history-item-seek[data-id="${id}"]`);
+            if (seek) seek.value = '0';
+        }
+    }
+
+    async function toggleHistoryPlayback(itemId) {
         const item = findHistoryItemById(itemId);
         if (!item || !item.audioBlob) return;
 
-        const audioUrl = URL.createObjectURL(item.audioBlob);
-        const audio = new Audio(audioUrl);
-        audio.onended = () => URL.revokeObjectURL(audioUrl);
-        audio.onerror = () => URL.revokeObjectURL(audioUrl);
-        await audio.play();
+        // 同一条 → 暂停/继续（保留播放位置）
+        if (historyPlayer && String(historyPlayer.id) === String(itemId)) {
+            if (historyPlayer.audio.paused) {
+                try { await historyPlayer.audio.play(); hpSetPlayIcon(itemId, true); } catch (e) {}
+            } else {
+                historyPlayer.audio.pause();
+                hpSetPlayIcon(itemId, false);
+            }
+            return;
+        }
+
+        // 换一条 → 先停掉正在播的
+        stopHistoryPlayback();
+
+        const url = URL.createObjectURL(item.audioBlob);
+        const audio = new Audio(url);
+        historyPlayer = { id: itemId, audio, url };
+
+        audio.addEventListener('loadedmetadata', () => hpUpdateUI(itemId, 0, audio.duration));
+        audio.addEventListener('timeupdate', () => hpUpdateUI(itemId, audio.currentTime, audio.duration));
+        audio.addEventListener('ended', () => { hpUpdateUI(itemId, 0, audio.duration); stopHistoryPlayback(true); });
+        audio.addEventListener('error', () => { console.error('[HISTORY] 播放失败'); stopHistoryPlayback(true); });
+
+        try {
+            await audio.play();
+            hpSetPlayIcon(itemId, true);
+        } catch (e) {
+            console.error('[HISTORY] play() 失败:', e);
+            stopHistoryPlayback(true);
+        }
+    }
+
+    // 拖动进度条跳转（仅对当前正在播放/暂停的那条有效）
+    function seekHistoryPlayback(itemId, percent) {
+        if (!historyPlayer || String(historyPlayer.id) !== String(itemId)) return;
+        const dur = historyPlayer.audio.duration;
+        if (isFinite(dur) && dur > 0) {
+            historyPlayer.audio.currentTime = (Math.max(0, Math.min(100, percent)) / 100) * dur;
+        }
     }
 
     // 渲染历史记录列表
     function renderHistoryList() {
+        // 重新渲染会替换 DOM 节点，先停掉正在播放的音频，避免孤儿播放
+        stopHistoryPlayback(false);
         if (transcriptionHistory.length === 0) {
             historyList.innerHTML = `
                 <div class="history-empty">
@@ -3606,12 +3683,6 @@ function cleanupAudioStreams(force = false) {
                             Copy
                         </button>
                         ${item.audioBlob ? `
-                        <button class="history-item-play" data-id="${item.id}" title="Play your original recording — check what was captured">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                                <polygon points="6 4 20 12 6 20 6 4"/>
-                            </svg>
-                            Play
-                        </button>
                         <div class="history-item-retry-wrap">
                             <button class="history-item-retry-toggle" data-id="${item.id}" title="Re-transcribe this recording in a specific language">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -3630,6 +3701,17 @@ function cleanupAudioStreams(force = false) {
                         ` : ''}
                     </div>
                 </div>
+                ${item.audioBlob ? `
+                <div class="history-item-player" data-id="${item.id}">
+                    <button class="history-item-play" data-id="${item.id}" title="Play / pause your original recording — check what was captured" aria-label="Play or pause">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                            <polygon points="6 4 20 12 6 20 6 4"/>
+                        </svg>
+                    </button>
+                    <input type="range" class="history-item-seek" data-id="${item.id}" min="0" max="100" value="0" step="0.1" aria-label="Playback position">
+                    <span class="history-item-time-label" data-id="${item.id}">0:00</span>
+                </div>
+                ` : ''}
                 <div class="history-item-text">${item.text}</div>
                 <div class="history-item-retranscribe-result hidden" data-id="${item.id}"></div>
             </div>
@@ -3667,16 +3749,26 @@ function cleanupAudioStreams(force = false) {
             });
         });
 
-        // 播放按钮
+        // 播放/暂停按钮
         historyList.querySelectorAll('.history-item-play').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 try {
-                    await playHistoryAudio(btn.dataset.id);
+                    await toggleHistoryPlayback(btn.dataset.id);
                 } catch (err) {
                     console.error('[HISTORY] 播放失败:', err);
                 }
             });
+        });
+
+        // 进度条拖动跳转
+        historyList.querySelectorAll('.history-item-seek').forEach(seek => {
+            seek.addEventListener('input', (e) => {
+                e.stopPropagation();
+                seekHistoryPlayback(seek.dataset.id, parseFloat(seek.value));
+            });
+            // 避免点击进度条冒泡触发其它 handler
+            seek.addEventListener('click', (e) => e.stopPropagation());
         });
 
         // 关闭所有重试菜单
@@ -3727,13 +3819,15 @@ function cleanupAudioStreams(force = false) {
     
     // 关闭历史记录Modal
     closeHistoryBtn.addEventListener('click', () => {
+        stopHistoryPlayback(false);
         historyModal.classList.remove('show');
         console.log('[INFO] 关闭转录历史记录');
     });
-    
+
     // 点击Modal背景关闭
     historyModal.addEventListener('click', (e) => {
         if (e.target === historyModal) {
+            stopHistoryPlayback(false);
             historyModal.classList.remove('show');
             console.log('[INFO] 点击背景关闭转录历史记录');
         }
@@ -3852,6 +3946,7 @@ function cleanupAudioStreams(force = false) {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             if (historyModal.classList.contains('show')) {
+                stopHistoryPlayback(false);
                 historyModal.classList.remove('show');
                 console.log('[INFO] ESC键关闭转录历史记录');
             }
