@@ -16,6 +16,15 @@ let micStream = null; // 麦克风流
 let systemStream = null; // 系统音频流
 let combinedStream = null; // 混合后的流
 let currentAudioSource = null; // 当前选择的音频源
+// 🌍 转录语言：'auto'（自动识别）/ 'zh'（中文）/ 'en'（英文）
+// 默认自动，但用户的选择会持久化到 localStorage
+let transcriptionLanguage = (function () {
+    try {
+        return localStorage.getItem('transcriptionLanguage') || 'auto';
+    } catch (e) {
+        return 'auto';
+    }
+})();
 let audioStreamsReady = false; // 音频流是否已准备好
 let pendingStorageClear = null; // 待清空IndexedDB的回调
 
@@ -1785,6 +1794,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     const autoNotifyToggle = document.getElementById('autoNotifyToggle');
     const audioSourceBtns = document.querySelectorAll('.audio-source-btn');
     const durationBtns = document.querySelectorAll('.duration-btn');
+
+    // 🌍 转录语言选择器
+    const transcribeLangBtns = document.querySelectorAll('.transcribe-lang-btn');
+    // 依据持久化的选择，初始化按钮 active 状态
+    transcribeLangBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === transcriptionLanguage);
+    });
+    transcribeLangBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (isRecording) {
+                console.log('[WARNING] 录音期间无法切换转录语言');
+                return;
+            }
+            transcribeLangBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            transcriptionLanguage = btn.dataset.lang; // 'auto' | 'zh' | 'en'
+            try { localStorage.setItem('transcriptionLanguage', transcriptionLanguage); } catch (e) {}
+            console.log('[INFO] 转录语言已切换:', transcriptionLanguage);
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'transcription_language_changed', {
+                    'event_category': 'Settings',
+                    'event_label': `Changed to ${transcriptionLanguage}`,
+                    'transcription_language': transcriptionLanguage,
+                    'environment': gaEnvironment
+                });
+            }
+        });
+    });
     const historyBtn = document.getElementById('historyBtn');
     const historyModal = document.getElementById('historyModal');
     const closeHistoryBtn = document.getElementById('closeHistoryBtn');
@@ -3025,6 +3062,13 @@ function cleanupAudioStreams(force = false) {
             // 🎙️ v110: 传递音频源信息（用于智能 API 路由）
             formData.append('audio_source', currentAudioSource || 'microphone');
             console.log(`[v110-ROUTING] 📤 发送音频源信息: ${currentAudioSource || 'microphone'}`);
+            // 🌍 转录语言：仅在用户明确指定（非 auto）时传给后端，否则让后端自动识别
+            if (transcriptionLanguage && transcriptionLanguage !== 'auto') {
+                formData.append('language', transcriptionLanguage);
+                console.log(`[LANG] 📤 指定转录语言: ${transcriptionLanguage}`);
+            } else {
+                console.log('[LANG] 📤 转录语言: auto（自动识别）');
+            }
             
             // 发送到服务器
             console.log(`[INFO] 发送转录请求到服务器...`);
@@ -3484,6 +3528,10 @@ function cleanupAudioStreams(force = false) {
             formData.append('audio_file', item.audioBlob, `history_retry.${extension}`);
             formData.append('duration', '300');
             formData.append('audio_source', item.audioSource || 'microphone');
+            // 🌍 重新转录时沿用当前选择的转录语言（非 auto 才传）
+            if (transcriptionLanguage && transcriptionLanguage !== 'auto') {
+                formData.append('language', transcriptionLanguage);
+            }
             if (preferredApi && preferredApi !== 'auto') {
                 formData.append('preferred_api', preferredApi);
             }

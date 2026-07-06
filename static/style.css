@@ -600,6 +600,52 @@ h1.header-with-icon .header-text {
     border-color: #e0e0e0;
 }
 
+/* 🌍 转录语言选择器 —— 视觉上与时长选择器保持一致 */
+.transcribe-lang-section {
+    margin-top: 12px;
+}
+
+.transcribe-lang-selector {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.transcribe-lang-btn {
+    flex: 1;
+    padding: 10px 8px;
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.95em;
+    font-weight: 500;
+    color: #333;
+}
+
+.transcribe-lang-btn:hover {
+    background: #f8f9fa;
+    border-color: #bdc3c7;
+    transform: translateY(-1px);
+}
+
+.transcribe-lang-btn.active {
+    background: #2d3436;
+    border-color: #2d3436;
+    color: white;
+}
+
+.transcribe-lang-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.transcribe-lang-btn:disabled:hover {
+    transform: none;
+    border-color: #e0e0e0;
+}
+
 .transcribe-btn {
     padding: 12px 20px;
     border: 2px solid #667eea;
