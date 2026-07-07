@@ -3711,6 +3711,7 @@ function cleanupAudioStreams(force = false) {
 
     // 🎧 历史录音迷你播放器：同一时刻只允许一条在播放
     let historyPlayer = null; // { id, audio, url }
+    let hpUserSeeking = false; // 用户正在拖动进度条时为 true，避免 timeupdate 把滑块拽回播放位置
 
     const HP_PLAY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 4 20 12 6 20 6 4"/></svg>';
     const HP_PAUSE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
@@ -3732,7 +3733,9 @@ function cleanupAudioStreams(force = false) {
     function hpUpdateUI(itemId, cur, dur) {
         const seek = historyList.querySelector(`.history-item-seek[data-id="${itemId}"]`);
         const time = historyList.querySelector(`.history-item-time-label[data-id="${itemId}"]`);
-        if (seek && isFinite(dur) && dur > 0) seek.value = String((cur / dur) * 100);
+        // 用户正在拖动本条滑块时，不要用播放进度覆盖滑块位置（否则会把拇指拽回去）
+        const isSeekingThis = hpUserSeeking && historyPlayer && String(historyPlayer.id) === String(itemId);
+        if (seek && isFinite(dur) && dur > 0 && !isSeekingThis) seek.value = String((cur / dur) * 100);
         if (time) time.textContent = (isFinite(dur) && dur > 0) ? `${hpFormatTime(cur)} / ${hpFormatTime(dur)}` : hpFormatTime(cur);
     }
 
@@ -4002,10 +4005,21 @@ function cleanupAudioStreams(force = false) {
 
         // 进度条拖动跳转
         historyList.querySelectorAll('.history-item-seek').forEach(seek => {
+            // input：拖动过程中持续跳转，并置位 hpUserSeeking，避免 timeupdate 把拇指拽回
             seek.addEventListener('input', (e) => {
                 e.stopPropagation();
+                hpUserSeeking = true;
                 seekHistoryPlayback(seek.dataset.id, parseFloat(seek.value));
             });
+            // change：松手（含点击轨道）时最终定位一次，并解除抑制
+            seek.addEventListener('change', (e) => {
+                e.stopPropagation();
+                seekHistoryPlayback(seek.dataset.id, parseFloat(seek.value));
+                hpUserSeeking = false;
+            });
+            // 兜底：指针/触摸抬起也解除抑制（个别浏览器 change 不触发时）
+            ['pointerup', 'mouseup', 'touchend'].forEach(evt =>
+                seek.addEventListener(evt, () => { hpUserSeeking = false; }));
             // 避免点击进度条冒泡触发其它 handler
             seek.addEventListener('click', (e) => e.stopPropagation());
         });
