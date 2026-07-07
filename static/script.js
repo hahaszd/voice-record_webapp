@@ -3391,6 +3391,42 @@ function cleanupAudioStreams(force = false) {
         }
     }
 
+    // 提取音频任意区间 [startSec, endSec] → 16kHz 单声道 WAV（用于历史记录的“重转选区”）
+    async function extractAudioSegmentRange(audioBlob, startSec, endSec) {
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let audioBuffer;
+        try {
+            audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+        } catch (e) {
+            audioContext.close();
+            throw new Error(`无法解码音频数据: ${e.message}`);
+        }
+
+        const sampleRate = audioBuffer.sampleRate;
+        const channels = audioBuffer.numberOfChannels;
+        const totalSamples = audioBuffer.length;
+
+        let startSample = Math.max(0, Math.floor(startSec * sampleRate));
+        let endSample = Math.min(totalSamples, Math.ceil(endSec * sampleRate));
+        if (endSample <= startSample) {
+            audioContext.close();
+            throw new Error(`无效选区: start=${startSec}s end=${endSec}s`);
+        }
+
+        const segmentLength = endSample - startSample;
+        const segmentBuffer = audioContext.createBuffer(channels, segmentLength, sampleRate);
+        for (let channel = 0; channel < channels; channel++) {
+            const src = audioBuffer.getChannelData(channel);
+            segmentBuffer.getChannelData(channel).set(src.subarray(startSample, endSample));
+        }
+
+        const wavBlob = await audioBufferToWav(segmentBuffer); // 降采样到 16kHz 单声道
+        console.log(`[HISTORY] 选区切片: ${startSec.toFixed(2)}–${endSec.toFixed(2)}s, WAV ${(wavBlob.size / 1024).toFixed(1)} KB`);
+        audioContext.close();
+        return wavBlob;
+    }
+
     // 将WebM转换为WAV（用于确保可以播放）
     async function convertWebMToWAV(webmBlob) {
         try {
@@ -3588,21 +3624,41 @@ function cleanupAudioStreams(force = false) {
         const resultBox = historyList.querySelector(`.history-item-retranscribe-result[data-id="${item.id}"]`);
         const itemTextEl = historyList.querySelector(`.history-item[data-id="${item.id}"] .history-item-text`);
 
+        // ✂️ 是否存在有效选区（起止都设、且时长足够）→ 只重转选中片段
+        const hasSelection = (typeof item.selStart === 'number' && typeof item.selEnd === 'number'
+                              && item.selEnd > item.selStart + 0.2);
+        const selLabel = hasSelection ? ` (${hpFormatTime(item.selStart)}–${hpFormatTime(item.selEnd)})` : '';
+
         if (resultBox) {
             resultBox.classList.remove('hidden', 'success', 'error');
             resultBox.classList.add('loading');
-            resultBox.textContent = `Re-transcribing in ${langLabelMap[lang] || lang}...`;
+            resultBox.textContent = hasSelection
+                ? `Re-transcribing selection${selLabel} in ${langLabelMap[lang] || lang}...`
+                : `Re-transcribing in ${langLabelMap[lang] || lang}...`;
         }
 
         try {
+            // 默认整段；有选区则先切片成 WAV
+            let uploadBlob = item.audioBlob;
+            let durationField = '300';
+            if (hasSelection) {
+                try {
+                    uploadBlob = await extractAudioSegmentRange(item.audioBlob, item.selStart, item.selEnd);
+                    durationField = String(Math.max(1, Math.ceil(item.selEnd - item.selStart)));
+                } catch (sliceErr) {
+                    console.warn('[HISTORY] 选区切片失败，改用整段音频重转:', sliceErr);
+                    uploadBlob = item.audioBlob;
+                }
+            }
+
             const formData = new FormData();
-            const mimeType = item.audioBlob.type || 'audio/wav';
+            const mimeType = uploadBlob.type || 'audio/wav';
             const extension = mimeType.includes('wav') ? 'wav' :
                             mimeType.includes('webm') ? 'webm' :
                             mimeType.includes('mp3') ? 'mp3' : 'mp4';
 
-            formData.append('audio_file', item.audioBlob, `history_retry.${extension}`);
-            formData.append('duration', '300');
+            formData.append('audio_file', uploadBlob, `history_retry.${extension}`);
+            formData.append('duration', durationField);
             formData.append('audio_source', item.audioSource || 'microphone');
             // 🌍 按本次选择的语言重转（非 auto 才传，auto 让后端自动识别）
             if (lang && lang !== 'auto') {
@@ -3637,9 +3693,11 @@ function cleanupAudioStreams(force = false) {
             if (resultBox) {
                 resultBox.classList.remove('loading');
                 resultBox.classList.add('success');
-                resultBox.textContent = `Done (${langLabelMap[lang] || lang}).`;
+                resultBox.textContent = hasSelection
+                    ? `Done — selection${selLabel} (${langLabelMap[lang] || lang}).`
+                    : `Done (${langLabelMap[lang] || lang}).`;
             }
-            console.log(`[HISTORY] 重转录成功: item=${item.id}, lang=${lang}, api=${result.api_used || 'auto'}`);
+            console.log(`[HISTORY] 重转录成功: item=${item.id}, lang=${lang}, selection=${hasSelection ? selLabel.trim() : 'none'}, api=${result.api_used || 'auto'}`);
 
         } catch (error) {
             console.error('[HISTORY] 重转录失败:', error);
@@ -3692,6 +3750,33 @@ function cleanupAudioStreams(force = false) {
         }
     }
 
+    // 创建（或复用）某条历史的播放器；不自动播放。播放/拖动/框选取点共用同一个 <audio>。
+    function ensureHistoryPlayer(itemId) {
+        if (historyPlayer && String(historyPlayer.id) === String(itemId)) return historyPlayer;
+
+        // 换一条 → 先停掉正在播的
+        stopHistoryPlayback();
+
+        const item = findHistoryItemById(itemId);
+        if (!item || !item.audioBlob) return null;
+
+        const url = URL.createObjectURL(item.audioBlob);
+        const audio = new Audio(url);
+        historyPlayer = { id: itemId, audio, url };
+
+        audio.addEventListener('loadedmetadata', () => {
+            // 记住真实时长（decodeAudioData 之外的可靠来源），供选区高亮条使用
+            if (isFinite(audio.duration) && audio.duration > 0) item.audioDuration = audio.duration;
+            hpUpdateUI(itemId, audio.currentTime || 0, audio.duration);
+            updateHistorySelUI(itemId);
+        });
+        audio.addEventListener('timeupdate', () => hpUpdateUI(itemId, audio.currentTime, audio.duration));
+        audio.addEventListener('ended', () => { hpUpdateUI(itemId, 0, audio.duration); hpSetPlayIcon(itemId, false); });
+        audio.addEventListener('error', () => { console.error('[HISTORY] 播放失败'); stopHistoryPlayback(true); });
+
+        return historyPlayer;
+    }
+
     async function toggleHistoryPlayback(itemId) {
         const item = findHistoryItemById(itemId);
         if (!item || !item.audioBlob) return;
@@ -3707,20 +3792,10 @@ function cleanupAudioStreams(force = false) {
             return;
         }
 
-        // 换一条 → 先停掉正在播的
-        stopHistoryPlayback();
-
-        const url = URL.createObjectURL(item.audioBlob);
-        const audio = new Audio(url);
-        historyPlayer = { id: itemId, audio, url };
-
-        audio.addEventListener('loadedmetadata', () => hpUpdateUI(itemId, 0, audio.duration));
-        audio.addEventListener('timeupdate', () => hpUpdateUI(itemId, audio.currentTime, audio.duration));
-        audio.addEventListener('ended', () => { hpUpdateUI(itemId, 0, audio.duration); stopHistoryPlayback(true); });
-        audio.addEventListener('error', () => { console.error('[HISTORY] 播放失败'); stopHistoryPlayback(true); });
-
+        const hp = ensureHistoryPlayer(itemId);
+        if (!hp) return;
         try {
-            await audio.play();
+            await hp.audio.play();
             hpSetPlayIcon(itemId, true);
         } catch (e) {
             console.error('[HISTORY] play() 失败:', e);
@@ -3728,12 +3803,87 @@ function cleanupAudioStreams(force = false) {
         }
     }
 
-    // 拖动进度条跳转（仅对当前正在播放/暂停的那条有效）
+    // 拖动进度条跳转：即使未播放也可定位（用于框选取点）。会按需加载该条。
     function seekHistoryPlayback(itemId, percent) {
-        if (!historyPlayer || String(historyPlayer.id) !== String(itemId)) return;
-        const dur = historyPlayer.audio.duration;
-        if (isFinite(dur) && dur > 0) {
-            historyPlayer.audio.currentTime = (Math.max(0, Math.min(100, percent)) / 100) * dur;
+        const hp = ensureHistoryPlayer(itemId);
+        if (!hp) return;
+        const audio = hp.audio;
+        const apply = () => {
+            const dur = audio.duration;
+            if (isFinite(dur) && dur > 0) {
+                audio.currentTime = (Math.max(0, Math.min(100, percent)) / 100) * dur;
+                hpUpdateUI(itemId, audio.currentTime, dur);
+            }
+        };
+        if (isFinite(audio.duration) && audio.duration > 0) apply();
+        else audio.addEventListener('loadedmetadata', apply, { once: true });
+    }
+
+    // ✂️ 选区取点：把“当前播放位置”设为起点/终点。若该条尚未加载，先加载（不自动播放）。
+    function setHistorySelPoint(itemId, which) {
+        const item = findHistoryItemById(itemId);
+        if (!item) return;
+        const hp = ensureHistoryPlayer(itemId);
+        if (!hp) return;
+        const t = hp.audio.currentTime;
+        if (!isFinite(t)) return;
+        const cur = Math.max(0, t);
+
+        if (which === 'start') {
+            item.selStart = cur;
+            // 起点越过终点则清掉终点
+            if (typeof item.selEnd === 'number' && item.selEnd <= item.selStart) item.selEnd = undefined;
+        } else {
+            item.selEnd = cur;
+            if (typeof item.selStart === 'number' && item.selStart >= item.selEnd) item.selStart = undefined;
+        }
+        updateHistorySelUI(itemId);
+    }
+
+    function clearHistorySel(itemId) {
+        const item = findHistoryItemById(itemId);
+        if (!item) return;
+        item.selStart = undefined;
+        item.selEnd = undefined;
+        updateHistorySelUI(itemId);
+    }
+
+    // 原位刷新某条的选区 UI（标签 / 清除按钮 / 高亮条 / 重转菜单标题），避免整表重渲染打断播放
+    function updateHistorySelUI(itemId) {
+        const item = findHistoryItemById(itemId);
+        if (!item) return;
+        const hasStart = typeof item.selStart === 'number';
+        const hasEnd = typeof item.selEnd === 'number';
+        const both = hasStart && hasEnd && item.selEnd > item.selStart;
+
+        const label = historyList.querySelector(`.history-item-sel-label[data-id="${itemId}"]`);
+        const clearBtn = historyList.querySelector(`.history-item-sel-clear[data-id="${itemId}"]`);
+        const band = historyList.querySelector(`.history-item-sel-band[data-id="${itemId}"]`);
+        const menuLabel = historyList.querySelector(`.history-item-retry-menu-label[data-id="${itemId}"]`);
+
+        let text = '';
+        if (both) text = `选区 ${hpFormatTime(item.selStart)} – ${hpFormatTime(item.selEnd)} (${Math.round(item.selEnd - item.selStart)}s)`;
+        else if (hasStart) text = `起点 ${hpFormatTime(item.selStart)} · 未设终点`;
+        else if (hasEnd) text = `终点 ${hpFormatTime(item.selEnd)} · 未设起点`;
+
+        if (label) { label.textContent = text; label.classList.toggle('hidden', !text); }
+        if (clearBtn) clearBtn.classList.toggle('hidden', !(hasStart || hasEnd));
+
+        if (band) {
+            const dur = item.audioDuration;
+            if (both && isFinite(dur) && dur > 0) {
+                band.style.left = (item.selStart / dur * 100) + '%';
+                band.style.width = ((item.selEnd - item.selStart) / dur * 100) + '%';
+                band.classList.remove('hidden');
+            } else {
+                band.classList.add('hidden');
+            }
+        }
+
+        if (menuLabel) {
+            menuLabel.textContent = both
+                ? `重转选区 (${hpFormatTime(item.selStart)}–${hpFormatTime(item.selEnd)}):`
+                : 'Re-transcribe in:';
         }
     }
 
@@ -3772,7 +3922,7 @@ function cleanupAudioStreams(force = false) {
                                 Re-transcribe
                             </button>
                             <div class="history-item-retry-menu hidden" data-id="${item.id}">
-                                <div class="history-item-retry-menu-label">Re-transcribe in:</div>
+                                <div class="history-item-retry-menu-label" data-id="${item.id}">Re-transcribe in:</div>
                                 <button class="history-item-retry-option ${transcriptionLanguage === 'auto' ? 'active' : ''}" data-id="${item.id}" data-lang="auto">🌐 Auto-detect</button>
                                 <button class="history-item-retry-option ${transcriptionLanguage === 'zh' ? 'active' : ''}" data-id="${item.id}" data-lang="zh">中文</button>
                                 <button class="history-item-retry-option ${transcriptionLanguage === 'en' ? 'active' : ''}" data-id="${item.id}" data-lang="en">English</button>
@@ -3788,8 +3938,17 @@ function cleanupAudioStreams(force = false) {
                             <polygon points="6 4 20 12 6 20 6 4"/>
                         </svg>
                     </button>
-                    <input type="range" class="history-item-seek" data-id="${item.id}" min="0" max="100" value="0" step="0.1" aria-label="Playback position">
+                    <div class="history-item-seek-wrap">
+                        <div class="history-item-sel-band hidden" data-id="${item.id}"></div>
+                        <input type="range" class="history-item-seek" data-id="${item.id}" min="0" max="100" value="0" step="0.1" aria-label="Playback position">
+                    </div>
                     <span class="history-item-time-label" data-id="${item.id}">0:00</span>
+                </div>
+                <div class="history-item-trim" data-id="${item.id}">
+                    <button class="history-item-mark" data-id="${item.id}" data-which="start" title="将当前播放位置设为选区起点">⭰ 设为起点</button>
+                    <button class="history-item-mark" data-id="${item.id}" data-which="end" title="将当前播放位置设为选区终点">设为终点 ⭲</button>
+                    <span class="history-item-sel-label hidden" data-id="${item.id}"></span>
+                    <button class="history-item-sel-clear hidden" data-id="${item.id}" title="清除选区，恢复整段重转">✕</button>
                 </div>
                 ` : ''}
                 <div class="history-item-text">${item.text}</div>
@@ -3850,6 +4009,25 @@ function cleanupAudioStreams(force = false) {
             // 避免点击进度条冒泡触发其它 handler
             seek.addEventListener('click', (e) => e.stopPropagation());
         });
+
+        // ✂️ 选区取点：设为起点 / 设为终点
+        historyList.querySelectorAll('.history-item-mark').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                setHistorySelPoint(btn.dataset.id, btn.dataset.which);
+            });
+        });
+
+        // ✂️ 清除选区
+        historyList.querySelectorAll('.history-item-sel-clear').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                clearHistorySel(btn.dataset.id);
+            });
+        });
+
+        // 用已保存的选区状态刷新每条的选区 UI（模态重开/重转后仍保留本会话内的选区）
+        transcriptionHistory.forEach(it => { if (it.audioBlob) updateHistorySelUI(it.id); });
 
         // 关闭所有重试菜单
         const closeAllRetryMenus = () => {
