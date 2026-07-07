@@ -3862,9 +3862,9 @@ function cleanupAudioStreams(force = false) {
         const menuLabel = historyList.querySelector(`.history-item-retry-menu-label[data-id="${itemId}"]`);
 
         let text = '';
-        if (both) text = `选区 ${hpFormatTime(item.selStart)} – ${hpFormatTime(item.selEnd)} (${Math.round(item.selEnd - item.selStart)}s)`;
-        else if (hasStart) text = `起点 ${hpFormatTime(item.selStart)} · 未设终点`;
-        else if (hasEnd) text = `终点 ${hpFormatTime(item.selEnd)} · 未设起点`;
+        if (both) text = `Selection ${hpFormatTime(item.selStart)} – ${hpFormatTime(item.selEnd)} (${Math.round(item.selEnd - item.selStart)}s)`;
+        else if (hasStart) text = `Start ${hpFormatTime(item.selStart)} · end not set`;
+        else if (hasEnd) text = `End ${hpFormatTime(item.selEnd)} · start not set`;
 
         if (label) { label.textContent = text; label.classList.toggle('hidden', !text); }
         if (clearBtn) clearBtn.classList.toggle('hidden', !(hasStart || hasEnd));
@@ -3882,7 +3882,7 @@ function cleanupAudioStreams(force = false) {
 
         if (menuLabel) {
             menuLabel.textContent = both
-                ? `重转选区 (${hpFormatTime(item.selStart)}–${hpFormatTime(item.selEnd)}):`
+                ? `Re-transcribe selection (${hpFormatTime(item.selStart)}–${hpFormatTime(item.selEnd)}) in:`
                 : 'Re-transcribe in:';
         }
     }
@@ -3945,10 +3945,10 @@ function cleanupAudioStreams(force = false) {
                     <span class="history-item-time-label" data-id="${item.id}">0:00</span>
                 </div>
                 <div class="history-item-trim" data-id="${item.id}">
-                    <button class="history-item-mark" data-id="${item.id}" data-which="start" title="将当前播放位置设为选区起点">⭰ 设为起点</button>
-                    <button class="history-item-mark" data-id="${item.id}" data-which="end" title="将当前播放位置设为选区终点">设为终点 ⭲</button>
+                    <button class="history-item-mark" data-id="${item.id}" data-which="start" title="Set the selection start to the current playback position">⭰ Set start</button>
+                    <button class="history-item-mark" data-id="${item.id}" data-which="end" title="Set the selection end to the current playback position">Set end ⭲</button>
                     <span class="history-item-sel-label hidden" data-id="${item.id}"></span>
-                    <button class="history-item-sel-clear hidden" data-id="${item.id}" title="清除选区，恢复整段重转">✕</button>
+                    <button class="history-item-sel-clear hidden" data-id="${item.id}" title="Clear selection (re-transcribe the whole clip)">✕</button>
                 </div>
                 ` : ''}
                 <div class="history-item-text">${item.text}</div>
