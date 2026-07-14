@@ -1075,13 +1075,7 @@ async function trimLeadingSilence(audioBlob, opts = {}) {
  * @returns {Blob} audio/wav Blob
  */
 function encodeAudioBufferToWav(audioBuffer) {
-    const numChannels = 1; // 输出单声道，Whisper 效果最佳
-    const sampleRate  = audioBuffer.sampleRate;
-    const numSamples  = audioBuffer.length;
-    const bitsPerSample = 16;
-    const blockAlign  = numChannels * bitsPerSample / 8;
-    const byteRate    = sampleRate * blockAlign;
-    const dataSize    = numSamples * blockAlign;
+    const numSamples = audioBuffer.length;
 
     // 混合到单声道
     const mono = new Float32Array(numSamples);
@@ -1091,6 +1085,23 @@ function encodeAudioBufferToWav(audioBuffer) {
             mono[i] += ch[i] / audioBuffer.numberOfChannels;
         }
     }
+
+    return encodeMonoSamplesToWav(mono, audioBuffer.sampleRate);
+}
+
+/**
+ * 将单声道 Float32 样本编码为 16-bit PCM WAV Blob（v115 抽出，供分段转录直接切样本用）
+ * @param {Float32Array} mono - 单声道样本
+ * @param {number} sampleRate
+ * @returns {Blob} audio/wav Blob
+ */
+function encodeMonoSamplesToWav(mono, sampleRate) {
+    const numChannels = 1; // 输出单声道，Whisper 效果最佳
+    const numSamples  = mono.length;
+    const bitsPerSample = 16;
+    const blockAlign  = numChannels * bitsPerSample / 8;
+    const byteRate    = sampleRate * blockAlign;
+    const dataSize    = numSamples * blockAlign;
 
     const buffer = new ArrayBuffer(44 + dataSize);
     const view   = new DataView(buffer);
@@ -1124,6 +1135,189 @@ function encodeAudioBufferToWav(audioBuffer) {
 }
 
 // ==================== End VAD ====================
+
+// ==================== Chunked transcription（v115：长音频分段转录） ====================
+// 背景：Whisper 遇到响亮杂音或长静音会"脱轨"——之后的真实语音输出残缺甚至全丢。
+// 对策：长录音先在静音点附近切成约 60s 的块，各块独立转录再按序拼接，
+// 一段杂音最多毒害它所在的块，后面每块都是干净的新开始。
+
+/**
+ * 把长音频在静音点附近切块，每块编码为 16kHz 单声道 WAV。
+ * 音频不够长（<= minChunkableSec）或处理失败时返回 null，表示走原有整段上传路径。
+ *
+ * @param {Blob} audioBlob - 任意可解码音频（VAD 输出的 WAV 或原始 WebM）
+ * @returns {Promise<?Array<{blob: Blob, startSec: number, endSec: number}>>}
+ */
+async function splitAudioAtSilence(audioBlob, opts = {}) {
+    const {
+        minChunkableSec = 90,   // 短于此不分段（保持现状，避免小录音多付请求开销）
+        targetChunkSec  = 60,   // 目标块长
+        searchWindowSec = 8,    // 在目标切点 ± 此范围内找能量最低（最安静）的窗口下刀
+        windowMs        = 30,
+        minTailSec      = 15,   // 尾块不足此长度则并入前一块
+    } = opts;
+
+    let audioCtx;
+    try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        if (audioBuffer.duration <= minChunkableSec) return null;
+
+        // 统一到 16kHz 单声道（VAD 输出已是该格式则直接取样本，省一次重采样）
+        const sampleRate = 16000;
+        let samples;
+        if (audioBuffer.sampleRate === sampleRate && audioBuffer.numberOfChannels === 1) {
+            samples = audioBuffer.getChannelData(0);
+        } else {
+            const offlineCtx = new OfflineAudioContext(
+                1, Math.ceil(audioBuffer.duration * sampleRate), sampleRate);
+            const src = offlineCtx.createBufferSource();
+            src.buffer = audioBuffer;
+            src.connect(offlineCtx.destination);
+            src.start(0);
+            samples = (await offlineCtx.startRendering()).getChannelData(0);
+        }
+
+        // 逐窗口 RMS，用于定位安静切点
+        const windowSamples = Math.max(1, Math.floor(sampleRate * windowMs / 1000));
+        const windowCount = Math.floor(samples.length / windowSamples);
+        const rmsList = new Float32Array(windowCount);
+        for (let w = 0; w < windowCount; w++) {
+            let sumSq = 0;
+            const start = w * windowSamples;
+            for (let j = start; j < start + windowSamples; j++) {
+                sumSq += samples[j] * samples[j];
+            }
+            rmsList[w] = Math.sqrt(sumSq / windowSamples);
+        }
+
+        const totalSec = samples.length / sampleRate;
+        const searchW = Math.floor(searchWindowSec * 1000 / windowMs);
+        const cutSamples = [];
+        for (let t = targetChunkSec; t < totalSec - minTailSec; t += targetChunkSec) {
+            const centerW = Math.floor(t * 1000 / windowMs);
+            const from = Math.max(1, centerW - searchW);
+            const to = Math.min(windowCount - 1, centerW + searchW);
+            if (from >= to) continue;
+            let bestW = from;
+            for (let w = from; w <= to; w++) {
+                if (rmsList[w] < rmsList[bestW]) bestW = w;
+            }
+            cutSamples.push(bestW * windowSamples);
+        }
+        if (cutSamples.length === 0) return null;
+
+        const bounds = [0, ...cutSamples, samples.length];
+        const chunks = [];
+        for (let i = 0; i < bounds.length - 1; i++) {
+            chunks.push({
+                blob: encodeMonoSamplesToWav(samples.subarray(bounds[i], bounds[i + 1]), sampleRate),
+                startSec: bounds[i] / sampleRate,
+                endSec: bounds[i + 1] / sampleRate,
+            });
+        }
+        console.log(`[CHUNK] ✂️ 长音频 ${totalSec.toFixed(0)}s 切为 ${chunks.length} 段: `
+            + chunks.map(c => `${c.startSec.toFixed(1)}–${c.endSec.toFixed(1)}s`).join(', '));
+        return chunks;
+    } catch (err) {
+        console.error('[CHUNK] ❌ 分段失败，回退整段上传:', err && err.message);
+        return null;
+    } finally {
+        if (audioCtx) audioCtx.close().catch(() => {});
+    }
+}
+
+/**
+ * 上传单个音频 blob 到 /transcribe-segment，返回服务端 JSON（不吞错误，HTTP 失败抛异常）
+ */
+async function uploadForTranscription(blob, { durationSec, audioSource, language }) {
+    const formData = new FormData();
+    const mimeType = blob.type || 'audio/wav';
+    const extension = mimeType.includes('wav') ? 'wav' :
+                      mimeType.includes('webm') ? 'webm' :
+                      mimeType.includes('mp3') ? 'mp3' : 'mp4';
+    formData.append('audio_file', blob, `recording_${Math.max(1, Math.round(durationSec))}s.${extension}`);
+    formData.append('duration', String(Math.max(1, Math.round(durationSec))));
+    formData.append('audio_source', audioSource || 'microphone');
+    if (language && language !== 'auto') {
+        formData.append('language', language);
+    }
+
+    const response = await fetch('/transcribe-segment', { method: 'POST', body: formData });
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 300)}`);
+    }
+    return await response.json();
+}
+
+/**
+ * v115 智能转录入口：长音频分段转录后拼接，短音频整段上传（行为不变）。
+ * 返回与 /transcribe-segment 相同形状的结果对象（success / text / api_used / message）。
+ *
+ * 分段失败策略：网络/HTTP 错误重试一次；服务端 success=false（如纯静音段被
+ * 后端过滤）不重试、按空文本跳过；所有段都失败才整体报错。
+ */
+async function transcribeAudioSmart(blob, { durationSec, audioSource, language, onProgress = null }) {
+    const chunks = await splitAudioAtSilence(blob);
+    if (!chunks || chunks.length < 2) {
+        return await uploadForTranscription(blob, { durationSec, audioSource, language });
+    }
+
+    // 并发 2：服务端转录内部是阻塞式 HTTP 调用，更高并发没有收益
+    const results = new Array(chunks.length).fill(null);
+    let nextIndex = 0;
+    let doneCount = 0;
+    const worker = async () => {
+        while (nextIndex < chunks.length) {
+            const i = nextIndex++;
+            const c = chunks[i];
+            const uploadOpts = { durationSec: c.endSec - c.startSec, audioSource, language };
+            try {
+                results[i] = await uploadForTranscription(c.blob, uploadOpts);
+            } catch (err) {
+                console.warn(`[CHUNK] 段 ${i + 1}/${chunks.length} 请求失败，重试一次:`, err.message);
+                try {
+                    results[i] = await uploadForTranscription(c.blob, uploadOpts);
+                } catch (err2) {
+                    console.error(`[CHUNK] ❌ 段 ${i + 1}/${chunks.length} 重试仍失败:`, err2.message);
+                    results[i] = { success: false, message: err2.message };
+                }
+            }
+            doneCount++;
+            if (results[i] && !results[i].success) {
+                console.warn(`[CHUNK] 段 ${i + 1}/${chunks.length} 无有效文本: ${results[i].message || ''}`);
+            }
+            if (onProgress) onProgress(doneCount, chunks.length);
+        }
+    };
+    await Promise.all([worker(), worker()]);
+
+    const anySuccess = results.some(r => r && r.success);
+    if (!anySuccess) {
+        // 全部失败（例如整段确实全是静音/噪音，或 API 全挂）——沿用第一个失败结果报错
+        return results.find(r => r) || { success: false, message: 'All chunks failed' };
+    }
+
+    const texts = results
+        .map(r => (r && r.success && r.text) ? r.text.trim() : '')
+        .filter(t => t);
+    const failedCount = results.filter(r => !r || !r.success).length;
+    const apiUsed = [...new Set(results.filter(r => r && r.api_used).map(r => r.api_used))].join('+');
+    console.log(`[CHUNK] ✅ 分段转录完成: ${chunks.length} 段，其中 ${failedCount} 段无文本（失败或静音）`);
+
+    return {
+        success: true,
+        text: texts.join(' '),
+        api_used: apiUsed || undefined,
+        api_status: results.find(r => r && r.api_status)?.api_status,
+        chunked: chunks.length,
+        chunk_failures: failedCount,
+    };
+}
+
+// ==================== End chunked transcription ====================
 
 // 检查并请求麦克风权限
 async function checkMicrophonePermission() {
@@ -3132,51 +3326,27 @@ function cleanupAudioStreams(force = false) {
             console.log(`[PERF] 前端处理总耗时: ${frontendProcessTime}ms (${(frontendProcessTime/1000).toFixed(2)}秒)`);
             console.log(`${'='.repeat(80)}\n`);
             
-            // 发送到服务器进行转录
-            const formData = new FormData();
-            const extension = audioToTranscribe.type.includes('wav') ? 'wav' : 
-                             audioToTranscribe.type.includes('webm') ? 'webm' : 
-                             audioToTranscribe.type.includes('mp3') ? 'mp3' : 'mp4';
-            const filename = `recording_last${requestedDuration}s.${extension}`;
-            
-            formData.append('audio_file', audioToTranscribe, filename);
-            formData.append('duration', String(requestedDuration));
-            // 🎙️ v110: 传递音频源信息（用于智能 API 路由）
-            formData.append('audio_source', currentAudioSource || 'microphone');
-            console.log(`[v110-ROUTING] 📤 发送音频源信息: ${currentAudioSource || 'microphone'}`);
-            // 🌍 转录语言：仅在用户明确指定（非 auto）时传给后端，否则让后端自动识别
-            if (transcriptionLanguage && transcriptionLanguage !== 'auto') {
-                formData.append('language', transcriptionLanguage);
-                console.log(`[LANG] 📤 指定转录语言: ${transcriptionLanguage}`);
-            } else {
-                console.log('[LANG] 📤 转录语言: auto（自动识别）');
-            }
-            
-            // 发送到服务器
+            // 发送到服务器进行转录（v115：长音频自动分段转录，杂音/静音脱轨只影响所在段）
             console.log(`[INFO] 发送转录请求到服务器...`);
             console.log(`[PERF] 文件大小: ${(audioToTranscribe.size / 1024 / 1024).toFixed(2)} MB`);
+            // 🎙️ v110: 传递音频源信息（用于智能 API 路由）
+            console.log(`[v110-ROUTING] 📤 发送音频源信息: ${currentAudioSource || 'microphone'}`);
+            // 🌍 转录语言：仅在用户明确指定（非 auto）时传给后端，否则让后端自动识别
+            console.log(`[LANG] 📤 转录语言: ${(transcriptionLanguage && transcriptionLanguage !== 'auto') ? transcriptionLanguage : 'auto（自动识别）'}`);
             const uploadStartTime = Date.now();
-            const requestStartTime = Date.now();
-            const response = await fetch('/transcribe-segment', {
-                method: 'POST',
-                body: formData
+            const result = await transcribeAudioSmart(audioToTranscribe, {
+                durationSec: requestedDuration,
+                audioSource: currentAudioSource || 'microphone',
+                language: transcriptionLanguage,
+                onProgress: (done, total) => {
+                    transcriptionResult.value = `Transcribing… ${done}/${total} segments done`;
+                }
             });
-            const requestEndTime = Date.now();
-            const requestDuration = (requestEndTime - requestStartTime) / 1000;
-            const uploadTime = requestEndTime - uploadStartTime;
-            
+            const uploadTime = Date.now() - uploadStartTime;
+
             console.log(`[INFO] 服务器响应:`);
-            console.log(`  - 状态码: ${response.status}`);
-            console.log(`  - 请求耗时: ${requestDuration.toFixed(2)}秒`);
+            console.log(`  - 请求耗时: ${(uploadTime / 1000).toFixed(2)}秒${result.chunked ? `（分 ${result.chunked} 段，${result.chunk_failures} 段无文本）` : ''}`);
             console.log(`[PERF] 上传+API处理总耗时: ${uploadTime}ms (${(uploadTime/1000).toFixed(2)}秒)`);
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error(`[ERROR] HTTP 错误响应:`, errorText.substring(0, 500));
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const result = await response.json();
             console.log(`[INFO] 解析后的响应:`);
             console.log(`  - Success: ${result.success}`);
             console.log(`  - Message: ${result.message || 'N/A'}`);
@@ -3642,44 +3812,25 @@ function cleanupAudioStreams(force = false) {
         }
 
         try {
-            // 默认整段；有选区则先切片成 WAV
+            // 默认整段（v115：长录音自动分段转录防脱轨）；有选区则先切片成 WAV（短片段走单段路径）
             let uploadBlob = item.audioBlob;
-            let durationField = '300';
+            let durationSec = 300;
             if (hasSelection) {
                 try {
                     uploadBlob = await extractAudioSegmentRange(item.audioBlob, item.selStart, item.selEnd);
-                    durationField = String(Math.max(1, Math.ceil(item.selEnd - item.selStart)));
+                    durationSec = Math.max(1, Math.ceil(item.selEnd - item.selStart));
                 } catch (sliceErr) {
                     console.warn('[HISTORY] 选区切片失败，改用整段音频重转:', sliceErr);
                     uploadBlob = item.audioBlob;
                 }
             }
 
-            const formData = new FormData();
-            const mimeType = uploadBlob.type || 'audio/wav';
-            const extension = mimeType.includes('wav') ? 'wav' :
-                            mimeType.includes('webm') ? 'webm' :
-                            mimeType.includes('mp3') ? 'mp3' : 'mp4';
-
-            formData.append('audio_file', uploadBlob, `history_retry.${extension}`);
-            formData.append('duration', durationField);
-            formData.append('audio_source', item.audioSource || 'microphone');
             // 🌍 按本次选择的语言重转（非 auto 才传，auto 让后端自动识别）
-            if (lang && lang !== 'auto') {
-                formData.append('language', lang);
-            }
-
-            const response = await fetch('/transcribe-segment', {
-                method: 'POST',
-                body: formData
+            const result = await transcribeAudioSmart(uploadBlob, {
+                durationSec,
+                audioSource: item.audioSource || 'microphone',
+                language: lang,
             });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 300)}`);
-            }
-
-            const result = await response.json();
             if (!result.success) {
                 throw new Error(result.message || 'Transcription failed');
             }
