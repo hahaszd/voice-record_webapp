@@ -759,7 +759,6 @@ async def _transcribe_openai(
         raise Exception("OPENAI_API_KEY 未配置")
     
     print(f"[FALLBACK] 尝试使用 OpenAI Whisper API")
-    print(f"[v109-FIX] 🔧 添加 Prompt 参数，尝试解决内容截断问题")
     
     # OpenAI API endpoint
     api_url = "https://api.openai.com/v1/audio/transcriptions"
@@ -830,10 +829,11 @@ async def _transcribe_openai(
             print(f"[OPENAI-HALLUCINATION] 检测到幻觉模式，丢弃结果: {text[:80]!r}")
             raise Exception("OpenAI Whisper 输出疑似幻觉（噪音/静音触发），跳过此结果")
 
-    # 使用 verbose_json 段落过滤：
-    # - no_speech_prob > 0.8   → 该段基本是静音/噪音，丢弃
-    # - compression_ratio > 2.4 → 输出高度重复，典型幻觉特征，丢弃
-    # - avg_logprob < -1.0      → 置信度极低，丢弃
+    # 使用 verbose_json 段落过滤（v114 收紧：单一低置信度指标不再删段）：
+    # - compression_ratio > 2.4                       → 输出高度重复，典型幻觉特征，单独即可丢弃
+    # - no_speech_prob > 0.8 且 avg_logprob < -1.0    → 静音概率高且置信度极低，两者同时满足才丢弃
+    #   （与 OpenAI Whisper 官方 no-speech 启发式一致：单靠 avg_logprob 或 no_speech_prob
+    #    会把长静音后"脱轨"的真实语音段整段误删，导致用户实际说话内容丢失）
     if 'segments' in result and result['segments'] is not None:
         segments = result['segments']
         segments_count = len(segments)
@@ -852,15 +852,12 @@ async def _transcribe_openai(
             # 逐段判断是否为幻觉/非语音
             is_hallucination = False
             reason = ''
-            if no_speech_prob > 0.8:
-                is_hallucination = True
-                reason = f'no_speech_prob={no_speech_prob:.2f}'
-            elif compression_ratio > 2.4:
+            if compression_ratio > 2.4:
                 is_hallucination = True
                 reason = f'compression_ratio={compression_ratio:.2f}'
-            elif avg_logprob < -1.0:
+            elif no_speech_prob > 0.8 and avg_logprob < -1.0:
                 is_hallucination = True
-                reason = f'avg_logprob={avg_logprob:.2f}'
+                reason = f'no_speech_prob={no_speech_prob:.2f} & avg_logprob={avg_logprob:.2f}'
 
             if is_hallucination:
                 filtered_count += 1
@@ -870,6 +867,10 @@ async def _transcribe_openai(
 
         if filtered_count > 0:
             print(f"[OPENAI-FILTER] 共过滤 {filtered_count}/{segments_count} 个幻觉段落")
+            # 多段落录音却删掉一半以上 → 大概率是过滤器误伤真实语音，留证据便于排查
+            if segments_count >= 5 and filtered_count > segments_count / 2:
+                print(f"[OPENAI-FILTER] ⚠️ 过滤比例异常偏高 ({filtered_count}/{segments_count})，"
+                      f"可能误删真实语音段落，请核对该录音")
 
         if valid_texts:
             text = ' '.join(valid_texts).strip()

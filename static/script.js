@@ -875,8 +875,8 @@ function stopWaveform() {
  * @param {Blob} audioBlob - 原始录音 Blob（WebM/Opus）
  * @param {Object} opts
  * @param {number}  opts.windowMs        - 检测窗口大小（ms），默认 30ms
- * @param {number}  opts.triggerCount    - 连续多少个窗口超阈值才算语音起始，默认 3
- * @param {number}  opts.paddingMs       - 语音起始前保留的缓冲（ms），默认 350ms
+ * @param {number}  opts.triggerCount    - 连续多少个窗口超阈值才算语音起始，默认 9（约 270ms）
+ * @param {number}  opts.paddingMs       - 语音起始前保留的缓冲（ms），默认 450ms
  * @param {number}  opts.minTrimMs       - 最少裁掉多长静噪才值得处理（ms），默认 600ms
  * @param {number}  opts.tailRefMs       - 用作基准的尾段长度（ms），默认 1500ms
  * @param {number}  opts.tailMaxRatio    - 尾段占整段的最大比例，默认 0.4
@@ -890,8 +890,12 @@ function stopWaveform() {
 async function trimLeadingSilence(audioBlob, opts = {}) {
     const {
         windowMs        = 30,
-        triggerCount    = 3,
-        paddingMs       = 350,
+        // v114: 3→9（90ms→270ms）。90ms 连续超阈值太容易被椅子响/键盘声/呼吸等瞬时噪声
+        // 触发，导致"语音起点"误判在前导静音里、后面几十秒静音原样送给 Whisper（长静音
+        // 会让 Whisper 脱轨截丢真实内容）。要求约 270ms 持续能量才认定为真人声起点。
+        triggerCount    = 9,
+        // v114: 350→450ms。triggerCount 提高后起点判定会稍微偏后，多留缓冲避免裁掉开头辅音
+        paddingMs       = 450,
         minTrimMs       = 600,
         tailRefMs       = 4000,
         tailMaxRatio    = 0.4,
@@ -3908,7 +3912,7 @@ function cleanupAudioStreams(force = false) {
                 <div class="history-item-header">
                     <span class="history-item-time">${formatTimestamp(item.timestamp)}</span>
                     <div class="history-item-actions">
-                        <button class="history-item-copy" data-text="${encodeURIComponent(item.text)}" title="Copy to clipboard">
+                        <button class="history-item-copy" data-id="${item.id}" title="Copy to clipboard">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
                                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -3963,7 +3967,13 @@ function cleanupAudioStreams(force = false) {
         historyList.querySelectorAll('.history-item-copy').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                const text = decodeURIComponent(btn.dataset.text);
+                // 点击时按 id 实时取文本，确保重转录后复制的是最新内容（旧 data-text 是渲染时的快照，重转后会过期）
+                const historyItem = findHistoryItemById(btn.dataset.id);
+                const text = historyItem ? historyItem.text : '';
+                if (!text) {
+                    console.warn('[HISTORY] 未找到可复制的历史文本');
+                    return;
+                }
                 try {
                     await navigator.clipboard.writeText(text);
                     
