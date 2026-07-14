@@ -1285,6 +1285,82 @@ def _strip_json_artifacts(text: str) -> str:
     return t if t else text  # 清理后变空则保留原文
 
 
+# Whisper 幻觉套话黑名单。
+#
+# 这些句子来自 Whisper 训练数据里的 YouTube 字幕残留（"明镜"频道的片尾语、Amara 字幕组
+# 署名等）。音频里出现静音或杂音时，模型会凭空把它们吐出来，夹在真实转录内容中间。
+#
+# 与上面 _transcribe_openai 里的 _hallucination_patterns 的区别很重要：
+#   那组模式命中后会 raise，丢弃**整段**转录结果并 fallback 到下一个 API —— 适用于
+#   "整段输出都是幻觉"的情况。而这里是**短语级**清洗：只把这几句话从文本里抠掉，
+#   用户真正说的话原样保留。用户要的是后者。
+#
+# 新增条目时请保持"具体"：只收那些用户几乎不可能真的说出口的定型句。
+# 过于宽泛的词（如单独的"感谢观看"）会误删真实语音，宁可漏也不要错杀。
+_SEP = r'[\s,，、。·\-—_~～!！]*'   # 幻觉句里的分隔符五花八门，统一容忍
+
+_HALLUCINATION_PHRASES = [
+    # 明镜频道片尾语（用户报告的那句），及其各种残缺/变体
+    rf'请{_SEP}不吝{_SEP}点赞{_SEP}订阅{_SEP}转发{_SEP}打赏{_SEP}支持{_SEP}明镜{_SEP}与{_SEP}点点',
+    rf'点赞{_SEP}订阅{_SEP}转发{_SEP}打赏{_SEP}支持{_SEP}明镜{_SEP}与{_SEP}点点',
+    rf'打赏{_SEP}支持{_SEP}明镜{_SEP}与{_SEP}点点',
+    rf'明镜{_SEP}与{_SEP}点点',
+    # 字幕组署名类
+    r'字幕由.{0,20}?(提供|制作|上传|翻译)',
+    r'(中文)?字幕.{0,10}?Amara\.org.{0,20}',
+    r'由\s*Amara\.org\s*社(区|區).{0,10}',
+    # 频道引流套话（保留"请"字打头这种明显的定型句，不碰泛化说法）
+    r'请{0,1}(记得)?订阅(我们的)?频道',
+    r'請{0,1}(記得)?訂閱(我們的)?頻道',
+]
+
+_HALLUCINATION_RE = [__import__('re').compile(p) for p in _HALLUCINATION_PHRASES]
+
+
+def _scrub_hallucination_phrases(text: str) -> str:
+    """
+    从转录文本中删除已知的 Whisper 幻觉套话，保留其余内容。
+
+    返回清洗后的文本；若整段文本都是幻觉，返回空字符串（调用方/前端会显示"未识别到文字"，
+    这是正确行为——不要把幻觉当成有效转录还给用户）。
+    """
+    import re as _re
+
+    if not text:
+        return text
+
+    t = text
+    removed = []
+    for pattern in _HALLUCINATION_RE:
+        t, n = pattern.subn('', t)
+        if n:
+            removed.append(f'{pattern.pattern[:30]}×{n}')
+
+    if not removed:
+        return text
+
+    # 抠掉短语后常留下多余空白和孤立标点
+    t = _re.sub(r'\s{2,}', ' ', t)
+    t = _re.sub(r'^[\s,，、。!！?？~～\-]+', '', t)
+    t = _re.sub(r'[\s,，、]+$', '', t)
+    t = t.strip()
+
+    print(f"[HALLUCINATION-SCRUB] 删除幻觉套话 {removed}；"
+          f"文本 {len(text)} → {len(t)} 字符")
+    if not t:
+        print(f"[HALLUCINATION-SCRUB] ⚠️ 整段均为幻觉套话，返回空文本: {text[:60]!r}")
+
+    return t
+
+
+def _postprocess_transcript(text: str) -> str:
+    """转录文本的统一后处理链：先清 JSON 残留，再清 Whisper 幻觉套话。
+
+    所有 API 路径的返回点都必须走这里，新增 API 时别忘了。
+    """
+    return _scrub_hallucination_phrases(_strip_json_artifacts(text))
+
+
 # ================================================================================
 # 核心 Fallback 函数
 # ================================================================================
@@ -1333,7 +1409,7 @@ async def transcribe_with_fallback(
                 audio_content, filename, language, duration, logger
             )
             print(f"[v111-FALLBACK] ✅ OpenAI Whisper 转录成功 (#1)")
-            text = _strip_json_artifacts(text)
+            text = _postprocess_transcript(text)
             print(f"[v111-DEBUG] 返回文本长度: {len(text)}")
             return text, "openai_whisper", metadata
         except Exception as e:
@@ -1358,7 +1434,7 @@ async def transcribe_with_fallback(
                 audio_content, filename, language, duration, logger
             )
             print(f"[v111-FALLBACK] ✅ AI Builder Space 转录成功 (#2 备用)")
-            text = _strip_json_artifacts(text)
+            text = _postprocess_transcript(text)
             print(f"[v111-DEBUG] 返回文本长度: {len(text)}")
             return text, "ai_builder", metadata
         except Exception as e:
@@ -1383,7 +1459,7 @@ async def transcribe_with_fallback(
             remove_speaker_labels=False
         )
         print(f"[v111-FALLBACK] ✅ Google STT 转录成功 (#3 最后备用)")
-        text = _strip_json_artifacts(text)
+        text = _postprocess_transcript(text)
         print(f"[v111-DEBUG] 返回文本长度: {len(text)}")
         return text, "google", metadata
     except Exception as e:
@@ -1452,7 +1528,7 @@ async def transcribe_system_audio(
         API_FALLBACK_STATUS["api_usage_count"]["openai_diarize"] += 1
         
         print(f"[v112-SYSTEM] ✅ OpenAI Diarize 转录成功（多说话人，无标签）")
-        text = _strip_json_artifacts(text)
+        text = _postprocess_transcript(text)
         return text, "openai_diarize", metadata
         
     except Exception as e:
@@ -1478,7 +1554,7 @@ async def transcribe_system_audio(
         API_FALLBACK_STATUS["api_usage_count"]["google"] += 1
         
         print(f"[v112-SYSTEM] ✅ Google API 转录成功（多说话人，无标签）(Fallback #2)")
-        text = _strip_json_artifacts(text)
+        text = _postprocess_transcript(text)
         return text, "google", metadata
         
     except Exception as e:
@@ -1505,7 +1581,7 @@ async def transcribe_system_audio(
             API_FALLBACK_STATUS["api_usage_count"]["deepgram"] += 1
             
             print(f"[v112-SYSTEM] ✅ Deepgram Nova-2 转录成功（多说话人）(Fallback #3 - 备用)")
-            text = _strip_json_artifacts(text)
+            text = _postprocess_transcript(text)
             return text, "deepgram_nova2_chinese", metadata
             
         except Exception as e:
@@ -1561,7 +1637,7 @@ async def transcribe_with_preferred_api(
             duration=duration,
             logger=logger
         )
-        text = _strip_json_artifacts(text)
+        text = _postprocess_transcript(text)
         return text, "openai", metadata
 
     if api in ("ai_builder", "aibuilder", "abs"):
@@ -1572,7 +1648,7 @@ async def transcribe_with_preferred_api(
             duration=duration,
             logger=logger
         )
-        text = _strip_json_artifacts(text)
+        text = _postprocess_transcript(text)
         return text, "ai_builder", metadata
 
     if api in ("google", "google_stt", "gcp"):
@@ -1586,7 +1662,7 @@ async def transcribe_with_preferred_api(
             enable_diarization=use_diarization,
             remove_speaker_labels=use_diarization
         )
-        text = _strip_json_artifacts(text)
+        text = _postprocess_transcript(text)
         return text, "google", metadata
 
     raise Exception(f"不支持的 preferred_api: {preferred_api}")

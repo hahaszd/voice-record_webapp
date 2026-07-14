@@ -1134,6 +1134,63 @@ function encodeMonoSamplesToWav(mono, sampleRate) {
     return new Blob([buffer], { type: 'audio/wav' });
 }
 
+/**
+ * 硬性时长上限（v116）：送去转录的音频绝不超过用户选择的时长。
+ *
+ * 这是兜底防线，不是主修复。chunk 选择逻辑（时间戳过滤）已经改成以录音时间轴为基准，
+ * 但那条链路依赖 MediaRecorder 的分块时间戳；只要它再出一次偏差，用户就会又一次
+ * 拿到"选了 1 分钟却转出好几分钟旧内容"的结果。这里在上传前解码实测时长，超了就
+ * 只保留最后 maxSec 秒 —— 无论上游怎么错，输出都被物理钳死在所选时长内。
+ *
+ * 顺带解决另一个隐患：为保证 WebM 头部完整，blob 里被强行拼进了录音最开头的那个
+ * chunk（约 1 秒、可能是几小时前的声音）。按尾部截取会自然把它丢掉。
+ *
+ * @param {Blob} audioBlob     - 待转录音频
+ * @param {number} maxSec      - 用户选择的时长上限（秒）
+ * @param {number} toleranceSec- 容差：分块粒度 + WebM 头 chunk 带来的少量溢出，不值得重编码
+ * @returns {Promise<Blob>} 原 blob（未超限/解码失败）或截取后的 16kHz 单声道 WAV
+ */
+async function enforceMaxDuration(audioBlob, maxSec, toleranceSec = 2) {
+    if (!maxSec || maxSec <= 0) return audioBlob;
+
+    let audioCtx;
+    try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const audioBuffer = await audioCtx.decodeAudioData(await audioBlob.arrayBuffer());
+        const actualSec = audioBuffer.duration;
+
+        if (actualSec <= maxSec + toleranceSec) {
+            console.log(`[DURATION-CAP] ✅ 实测 ${actualSec.toFixed(1)}s ≤ 所选 ${maxSec}s(+${toleranceSec}s 容差)，无需截取`);
+            return audioBlob;
+        }
+
+        console.warn(`[DURATION-CAP] ⚠️ 实测 ${actualSec.toFixed(1)}s 超过所选 ${maxSec}s，强制只保留最后 ${maxSec}s`
+            + `（上游 chunk 选择可能有偏差，请检查 [INFO] cutoff 日志）`);
+
+        const sampleRate = 16000;
+        const offlineCtx = new OfflineAudioContext(
+            1, Math.ceil(actualSec * sampleRate), sampleRate);
+        const src = offlineCtx.createBufferSource();
+        src.buffer = audioBuffer;
+        src.connect(offlineCtx.destination);
+        src.start(0);
+        const rendered = (await offlineCtx.startRendering()).getChannelData(0);
+
+        const keepSamples = Math.min(rendered.length, Math.ceil(maxSec * sampleRate));
+        const tail = rendered.subarray(rendered.length - keepSamples);
+        const capped = encodeMonoSamplesToWav(tail, sampleRate);
+        console.log(`[DURATION-CAP] ✂️ 截取完成: ${(keepSamples / sampleRate).toFixed(1)}s, `
+            + `${(capped.size / 1024).toFixed(1)} KB`);
+        return capped;
+    } catch (err) {
+        // 解码失败时宁可放行原音频，也不要丢掉用户的录音
+        console.error('[DURATION-CAP] ❌ 解码失败，跳过硬性截取:', err && err.message);
+        return audioBlob;
+    } finally {
+        if (audioCtx) audioCtx.close().catch(() => {});
+    }
+}
+
 // ==================== End VAD ====================
 
 // ==================== Chunked transcription（v115：长音频分段转录） ====================
@@ -3143,9 +3200,18 @@ function cleanupAudioStreams(force = false) {
             await new Promise(resolve => setTimeout(resolve, 500));
             console.log('[INFO] 等待完成，开始转录');
             
+            // 🔥 v116 关键修复：先把 chunks 快照到内存，再启动转录。
+            // 旧代码里 generateAndPlayAudio() 自己去读 IndexedDB，而 200ms 后 startRecording()
+            // 会 clearAll() 并重置 recordingStartTime；长时间挂机后 chunk 多、读库慢，转录经常
+            // 输掉这个竞态 —— 读到的 recordingStartTime 已是"刚刚"，currentElapsed≈0，导致
+            // cutoffTime 退化成 0，把整个 5 分钟保留窗口全部转录（用户只选了 30s/1m）。
+            // 快照后，后续新录音无论何时清库/重置时间都影响不到这次转录。
+            const snapshotChunks = await audioStorage.getAllChunks();
+            console.log(`[SNAPSHOT] 转录前快照 ${snapshotChunks.length} 个 chunks（不再受新录音清库影响）`);
+
             // 开始转录
-            generateAndPlayAudio(defaultDuration);
-            
+            generateAndPlayAudio(defaultDuration, snapshotChunks);
+
             // 如果自动录音开启，立即开始新录音
             // 新录音会自动清空 IndexedDB，不会包含旧数据
             if (shouldAutoRecord) {
@@ -3189,7 +3255,9 @@ function cleanupAudioStreams(force = false) {
     }
 
     // 生成音频并转录
-    async function generateAndPlayAudio(requestedDuration = 10) {
+    // @param {?Array} snapshotChunks - 停止录音时已快照好的 chunks（见 stopRecording 的 v116 修复）。
+    //                                  传入时不再读 IndexedDB，避免与新录音的 clearAll() 竞态。
+    async function generateAndPlayAudio(requestedDuration = 10, snapshotChunks = null) {
         const totalStartTime = Date.now();
         console.log(`\n${'='.repeat(80)}`);
         console.log(`[INFO] 开始生成音频并转录（请求时长: ${requestedDuration}秒）`);
@@ -3220,36 +3288,31 @@ function cleanupAudioStreams(force = false) {
         copyBtn.disabled = true;
         
         try {
-            // 从IndexedDB获取所有chunks
+            // 获取 chunks：优先用 stopRecording 传进来的快照（避免与新录音的 clearAll 竞态）
             const dbReadStart = Date.now();
-            const allChunksFromDB = await audioStorage.getAllChunks();
+            const allChunksFromDB = snapshotChunks || await audioStorage.getAllChunks();
             const dbReadTime = Date.now() - dbReadStart;
-            console.log(`[PERF] IndexedDB读取耗时: ${dbReadTime}ms`);
-            
+            console.log(`[PERF] chunks 获取耗时: ${dbReadTime}ms（来源: ${snapshotChunks ? '快照' : 'IndexedDB'}）`);
+
             if (allChunksFromDB.length === 0) {
                 alert('No audio data available');
                 return;
             }
-            
-            console.log(`[INFO] 从IndexedDB获取到 ${allChunksFromDB.length} 个音频块`);
-            
-            // 确定有效的转录时长（5分钟 vs 用户请求的时长）
+
+            console.log(`[INFO] 获取到 ${allChunksFromDB.length} 个音频块`);
+
             const effectiveDurationMs = requestedDuration * 1000;
-            const maxRetentionMs = maxRecordingDuration; // 5分钟
-            
-            // 获取当前时间（相对于录音开始）
-            const currentElapsed = recordingStartTime ? (Date.now() - recordingStartTime) : 0;
-            
-            // 计算时间窗口：保留最近 effectiveDurationMs 的数据
-            let cutoffTime;
-            if (effectiveDurationMs >= maxRetentionMs || effectiveDurationMs >= currentElapsed) {
-                // 如果请求的时长 >= 5分钟 或 >= 实际录音时长，使用所有数据
-                cutoffTime = 0;
-                console.log(`[INFO] 使用所有可用数据（请求=${requestedDuration}s >= 保留窗口=${maxRetentionMs/1000}s）`);
+
+            // 🔥 v116：时间窗口以「最后一个 chunk 的时间戳」为基准，不再用 Date.now() - recordingStartTime。
+            // 墙上时钟会被新录音重置（recordingStartTime=Date.now()），一旦重置 currentElapsed≈0，
+            // 旧逻辑就会退化成 cutoffTime=0 并把整个保留窗口全部转录。chunk 时间戳本身就是录音
+            // 时间轴，与任何全局状态无关，是唯一可靠的基准。
+            const lastChunkTs = allChunksFromDB[allChunksFromDB.length - 1].timestamp;
+            const cutoffTime = Math.max(0, lastChunkTs - effectiveDurationMs);
+            if (cutoffTime === 0) {
+                console.log(`[INFO] 使用所有可用数据（请求 ${requestedDuration}s ≥ 录音时长 ${(lastChunkTs/1000).toFixed(1)}s）`);
             } else {
-                // 否则，只使用最近 effectiveDurationMs 的数据
-                cutoffTime = Math.max(0, currentElapsed - effectiveDurationMs);
-                console.log(`[INFO] 使用最近 ${requestedDuration}秒的数据（cutoff=${cutoffTime}ms）`);
+                console.log(`[INFO] 使用最近 ${requestedDuration}秒的数据（cutoff=${cutoffTime}ms，录音时间轴末端=${lastChunkTs}ms）`);
             }
             
             // 🔥 关键修复：构建音频blob，确保包含第一个chunk（WebM头部）
@@ -3302,13 +3365,17 @@ function cleanupAudioStreams(force = false) {
             console.log(`  - 类型: ${audioBlob.type}`);
             console.log(`  - Chunks数量: ${chunksToUse.length}`);
             
-            // 保存原始音频用于本地播放/下载（浏览器原生支持 WebM 播放）
-            lastRecordedAudioBlob = audioBlob;
+            // 🔥 v116 硬性时长上限：实测解码时长，超过所选时长就只保留最后 N 秒。
+            // 上游 chunk 选择再出偏差，也不可能把几分钟旧内容送进转录。
+            const cappedBlob = await enforceMaxDuration(audioBlob, requestedDuration);
+
+            // 保存音频用于本地播放/下载/历史（用截取后的版本，保证与转录文字一致）
+            lastRecordedAudioBlob = cappedBlob;
 
             // 客户端 VAD：动态裁剪前导静音/噪音。
             // 注意：即使 VAD 怀疑是静音，也绝不丢弃录音——仍照常上传转录，
             // 真静音交给后端既有的 no_speech_prob / compression_ratio / avg_logprob 过滤兜底。
-            const vadResult = await trimLeadingSilence(audioBlob);
+            const vadResult = await trimLeadingSilence(cappedBlob);
 
             if (vadResult.allSilence) {
                 console.warn('[VAD] 🔇 VAD 怀疑整段静音，但仍继续上传转录（避免误判丢弃录音），交后端过滤兜底');
