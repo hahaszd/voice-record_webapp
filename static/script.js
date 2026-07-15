@@ -1,6 +1,12 @@
 // 全局变量
 let transcriptionHistory = []; // 转录历史记录（Session级别）
 let mediaRecorder = null;
+// v117: 录音会话计数器。每次 startRecording 自增，ondataavailable 闭包捕获自己的 epoch，
+// 只有 epoch === recordingEpoch（当前会话）才允许写库。用于封杀"孤儿 recorder"——
+// 挂机/唤醒或 auto-record 竞态下，旧 recorder 可能没被 stop 就被新的覆盖，之后仍在后台
+// 每秒触发 ondataavailable、用它自己那套过时的时间原点往 IndexedDB 写高时间戳 chunk，
+// 污染 chunk 选择，导致"选了 5 分钟却漏掉一半真实语音"。
+let recordingEpoch = 0;
 let isRecording = false;
 let isTranscribing = false; // 是否正在转录（转录期间禁用转录按钮）
 let recordingStartTime = null;
@@ -2938,9 +2944,24 @@ function cleanupAudioStreams(force = false) {
                 showIOSWarning();
             }
             
+            // 🔥 v117 防御：彻底停掉并解绑任何残留的旧 recorder，杜绝"孤儿 recorder"。
+            // 解绑 ondataavailable 后再 stop，连它的最后一个 flush chunk 也不会写库（反正马上清库）。
+            if (mediaRecorder) {
+                try {
+                    mediaRecorder.ondataavailable = null;
+                    mediaRecorder.onstop = null;
+                    if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+                } catch (e) {
+                    console.warn('[AUDIO-HEALTH] 停止旧 recorder 失败（忽略）:', e && e.message);
+                }
+                mediaRecorder = null;
+            }
+            // 递增会话 epoch：此刻起，任何旧 recorder 的 ondataavailable 都会因 epoch 过期而拒绝写库
+            recordingEpoch++;
+
             // 🔥 关键修复：无论是否等待转录，都要立即清空 IndexedDB
             // 因为新的录音会立即开始写入chunks，不能和旧数据混在一起
-            console.log('[INFO] 开始新录音，立即清空 IndexedDB');
+            console.log(`[INFO] 开始新录音（epoch=${recordingEpoch}），立即清空 IndexedDB`);
             await audioStorage.clearAll();
             pendingStorageClear = null; // 清除待执行的回调
             
@@ -2995,8 +3016,18 @@ function cleanupAudioStreams(force = false) {
                 systemStreamActive: systemStream?.getAudioTracks()[0]?.readyState
             });
             
+            // 本次会话的 epoch，闭包捕获。孤儿 recorder 的 myEpoch 会与全局 recordingEpoch 不符。
+            const myEpoch = recordingEpoch;
+
             // 数据可用事件：保存到IndexedDB和内存
             mediaRecorder.ondataavailable = async (event) => {
+                // 🔥 v117 守卫：只有当前会话的 recorder 才能写库/写内存。
+                // 孤儿 recorder（挂机唤醒/竞态下未被停掉的旧实例）到这里 myEpoch 已过期，直接丢弃，
+                // 否则它会用过时的 recordingStartTime 写入高时间戳 chunk，污染后续 chunk 选择。
+                if (myEpoch !== recordingEpoch) {
+                    console.warn(`[AUDIO-HEALTH] 丢弃孤儿 recorder 的数据（epoch ${myEpoch} ≠ 当前 ${recordingEpoch}）`);
+                    return;
+                }
                 if (event.data.size > 0) {
                     const currentTime = Date.now();
                     const elapsed = currentTime - recordingStartTime;
@@ -3042,11 +3073,13 @@ function cleanupAudioStreams(force = false) {
                 // 不关闭stream，让音频流持续可用
             };
             
-            // 每1秒保存一次数据
-            mediaRecorder.start(1000);
-            
+            // 🔥 v117：先设好时间原点和状态，再 start()。否则首个 chunk 的 ondataavailable
+            // 可能在 recordingStartTime 赋值前触发，用到上一次会话的旧原点。
             isRecording = true;
             recordingStartTime = Date.now();
+
+            // 每1秒保存一次数据
+            mediaRecorder.start(1000);
             
             // 🔥 优化：不再启动定期清理任务（避免重复操作）
             // IndexedDB将在录音停止时清理一次即可
