@@ -9,6 +9,12 @@ let mediaRecorder = null;
 let recordingEpoch = 0;
 let isRecording = false;
 let isTranscribing = false; // 是否正在转录（转录期间禁用转录按钮）
+// 🔥 v118 修复：stopRecording() 内部有"停止→清库前快照"这段异步窗口（100ms+500ms+读库耗时），
+// 此时 isRecording 已经是 false 但转录还没真正接管按钮（isTranscribing 还是 false）。
+// 挂机唤醒后 macOS 窗口切换常导致点击"没反应"的错觉，用户会在这个窗口里再点一次，
+// 命中 !isRecording 分支触发 startRecording()，其 clearAll() 会在快照读库前抢先清空 IndexedDB，
+// 导致刚录的一大段录音在转录前就被冲掉，最终只转出"时长太短"。这个标志把整个窗口锁住。
+let isStoppingRecording = false;
 let recordingStartTime = null;
 let recordingTimer = null;
 let recordedMimeType = 'audio/webm;codecs=opus';
@@ -2321,6 +2327,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 录音按钮点击事件
     recordBtn.addEventListener('click', async () => {
+        // 🔥 v118：stopRecording() 正在处理"停止→快照"窗口时，忽略一切重复点击。
+        // 这个窗口里 isRecording 已经是 false，若不拦截，第二次点击会被误判为"开始新录音"，
+        // 抢在快照读库之前清空 IndexedDB，导致刚录完的一整段音频丢失、只转出"时长太短"。
+        if (isStoppingRecording) {
+            console.log('[INFO] 正在处理停止录音，忽略重复点击');
+            return;
+        }
         if (!isRecording) {
             logAudioHealth('record-click');
             recordBtn.classList.add('arming'); // 立即给视觉反馈，避免"点了没反应"的错觉
@@ -2342,7 +2355,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.log('[INFO] 转录进行中，无法再次点击转录');
                 return;
             }
-            await stopRecording();
+            recordBtn.classList.add('arming'); // 立即给视觉反馈，避免用户以为"点了没反应"而再点一次
+            try {
+                await stopRecording();
+            } finally {
+                recordBtn.classList.remove('arming');
+            }
         }
     });
 
@@ -3148,6 +3166,17 @@ function cleanupAudioStreams(force = false) {
 
     // 停止录音
     async function stopRecording() {
+        // 🔥 v118：锁住"停止→快照"整个窗口，见 isStoppingRecording 声明处的注释。
+        // finally 里释放，保证快照/转录已接管（isTranscribing/recordBtn.disabled）或函数正常走完才放开。
+        isStoppingRecording = true;
+        try {
+            await stopRecordingInner();
+        } finally {
+            isStoppingRecording = false;
+        }
+    }
+
+    async function stopRecordingInner() {
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             // 等待MediaRecorder停止并收集所有剩余数据
             await new Promise((resolve) => {
