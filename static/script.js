@@ -1019,9 +1019,36 @@ async function trimLeadingSilence(audioBlob, opts = {}) {
             return { blob: audioBlob, allSilence: true, trimmed: false, reason: 'no_speech' };
         }
 
+        // 🔧 v119 修复"前段轻声说话被整段丢弃（丢失真实语音）"：
+        // 真正该裁的边界是「前导静音的结束点」（能量首次明显高于底噪），而不是
+        // 「响亮语音的起点」speechStartWindow。原逻辑裁到响亮起点，一旦你前面说得轻、
+        // 后面说得响，speechRef 被抬高、前段轻声语音过不了阈值，就会被当静音删掉几十秒。
+        // 现在在 [0, speechStartWindow) 内找第一处“持续高于底噪”的窗口作为裁剪边界：
+        //   - 前段是真静音（能量贴着底噪）→ 找不到 → 沿用响亮起点，行为不变（正常裁掉长静音）
+        //   - 前段有轻声人声（能量高于底噪但没那么响）→ 边界回退到接近 0 → 不再吃掉真语音
+        const silenceThr = Math.max(absMinThreshold, noiseFloor * silenceMargin);
+        const trimPersist = 3; // 连续 3 个窗口高于 silenceThr 才认定静音已结束，避开单个瞬时噪点
+        let trimBoundaryWindow = speechStartWindow; // 兜底：找不到非静音起点就用响亮起点
+        {
+            let consec = 0;
+            for (let w = 0; w < speechStartWindow; w++) {
+                if (rmsList[w] > silenceThr) {
+                    consec++;
+                    if (consec >= trimPersist) { trimBoundaryWindow = w - (trimPersist - 1); break; }
+                } else {
+                    consec = 0;
+                }
+            }
+        }
+        if (trimBoundaryWindow < speechStartWindow) {
+            console.log(`[VAD] 🛡️ 前段检测到高于底噪的能量（疑似轻声语音），裁剪边界由响亮起点 `
+                + `${(speechStartWindow * windowSamples / sampleRate).toFixed(2)}s 前移到 `
+                + `${(trimBoundaryWindow * windowSamples / sampleRate).toFixed(2)}s，避免吃掉真实语音`);
+        }
+
         // 向前留 paddingMs 缓冲，确保不切掉开头辅音
         const paddingSamples = Math.floor(sampleRate * paddingMs / 1000);
-        let speechStartSample = Math.max(0, speechStartWindow * windowSamples - paddingSamples);
+        let speechStartSample = Math.max(0, trimBoundaryWindow * windowSamples - paddingSamples);
 
         const minTrimSamples = Math.floor(sampleRate * minTrimMs / 1000);
         if (speechStartSample < minTrimSamples) {
@@ -4007,6 +4034,69 @@ function cleanupAudioStreams(force = false) {
         return `${m}:${String(s).padStart(2, '0')}`;
     }
 
+    // 🔧 v119：MediaRecorder 产出的 WebM/Opus 不写时长——<audio>.duration=Infinity 且
+    // seekable 为空，导致历史进度条看不见总时长、拖动也无效（拖了音频不动）。
+    // 把 currentTime 设成极大值可强制浏览器索引整段，之后 duration 与 seekable 才正确；
+    // 随后复位到 0。返回可靠时长（拿不到则 0）。对已有正确时长的音频（如 WAV）直接返回。
+    function primeAudioDuration(audio) {
+        return new Promise((resolve) => {
+            const ok = () => isFinite(audio.duration) && audio.duration > 0;
+            if (ok()) { resolve(audio.duration); return; }
+            let settled = false;
+            const finish = (val) => {
+                if (settled) return;
+                settled = true;
+                audio.removeEventListener('durationchange', onDur);
+                resolve(isFinite(val) && val > 0 ? val : 0);
+            };
+            const onDur = () => {
+                if (ok()) {
+                    try { audio.currentTime = 0; } catch (e) {}
+                    finish(audio.duration);
+                }
+            };
+            audio.addEventListener('durationchange', onDur);
+            try { audio.currentTime = 1e101; } catch (e) { /* 个别浏览器会直接抛错 */ }
+            // 兜底：2.5s 内拿不到就放弃，UI 退化为只显示当前时间（不至于卡住）
+            setTimeout(() => finish(ok() ? audio.duration : 0), 2500);
+        });
+    }
+
+    // 用一个游离的 <audio> 探测某条历史的真实时长（不碰正在播放的播放器），
+    // 探到后写入 item.audioDuration 并刷新时间标签 / 选区高亮条。仅在时长未知时执行一次。
+    function probeHistoryItemDuration(item, itemId) {
+        if (!item || !item.audioBlob) return;
+        if (isFinite(item.audioDuration) && item.audioDuration > 0) {
+            hpRefreshTimeLabel(itemId, 0, item.audioDuration);
+            return;
+        }
+        const url = URL.createObjectURL(item.audioBlob);
+        const probe = new Audio();
+        probe.preload = 'metadata';
+        probe.src = url;
+        const done = (dur) => {
+            try { URL.revokeObjectURL(url); } catch (e) {}
+            if (isFinite(dur) && dur > 0) {
+                item.audioDuration = dur;
+                hpRefreshTimeLabel(itemId, 0, dur);
+                updateHistorySelUI(itemId); // 选区高亮条位置依赖 audioDuration
+            }
+        };
+        probe.addEventListener('loadedmetadata', async () => {
+            let dur = probe.duration;
+            if (!(isFinite(dur) && dur > 0)) dur = await primeAudioDuration(probe);
+            done(dur);
+        });
+        probe.addEventListener('error', () => done(0));
+    }
+
+    // 只刷新时间标签（不动进度条滑块），供时长探测异步回填使用
+    function hpRefreshTimeLabel(itemId, cur, dur) {
+        const time = historyList.querySelector(`.history-item-time-label[data-id="${itemId}"]`);
+        if (time) time.textContent = (isFinite(dur) && dur > 0)
+            ? `${hpFormatTime(cur)} / ${hpFormatTime(dur)}` : hpFormatTime(cur);
+    }
+
     function hpSetPlayIcon(itemId, playing) {
         const btn = historyList.querySelector(`.history-item-play[data-id="${itemId}"]`);
         if (!btn) return;
@@ -4017,6 +4107,12 @@ function cleanupAudioStreams(force = false) {
     function hpUpdateUI(itemId, cur, dur) {
         const seek = historyList.querySelector(`.history-item-seek[data-id="${itemId}"]`);
         const time = historyList.querySelector(`.history-item-time-label[data-id="${itemId}"]`);
+        // WebM/Opus 的 <audio>.duration 常为 Infinity，用探测到的 item.audioDuration 兜底，
+        // 保证总时长显示与滑块位置都可用
+        if (!(isFinite(dur) && dur > 0)) {
+            const it = findHistoryItemById(itemId);
+            if (it && isFinite(it.audioDuration) && it.audioDuration > 0) dur = it.audioDuration;
+        }
         // 用户正在拖动本条滑块时，不要用播放进度覆盖滑块位置（否则会把拇指拽回去）
         const isSeekingThis = hpUserSeeking && historyPlayer && String(historyPlayer.id) === String(itemId);
         if (seek && isFinite(dur) && dur > 0 && !isSeekingThis) seek.value = String((cur / dur) * 100);
@@ -4095,15 +4191,36 @@ function cleanupAudioStreams(force = false) {
         const hp = ensureHistoryPlayer(itemId);
         if (!hp) return;
         const audio = hp.audio;
-        const apply = () => {
-            const dur = audio.duration;
+        const item = findHistoryItemById(itemId);
+        const pct = Math.max(0, Math.min(100, percent));
+        const applyWith = (dur) => {
+            if (!(isFinite(dur) && dur > 0)) return;
+            try { audio.currentTime = (pct / 100) * dur; } catch (e) {}
+            hpUpdateUI(itemId, audio.currentTime, dur);
+        };
+
+        // 时长已就绪（WAV，或已 prime 过的 WebM）→ 直接定位
+        if (isFinite(audio.duration) && audio.duration > 0) { applyWith(audio.duration); return; }
+
+        // WebM/Opus：duration=Infinity 且 seekable 为空，必须先 prime 才能真正 seek。
+        // 拖动过程中 input 会连发多次，用标志位避免重复 prime。
+        if (audio._vsPriming) return;
+        audio._vsPriming = true;
+        const wasPlaying = !audio.paused;
+        if (wasPlaying) { try { audio.pause(); } catch (e) {} }
+        primeAudioDuration(audio).then((d) => {
+            audio._vsPriming = false;
+            const dur = (isFinite(audio.duration) && audio.duration > 0)
+                ? audio.duration : (d || (item && item.audioDuration) || 0);
+            // prime 有耗时，用滑块的最新位置定位（而不是触发 prime 时的旧位置）
+            const seekEl = historyList.querySelector(`.history-item-seek[data-id="${itemId}"]`);
+            const curPct = seekEl ? Math.max(0, Math.min(100, parseFloat(seekEl.value) || 0)) : pct;
             if (isFinite(dur) && dur > 0) {
-                audio.currentTime = (Math.max(0, Math.min(100, percent)) / 100) * dur;
+                try { audio.currentTime = (curPct / 100) * dur; } catch (e) {}
                 hpUpdateUI(itemId, audio.currentTime, dur);
             }
-        };
-        if (isFinite(audio.duration) && audio.duration > 0) apply();
-        else audio.addEventListener('loadedmetadata', apply, { once: true });
+            if (wasPlaying) audio.play().then(() => hpSetPlayIcon(itemId, true)).catch(() => {});
+        });
     }
 
     // ✂️ 选区取点：把“当前播放位置”设为起点/终点。若该条尚未加载，先加载（不自动播放）。
@@ -4370,8 +4487,14 @@ function cleanupAudioStreams(force = false) {
             });
             historyList.dataset.retryMenuCloseBound = '1';
         }
+
+        // 🔧 v119：渲染后探测各条真实时长，让进度条一打开就显示 “0:00 / 总时长”
+        // （WebM/Opus 的 duration=Infinity，需单独探测；结果缓存到 item.audioDuration，只探一次）
+        transcriptionHistory.forEach(item => {
+            if (item && item.audioBlob) probeHistoryItemDuration(item, item.id);
+        });
     }
-    
+
     // 打开历史记录Modal
     historyBtn.addEventListener('click', () => {
         renderHistoryList();
