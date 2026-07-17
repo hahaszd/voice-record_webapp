@@ -2,10 +2,10 @@
 
 **Document Purpose:** 记录从项目启动到现在的所有主要功能、版本更新和关键决策。使用实际的代码版本号（v52-v96+），每个版本号对应script.js或style.css的实际版本。
 
-**Last Updated:** 2026-02-06  
+**Last Updated:** 2026-07-17  
 **Current Version:** 
-- Frontend JS: v89 (`script.js?v=89`)
-- Frontend CSS: v105 (`style.css?v=105`)
+- Frontend feature version: v119 (代码注释/UI 中的 vNNN)
+- Cache-bust: `script.js?v=126`, `style.css?v=126`
 - Backend: server2.py (stable)
 
 ---
@@ -636,6 +636,46 @@ window.focus: Document definitively has focus ✓
 - index.html: Updated references
 
 **Reference Doc:** `DEV_TEST_REPORT_HELP_IMPROVEMENTS.md`
+
+---
+
+> **注：** v90–v118 的迭代（VAD 静音裁剪、16kHz 降采样、Whisper 幻觉过滤、
+> 长音频分段转录、转录历史 + 选区重转、录音健康检查等）主要记录在
+> `git log` 与各自的 `V1xx_*.md` / 分析文档中，本文档未逐条回填。
+
+### Phase 8: History Playback & VAD Fixes (v119) - 2026-07-17
+
+#### v119 - 历史进度条修复 + VAD 前段语音保护
+**Date:** 2026-07-17
+**Type:** Bug fix（3 个用户报告的严重 bug）
+
+**背景：** 用户报告历史录音的迷你播放器进度条时好时坏，以及转录会丢掉开头一段内容。
+
+**Bug 1 + 2（同一根因）— 历史进度条看不见总时长 / 拖拽无效：**
+- **根因：** MediaRecorder 产出的 WebM/Opus blob 头部不写时长，`<audio>.duration`
+  返回 `Infinity` 且 `seekable` 为空。于是时间标签只显示当前时间、不显示总时长；
+  拖动进度条时 `currentTime` 设置被静默跳过，音频纹丝不动、仍从头播放。
+- **时好时坏原因：** 当某次录音触发了 VAD 前导裁剪或超时长截断，存进历史的是重编码
+  的 WAV（有正确时长）→ 正常；否则是裸 WebM → 异常。
+- **修复：**
+  - `primeAudioDuration()`：把 `currentTime` 设到极大值强制浏览器索引整段，补出
+    正确的 `duration` 与 `seekable`，再复位到 0。
+  - `probeHistoryItemDuration()`：渲染后用游离 `<audio>` 探测各条真实时长写入
+    `item.audioDuration`，进度条一打开即显示 `0:00 / 总时长`（无需先按播放）。
+  - `hpUpdateUI` 用 `item.audioDuration` 兜底；`seekHistoryPlayback` 在时长未就绪
+    时先 prime 再定位（带防重入、读滑块最新值、暂停/恢复播放）。
+
+**Bug 3 — 转录切掉前段真语音（"前 30 秒被扔了"）：**
+- **根因：** VAD `trimLeadingSilence` 把裁剪边界定在「响亮语音的起点」。前段说得轻、
+  后段说得响时，高 `speechRef` 抬高阈值，前段轻声语音过不了阈值 → 被当静音整段裁掉。
+- **修复：** 裁剪边界改为「前导静音的真正结束点」——在 `[0, 响亮起点)` 内找第一处
+  连续高于 `max(absMinThreshold, noiseFloor×1.6)` 的窗口。真静音行为不变（正常裁掉
+  长静音），前段有轻声人声时边界回退到接近 0，不再吃掉真实语音。
+
+**Version Numbers:**
+- script.js: v118 → v119（`index.html` 中 `script.js?v=126`、`style.css?v=126`）
+
+**Commit:** `d099e44`（dev + main）
 
 ---
 
