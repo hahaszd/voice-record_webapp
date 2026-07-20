@@ -49,9 +49,28 @@ VoiceSpark is a lightweight web app for **personal idea capture & learning notes
 - `POST /speech-to-text` — Google STT path
 - `POST /speech-to-text-aibuilder` — AI Builder path
 - `POST /transcribe-segment` — main segment transcription (uses `api_fallback`)
-- `POST /chat/completions` — chat proxy
 - `GET /api-status` — API health/quota status
 - `GET /` and static assets, `favicon.ico`, `robots.txt`, `sitemap.xml`, `about.html`, `faq.html`
+
+**v120 removed** (dead code, zero frontend callers): `/chat/completions`, `/hello`, `/hello/{name}`,
+`/api`, `/transcribe-segment-legacy`. `CHAT_API_USAGE.md` documents an endpoint that no longer exists.
+
+### Security posture (v120)
+
+There is **no authentication** — anonymous, no-signup is the product design (see tool philosophy), so
+API keys are not an option. The defenses are:
+
+- **Rate limiting** (`rate_limit_middleware` in `server2.py`): per-IP, in-memory, applied only to the
+  three paid-API paths (`/transcribe-segment`, `/speech-to-text`, `/speech-to-text-aibuilder`).
+  Limits in `RATE_LIMITS` — currently 20/min and 150/hour. Client IP comes from `X-Forwarded-For`
+  (Railway sits behind a proxy; `request.client.host` would be the proxy). Returns 429 + `Retry-After`.
+  In-memory state is fine only while Railway runs a **single instance** — if you ever scale out,
+  each instance gets its own counter and the effective limit multiplies.
+- **API docs disabled in production**: `/docs`, `/redoc`, `/openapi.json` are `None` when
+  `DEPLOY_ENVIRONMENT=production`, so the endpoint list and schemas aren't published.
+
+Anyone determined can still rotate IPs. The goal is blocking opportunistic scanners and runaway
+scripts, not defeating a targeted attacker.
 
 ## Transcription fallback (api_fallback.py)
 

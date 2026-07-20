@@ -1,11 +1,14 @@
 import os
 import json
+import time
 import base64
+import threading
 import requests
 import datetime
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form
+from collections import defaultdict, deque
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from google.oauth2 import service_account
 from logging_helper import TranscriptionLogger, detect_audio_format, format_file_header_hex
 
@@ -70,7 +73,92 @@ def get_project_id():
         creds = json.load(f)
         return creds.get('project_id', '')
 
-app = FastAPI(title="Simple Hello API", description="一个简单的Hello API服务器，包含语音转文字功能（Google Speech-to-Text 和 AI Builder Space Audio API）")
+# v120: 生产环境关闭自动生成的 API 文档
+# /docs、/redoc、/openapi.json 会把所有端点和请求 schema 公开列出来，
+# 相当于给扫描器一份说明书。开发环境保留，生产环境关掉。
+IS_PRODUCTION = os.getenv('DEPLOY_ENVIRONMENT', '').lower() == 'production'
+
+app = FastAPI(
+    title="VoiceSpark",
+    description="语音转文字服务（OpenAI Whisper / AI Builder Space / Google STT / Deepgram）",
+    docs_url=None if IS_PRODUCTION else "/docs",
+    redoc_url=None if IS_PRODUCTION else "/redoc",
+    openapi_url=None if IS_PRODUCTION else "/openapi.json",
+)
+print(f"[v120-SECURITY] API docs: {'disabled (production)' if IS_PRODUCTION else 'enabled (development)'}")
+
+
+# ============================================================
+# v120: 转录端点限流
+# ============================================================
+# 转录端点无鉴权（匿名免注册是产品设计，不能加 API key），
+# 但每次调用都直打付费 API（Whisper / Deepgram / AI Builder / Google STT），
+# 单个请求最大 25MB。没有限流 = 任何人都能刷爆账单。
+#
+# 这里只挡机会主义扫描器和脚本，不挡定向攻击（换 IP 即可绕过）。
+# 阈值按"一个人正常使用的上限"设定，正常用绝不会碰到。
+RATE_LIMITS = [
+    (60, 20),      # 每 60 秒最多 20 次
+    (3600, 150),   # 每 3600 秒最多 150 次
+]
+RATE_LIMITED_PATHS = {
+    "/transcribe-segment",
+    "/speech-to-text",
+    "/speech-to-text-aibuilder",
+}
+_RATE_WINDOW = max(w for w, _ in RATE_LIMITS)
+
+_rate_hits = defaultdict(deque)   # client_id -> deque[timestamp]
+_rate_lock = threading.Lock()
+
+
+def _client_id(request: Request) -> str:
+    """取真实客户端 IP。Railway 在反向代理后，request.client.host 是代理 IP。"""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        # X-Forwarded-For: <client>, <proxy1>, <proxy2> —— 第一个是原始客户端
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    if request.url.path not in RATE_LIMITED_PATHS:
+        return await call_next(request)
+
+    client = _client_id(request)
+    now = time.monotonic()
+
+    with _rate_lock:
+        # 定期清理过期条目，防止 dict 被大量一次性 IP 撑大
+        if len(_rate_hits) > 1000:
+            for stale in [c for c, h in _rate_hits.items()
+                          if not h or now - h[-1] > _RATE_WINDOW]:
+                del _rate_hits[stale]
+
+        hits = _rate_hits[client]
+        while hits and now - hits[0] > _RATE_WINDOW:
+            hits.popleft()
+
+        for window, limit in RATE_LIMITS:
+            recent = sum(1 for t in hits if now - t <= window)
+            if recent >= limit:
+                retry_after = int(window - (now - hits[0])) + 1
+                print(f"[v120-RATELIMIT] BLOCKED {client} -> {request.url.path} "
+                      f"({recent}/{limit} in {window}s)")
+                return JSONResponse(
+                    status_code=429,
+                    headers={"Retry-After": str(max(retry_after, 1))},
+                    content={
+                        "success": False,
+                        "message": "请求过于频繁，请稍后再试。",
+                        "text": "",
+                    },
+                )
+
+        hits.append(now)
+
+    return await call_next(request)
 
 # 挂载静态文件目录
 try:
