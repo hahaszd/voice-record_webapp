@@ -73,19 +73,23 @@ def get_project_id():
         creds = json.load(f)
         return creds.get('project_id', '')
 
-# v120: 生产环境关闭自动生成的 API 文档
+# v120: 默认关闭自动生成的 API 文档（fail-closed）
 # /docs、/redoc、/openapi.json 会把所有端点和请求 schema 公开列出来，
-# 相当于给扫描器一份说明书。开发环境保留，生产环境关掉。
-IS_PRODUCTION = os.getenv('DEPLOY_ENVIRONMENT', '').lower() == 'production'
+# 相当于给扫描器一份说明书。
+#
+# 安全开关必须 fail-closed：变量缺失/配错时也要落在“关闭”这一侧。
+# 因此默认按生产处理，只有显式设 DEPLOY_ENVIRONMENT=development 才开文档。
+# （v120 首版用的是 == 'production'，结果生产上该变量没设，文档意外敞开。）
+SHOW_DOCS = os.getenv('DEPLOY_ENVIRONMENT', 'production').lower() == 'development'
 
 app = FastAPI(
     title="VoiceSpark",
     description="语音转文字服务（OpenAI Whisper / AI Builder Space / Google STT / Deepgram）",
-    docs_url=None if IS_PRODUCTION else "/docs",
-    redoc_url=None if IS_PRODUCTION else "/redoc",
-    openapi_url=None if IS_PRODUCTION else "/openapi.json",
+    docs_url="/docs" if SHOW_DOCS else None,
+    redoc_url="/redoc" if SHOW_DOCS else None,
+    openapi_url="/openapi.json" if SHOW_DOCS else None,
 )
-print(f"[v120-SECURITY] API docs: {'disabled (production)' if IS_PRODUCTION else 'enabled (development)'}")
+print(f"[v120-SECURITY] API docs: {'enabled (development)' if SHOW_DOCS else 'disabled'}")
 
 
 # ============================================================
