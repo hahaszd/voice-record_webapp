@@ -2,11 +2,11 @@
 
 **Document Purpose:** 记录从项目启动到现在的所有主要功能、版本更新和关键决策。使用实际的代码版本号（v52-v96+），每个版本号对应script.js或style.css的实际版本。
 
-**Last Updated:** 2026-07-17  
+**Last Updated:** 2026-07-21  
 **Current Version:** 
 - Frontend feature version: v119 (代码注释/UI 中的 vNNN)
 - Cache-bust: `script.js?v=126`, `style.css?v=126`
-- Backend: server2.py (stable)
+- Backend: server2.py — v120 安全加固（死端点清理 + 转录限流 + 关闭 API 文档）
 
 ---
 
@@ -676,6 +676,50 @@ window.focus: Document definitively has focus ✓
 - script.js: v118 → v119（`index.html` 中 `script.js?v=126`、`style.css?v=126`）
 
 **Commit:** `d099e44`（dev + main）
+
+---
+
+### Phase 9: Backend Security Hardening (v120) - 2026-07-21
+
+#### v120 - 死端点清理 + 转录端点限流 + 关闭 API 文档
+**Date:** 2026-07-21
+**Type:** Security / cleanup（纯后端 `server2.py`，前端零改动）
+
+**背景：** 复盘发现 `server2.py` 全程无鉴权中间件，多个无人调用的端点仍挂在生产上，
+其中 `/chat/completions` 是一个无鉴权、直接代理到付费大模型的死端点——任何人拿到域名
+就能免费刷 `AI_BUILDER_TOKEN`。匿名免注册是产品设计（不能加 API key），所以防线是
+限流而非鉴权，目标是挡住机会主义扫描器和脚本，不是定向攻击。
+
+**1. 删除死端点（前端全仓库 grep 确认零调用）：**
+- `POST /chat/completions` —— 无鉴权付费模型代理，纯风险零收益（扫描器常刷此标准路径）
+- `POST /hello`、`GET /hello/{name}`、`GET /api` —— 早期脚手架遗留
+- `POST /transcribe-segment-legacy` —— 旧版转录备份，已被 `/transcribe-segment` 取代
+- `GET /api-status` —— 前端零调用且公开各家 API 配额状态（保留内部 `get_api_status()` 助手）
+- 同时清理孤儿模型 `NameRequest` / `ChatMessage` / `ChatRequest` 及过时文档 `CHAT_API_USAGE.md`
+- server2.py 净减约 560 行；剩余 9 个路由均有实际调用
+
+**2. 转录端点限流（`rate_limit_middleware`）：**
+- per-IP 内存计数，仅作用于三个付费路径：`/transcribe-segment`、`/speech-to-text`、
+  `/speech-to-text-aibuilder`。阈值 **20 次/分 + 150 次/时**，超限返回 429 + `Retry-After`。
+- 客户端 IP 取自 `X-Forwarded-For` 首跳（Railway 在反代之后，直接用 `request.client.host`
+  会拿到代理 IP，退化成全局共享计数器）。
+- **前提：** 状态在内存中，仅在 Railway 单实例下成立；扩容到多实例则每实例各自计数、上限翻倍。
+
+**3. 生产环境关闭 API 文档（fail-closed）：**
+- `/docs`、`/redoc`、`/openapi.json` 会公开端点清单和请求 schema，等于给扫描器说明书。
+- **首版是 fail-open**（`== 'production'`），而生产服务上 `DEPLOY_ENVIRONMENT` 未设 →
+  文档意外敞开（浏览器复验时发现）。改为 fail-closed：变量缺失默认按生产处理、关闭文档，
+  仅显式 `DEPLOY_ENVIRONMENT=development` 才开放。安全开关漏配时也落在安全一侧。
+
+**生产复验（curl / WebFetch）：** `/docs`、`/redoc`、`/openapi.json`、`/api-status` 均 404，
+首页 200 正常。限流逻辑由单元测试覆盖（未在生产刷以免消耗真实 API 配额）。
+
+**遗留：** dev 服务若需 `/docs`，须在 Railway 上设 `DEPLOY_ENVIRONMENT=development`。
+
+**Version Numbers:**
+- server2.py 后端安全加固（前端 `script.js` / `style.css` 版本号不变，无需 cache-bust）
+
+**Commits:** `02a890e`、`5f3c71d`、`967c0b3`、`2ac0148`（dev）→ 合并至 main
 
 ---
 
