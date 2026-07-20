@@ -927,25 +927,6 @@ async def transcribe_segment(
         }
 
 
-# 🔥 v96: 添加 API 状态查询端点
-@app.get("/api-status")
-async def api_status():
-    """
-    查询 API fallback 状态
-    
-    返回当前各个 API 的可用性和使用统计
-    """
-    from api_fallback import get_api_status
-    
-    status = get_api_status()
-    
-    return {
-        "success": True,
-        "status": status,
-        "timestamp": datetime.datetime.now().isoformat()
-    }
-
-
 # Railway/Production startup
 if __name__ == "__main__":
     import uvicorn

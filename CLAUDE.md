@@ -49,11 +49,11 @@ VoiceSpark is a lightweight web app for **personal idea capture & learning notes
 - `POST /speech-to-text` — Google STT path
 - `POST /speech-to-text-aibuilder` — AI Builder path
 - `POST /transcribe-segment` — main segment transcription (uses `api_fallback`)
-- `GET /api-status` — API health/quota status
 - `GET /` and static assets, `favicon.ico`, `robots.txt`, `sitemap.xml`, `about.html`, `faq.html`
 
 **v120 removed** (dead code, zero frontend callers): `/chat/completions`, `/hello`, `/hello/{name}`,
-`/api`, `/transcribe-segment-legacy`. `CHAT_API_USAGE.md` documents an endpoint that no longer exists.
+`/api`, `/transcribe-segment-legacy`, `/api-status` (its `get_api_status()` helper stays — still used
+inside the transcription flow). `CHAT_API_USAGE.md` was deleted along with `/chat/completions`.
 
 ### Security posture (v120)
 
