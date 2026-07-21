@@ -14,6 +14,21 @@ Guidance for Claude Code when working in this repository.
 
 This applies to all of my messages, in every session — treat it as a standing instruction, not a one-off.
 
+**Act autonomously; escalate only real decisions.** Anything you can look up, read, verify, test, or
+do yourself — **just do it, don't hand it back to me**. Don't ask me to confirm things you can determine
+from the code, the docs, or a quick test; don't ask permission for reversible, well-scoped steps;
+investigate and act. **Only bring me the things you genuinely cannot decide yourself:**
+- Choices that depend on my preference, product direction, or business priorities.
+- Ambiguous requirements where guessing wrong is costly.
+- Decisions needing knowledge only I have (deployment/infra facts, external context, credentials).
+- Irreversible or outward-facing actions that the safety rules / conventions say to confirm.
+
+When you do escalate, give me a crisp recommendation + the minimum I need to decide — not an open-ended
+question. This **refines, not overrides,** the two rules around it: (1) when I *propose* a new idea/
+feature, still evaluate and give a verdict before building; (2) commit/push/deploy still follow the
+"ask before committing/pushing" convention below — autonomy is about the *investigation and
+implementation* work, not about shipping to prod on your own.
+
 ## What this is
 
 VoiceSpark is a lightweight web app for **personal idea capture & learning notes**: record your voice and/or system audio (YouTube, podcasts, courses) in short snippets (30s / 1min / 5min), transcribe to editable, searchable text. Not a meeting recorder — focused on quick captures.
