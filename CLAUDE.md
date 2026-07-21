@@ -133,7 +133,7 @@ Tests live in `tests/{smoke,functional,mobile}`. `playwright.config.ts` at root.
 
 ## Deployment & branching (see ARCHITECTURE.md)
 
-- `dev` branch → auto-deploys to Railway **development** (`voicespark-dev.up.railway.app`).
+- `dev` branch → auto-deploys to Railway **development** (`web-dev-9821.up.railway.app`).
 - `main` branch → **auto-deploys** to Railway **production** (`voicespark.app`). (ARCHITECTURE.md says "manual" but in practice production auto-deploys on push to main — confirmed by the owner 2026-07-06. No manual Redeploy needed.)
 - Normal flow: develop/test on `dev` → merge to `main` → push → it goes live automatically.
 - Rollback prod via Railway dashboard → Redeploy a previous deployment.
