@@ -1232,6 +1232,35 @@ async function enforceMaxDuration(audioBlob, maxSec, toleranceSec = 2) {
 
 // ==================== End VAD ====================
 
+/**
+ * v121 (A7)：从录音 chunk 列表中选出"最近 requestedDurationSec 秒"的 chunk 集合。
+ *
+ * 这是主转录链路真正决定"选 1 分钟却别转出好几分钟旧内容"的逻辑，原先内联在
+ * generateAndPlayAudio 里、耦合 IndexedDB 读取而无法单测。抽成纯函数后可离线 L0 覆盖。
+ * 行为与内联版逐字一致（v116 基准：以最后一个 chunk 的时间戳为录音时间轴末端，
+ * 不用会被新录音重置的墙上时钟）。始终保留第一个 chunk（含 WebM 头部）。
+ *
+ * @param {Array<{timestamp:number}>} chunks - 按 timestamp 升序的 chunk 列表
+ * @param {number} requestedDurationSec - 用户所选时长（秒）
+ * @returns {{chunksToUse:Array, cutoffTime:number, lastChunkTs:number, addedFirstChunk:boolean}}
+ */
+function selectRecentChunks(chunks, requestedDurationSec) {
+    if (!chunks || chunks.length === 0) {
+        return { chunksToUse: [], cutoffTime: 0, lastChunkTs: 0, addedFirstChunk: false };
+    }
+    const effectiveDurationMs = requestedDurationSec * 1000;
+    const lastChunkTs = chunks[chunks.length - 1].timestamp;
+    const cutoffTime = Math.max(0, lastChunkTs - effectiveDurationMs);
+
+    const firstChunk = chunks[0]; // 第一个 chunk 含 WebM 头部，必须保留以保证可解码
+    const recentChunks = chunks.filter(c => c.timestamp >= cutoffTime);
+
+    if (recentChunks.length === 0 || recentChunks[0].timestamp !== firstChunk.timestamp) {
+        return { chunksToUse: [firstChunk, ...recentChunks], cutoffTime, lastChunkTs, addedFirstChunk: true };
+    }
+    return { chunksToUse: recentChunks, cutoffTime, lastChunkTs, addedFirstChunk: false };
+}
+
 // ==================== Chunked transcription（v115：长音频分段转录） ====================
 // 背景：Whisper 遇到响亮杂音或长静音会"脱轨"——之后的真实语音输出残缺甚至全丢。
 // 对策：长录音先在静音点附近切成约 60s 的块，各块独立转录再按序拼接，
@@ -3043,7 +3072,15 @@ function cleanupAudioStreams(force = false) {
             // 🔥 关键修复：无论是否等待转录，都要立即清空 IndexedDB
             // 因为新的录音会立即开始写入chunks，不能和旧数据混在一起
             console.log(`[INFO] 开始新录音（epoch=${recordingEpoch}），立即清空 IndexedDB`);
-            await audioStorage.clearAll();
+            // O1 (v121)：IndexedDB 不可用（隐私/无痕模式、浏览器禁用本地存储、配额被拒）时给清晰
+            // 提示并干净中止。否则失败会一路冒泡到外层 catch，被误报成"Cannot access microphone"。
+            try {
+                await audioStorage.clearAll();
+            } catch (storageErr) {
+                console.error('[STORAGE] IndexedDB 不可用，无法录音:', storageErr && storageErr.message);
+                alert('无法使用浏览器本地存储（IndexedDB），录音需要它来暂存音频。\n\n请关闭隐私/无痕模式，或在浏览器设置中允许本站存储数据后重试。');
+                return;
+            }
             pendingStorageClear = null; // 清除待执行的回调
             
             firstRecordedChunk = null; // 清空第一个chunk
@@ -3426,38 +3463,21 @@ function cleanupAudioStreams(force = false) {
 
             console.log(`[INFO] 获取到 ${allChunksFromDB.length} 个音频块`);
 
-            const effectiveDurationMs = requestedDuration * 1000;
-
-            // 🔥 v116：时间窗口以「最后一个 chunk 的时间戳」为基准，不再用 Date.now() - recordingStartTime。
-            // 墙上时钟会被新录音重置（recordingStartTime=Date.now()），一旦重置 currentElapsed≈0，
-            // 旧逻辑就会退化成 cutoffTime=0 并把整个保留窗口全部转录。chunk 时间戳本身就是录音
-            // 时间轴，与任何全局状态无关，是唯一可靠的基准。
-            const lastChunkTs = allChunksFromDB[allChunksFromDB.length - 1].timestamp;
-            const cutoffTime = Math.max(0, lastChunkTs - effectiveDurationMs);
+            // 🔥 v116 时间窗口以「最后一个 chunk 的时间戳」为基准（不用会被新录音重置的墙上时钟）。
+            // v121 (A7)：选择逻辑已抽成纯函数 selectRecentChunks，便于离线单测；行为不变。
+            const { chunksToUse, cutoffTime, lastChunkTs, addedFirstChunk } =
+                selectRecentChunks(allChunksFromDB, requestedDuration);
             if (cutoffTime === 0) {
                 console.log(`[INFO] 使用所有可用数据（请求 ${requestedDuration}s ≥ 录音时长 ${(lastChunkTs/1000).toFixed(1)}s）`);
             } else {
                 console.log(`[INFO] 使用最近 ${requestedDuration}秒的数据（cutoff=${cutoffTime}ms，录音时间轴末端=${lastChunkTs}ms）`);
             }
-            
-            // 🔥 关键修复：构建音频blob，确保包含第一个chunk（WebM头部）
-            let chunksToUse;
-            if (allChunksFromDB.length > 0) {
-                const firstChunk = allChunksFromDB[0]; // 第一个chunk包含WebM头部
-                const recentChunks = allChunksFromDB.filter(chunk => chunk.timestamp >= cutoffTime);
-                
-                // 如果第一个chunk不在recentChunks中，手动添加
-                if (recentChunks.length === 0 || recentChunks[0].timestamp !== firstChunk.timestamp) {
-                    chunksToUse = [firstChunk, ...recentChunks];
-                    console.log(`[INFO] 添加第一个chunk（WebM头部）+ ${recentChunks.length} 个最近的chunks`);
-                } else {
-                    chunksToUse = recentChunks;
-                    console.log(`[INFO] 使用 ${recentChunks.length} 个chunks（已包含第一个chunk）`);
-                }
+            if (addedFirstChunk) {
+                console.log(`[INFO] 添加第一个chunk（WebM头部）+ ${chunksToUse.length - 1} 个最近的chunks`);
             } else {
-                chunksToUse = [];
+                console.log(`[INFO] 使用 ${chunksToUse.length} 个chunks（已包含第一个chunk）`);
             }
-            
+
             if (chunksToUse.length === 0) {
                 alert('No matching audio data');
                 return;
