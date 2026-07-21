@@ -765,6 +765,8 @@ window.focus: Document definitively has focus ✓
 - 引入 pytest 测试栈（`requirements-dev.txt` + `pytest.ini`，dev-only、限定 `tests/backend`、不挂 precommit）。
 - `tests/backend/test_fallback_engine.py` 覆盖 G3/H1/H2/H3/H4/H6：麦克风优先级
   (Whisper→AI Builder→Google)、主 API 成功不降级、依次降级、配额跳过、1h 重检间隔、全失败抛异常。
+- `tests/backend/test_rate_limit.py` 覆盖 K1/K2a/K2b/K3：限流仅作用于 3 付费路径、每分钟 20 → 429、
+  多窗口通用逻辑、按客户端 IP(XFF) 隔离——直调中间件、重置 _rate_hits，非 flaky。
 - **修真 bug**：`transcribe_with_fallback` 里 `API_BUILDER_STATUS`（未定义笔误）——AI Builder 遇
   配额错误时会抛 NameError、导致整个 fallback 崩溃而非降级到 Google。改回 `API_FALLBACK_STATUS`，
   加回归测试。

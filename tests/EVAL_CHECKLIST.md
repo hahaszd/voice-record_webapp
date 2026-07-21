@@ -131,10 +131,10 @@
 
 | ID | 验证内容 | 期望 | Layer | 优先级 | 现状 |
 |----|----------|------|-------|--------|------|
-| K1 | 限流仅作用于 3 个付费路径 | `/transcribe-segment`/`/speech-to-text`/`-aibuilder` | L2 | P0 | ⬜ |
-| K2a | 每分钟限流：超 20/min → 429 + Retry-After | 第 21 次/60s 触发 | L2 | P0 | ⬜ |
-| K2b | 每小时限流：超 150/hour → 429 | 第 151 次/3600s 触发（与 K2a 分开测；建议把 `RATE_LIMITS` 做成可注入夹具、别真打 150 次） | L2 | P1 | ⬜ |
-| K3 | 客户端 IP 取 X-Forwarded-For | 代理后取真实客户端 IP 计数 | L2 | P1 | ⬜ |
+| K1 | 限流仅作用于 3 个付费路径 | 非付费路径(/)无限放行；RATE_LIMITED_PATHS 恰为 3 付费路径 | L2 | P0 | ✅ `test_rate_limit.py` |
+| K2a | 每分钟限流：超 20/min → 429 + Retry-After | 第 21 次/60s 触发（直调中间件、重置 _rate_hits，非 flaky） | L2 | P0 | ✅ `test_rate_limit.py` |
+| K2b | 多窗口限流通用逻辑 | monkeypatch RATE_LIMITS 到 (3600,N) 验证小时窗口分支，不必真打 150 次 | L2 | P1 | ✅ `test_rate_limit.py` |
+| K3 | 按客户端 IP(XFF) 隔离计数 | 不同 XFF 各自独立，一个耗尽不影响另一个 | L2 | P1 | ✅ `test_rate_limit.py` |
 | K4 | 生产环境关闭 API 文档 | `SHOW_DOCS` **fail-closed**（server2.py:83）：默认即关，只有显式非 production 才开；/docs /redoc /openapi.json → 404/None | L2 | P1 | ⬜ |
 | K5 | 非付费路径不被限流 | 静态资源/首页不受限 | L2 | P2 | ⬜ |
 | K6 | 伪造 X-Forwarded-For 绕过限流 | **已实测确认安全(v121)**：临时 `/_debug/xff` 端点打 dev，伪造 XFF 完全不出现——Railway 边缘剥离/覆盖客户端 XFF、把真实 IP 放最左，`split(",")[0]` 取到真实 IP、**无法伪造绕过**。X-Real-IP 同样被覆盖。**无需改代码**。真实 IP 轮换仍可绕（既定接受权衡） | 实测 | P0 | ✅ 实测确认安全，无需修复 |
