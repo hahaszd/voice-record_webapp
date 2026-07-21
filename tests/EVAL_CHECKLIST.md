@@ -29,7 +29,7 @@
 | A1 | 录 < 所选时长 → 全保留 | 录 30s，选 60s | 输出≈30s，内容全在 | L0 | P0 | ✅ |
 | A2 | 录 > 所选时长 → 只留最后 N 秒 | 录 60s(前A后B)，选 30s | 输出≈30s，只含 B 段，丢 A 段 | L0 | P0 | ✅ |
 | A3 | 边界：录 == 所选（±容差2s内） | 录 31s，选 30s | 容差内不截取，全保留 | L0 | P1 | ⬜ |
-| A4 | 精确边界：录 90s 选 60s | 输出严格≈60s，含最后 60s 标记、不含最前 30s | L0 | P0 | ⬜ |
+| A4 | 精确边界：录 90s 选 60s | 输出严格≈60s(实测 60.0)，含最后 60s(1200Hz)、丢最前 30s(300Hz≈0) | L0 | P0 | ✅ `recording-segment-eval.spec.ts` |
 | A5 | 5 分钟满窗：录 6 分钟选 5m | 输出≈300s，丢最前 60s（滚动缓冲动机） | L0 | P1 | ⬜ |
 | A6 | 解码失败兜底 | 传入损坏/不可解码 blob | 不抛错，原样返回（宁放行不丢录音） | L0 | P1 | ⬜ |
 | A7 | chunk 时间戳选择正确性（**真正的主链路**） | 模拟多 chunk 不同 timestamp，选 30s | cutoff 以最后 chunk 时间戳为基准，取最近 30s（v116）；已抽成纯函数 `selectRecentChunks`(v121) | **L0** | P0 | ✅ `chunk-selection-eval.spec.ts` |
@@ -195,7 +195,7 @@
 |----|----------|------|-------|--------|------|
 | P1 | 转录文本可编辑且本地不被覆盖 | FEATURES:191 承诺：编辑后不被新转录/重录覆盖 | L3 | P1 | ⬜ |
 | P2 | 历史关键词搜索 | FEATURES:249 承诺 Searchable，需验证搜索命中 | L3 | P1 | ⬜ |
-| P3 | B4 的调用方集成断言 | `allSilence=true` 时**调用方仍上传**（script.js:3469-3471），不因 VAD 怀疑静音而丢录音 | L0/L3 | P0 | ⬜ |
+| P3 | B4 的调用方集成断言 | VAD 侧「allSilence 仍返回 blob 不丢弃」已由 B4 覆盖；调用方侧（generateAndPlayAudio 仍上传 vadResult.blob，script.js:3469-3471）代码直观、fake device 无法确定性产生纯静音，**接受不单测**（改动此处需人工核验） | L3 | P0 | 🟡 VAD 侧已测(B4)/调用方侧接受不测 |
 | P4 | 自动复制 + 页面隐藏延迟 | `document.hidden` 时暂存、window.focus 后触发（script.js:3569）；剪贴板权限被拒不崩 | L3 | P2 | ⬜ |
 
 ---
@@ -211,9 +211,10 @@ L0 harness 依赖 `enforceMaxDuration`/`trimLeadingSilence`/`encodeMonoSamplesTo
 
 ## 现状汇总
 
-- **已建（✅）**：A1, A2, B1 + smoke(L1)。共 3 条核心 eval + 冒烟。
-- **待建 P0（最该先补）**：A4, A7(主链路), B4/P3, B5, C3, D1, E1, E4, G3(已修正), H1/H2/H3/H6, K2a/K6, L1/L2, O1/O4/O6。
-- **建议实施顺序**：先补 A/B/C/D 的 L0 → 再补 O（失败路径，很多可 L0）→ 再补 H/K 的 L1/L2（后端逻辑）→ 最后 E/F/M/P 的 L3/L4（真实浏览器/手动）。
+- **✅ P0 backlog 已清空（v121）**：23 条 P0 完成 + 2 条 🟡（K6 实测确认安全无需改代码、P3 VAD 侧已由 B4 覆盖+调用方侧接受不测）。0 条待建。
+- **测试资产**：前端 7 个 eval spec（L0/L2/L3，含 fake-mic 录音生命周期）+ 后端 pytest 13 个（降级引擎 + 限流）。
+- **顺带修的真实 bug**：O4/O5（上传无超时/直传无重试）、AI Builder 配额路径 NameError（笔误致 fallback 崩溃）。
+- **剩余为 P1/P2 加分项**（~42 条 P1）：如 C2/C4(分段切点质量)、E2/E3(v117/v118 竞态)、F(自动录音)、G2-G5(源路由)、I(历史)、J(语言)、L3-L6(自动复制/通知/PWA)、M(移动/音频健康)、N(幻觉过滤)、O2-O16(更多失败路径)、P1/P2/P4(可编辑/搜索/自动复制)。按需再挑。
 
 ## 📋 Review 修订记录（2026-07-21，两个独立 agent 评审后）
 - **G3 硬伤修正**：麦克风优先级第 3 位是 **Google 不是 Deepgram**（两 agent 独立发现；连带修了 CLAUDE.md）。
