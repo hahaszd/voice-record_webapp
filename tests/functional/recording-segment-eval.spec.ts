@@ -112,6 +112,20 @@ async function evalMiddlePause() {
     rmsLastThird:   rmsWindow(out.data, t, 2 * d / 3, d),
   };
 }
+
+// A4 精确边界：录 90s（前 30s=300Hz，后 60s=1200Hz）、选 60s → 严格保留最后 60s，丢最前 30s
+async function evalBoundary90() {
+  const sig = buildSignal(90, [
+    { fromSec: 0,  toSec: 30, freq: 300,  amp: 0.4 },
+    { fromSec: 30, toSec: 90, freq: 1200, amp: 0.4 },
+  ]);
+  const out = await decode(await window.enforceMaxDuration(toWavBlob(sig), 60));
+  return {
+    duration: out.duration,
+    tone300:  goertzel(out.data, out.sampleRate, 300),   // 最前 30s 标记，应≈0
+    tone1200: goertzel(out.data, out.sampleRate, 1200),  // 最后 60s 标记，应很强
+  };
+}
 `;
 
 async function run(page: any, fnCall: string) {
@@ -158,5 +172,15 @@ test.describe('录音分段 eval', () => {
     expect(r.rmsLastThird).toBeGreaterThan(0.05);   // 第二段语音在
     // 中间停顿仍是低能量（被保留为静音，而非删除后两段语音贴在一起）
     expect(r.rmsMiddleThird).toBeLessThan(r.rmsFirstThird * 0.3);
+  });
+
+  test('A4 精确边界：录 90s、选 60s → 严格保留最后 60s，丢最前 30s', async ({ page }) => {
+    const r: any = await run(page, 'evalBoundary90()');
+    console.log('[A4-BOUNDARY-90]', JSON.stringify(r));
+    expect(r.duration).toBeGreaterThan(59);      // 严格钳到 ~60s
+    expect(r.duration).toBeLessThan(61);
+    expect(r.tone1200).toBeGreaterThan(0.05);    // 最后 60s（1200Hz）保留
+    expect(r.tone300).toBeLessThan(0.02);        // 最前 30s（300Hz）被丢
+    expect(r.tone1200).toBeGreaterThan(r.tone300 * 8);
   });
 });
