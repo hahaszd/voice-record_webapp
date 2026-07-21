@@ -175,6 +175,19 @@ async def rate_limit_middleware(request: Request, call_next):
 
     return await call_next(request)
 
+
+# ⚠️ 临时端点（K6 调查，测完即删）：回显转发头，判断 Railway 边缘代理对客户端伪造的
+# X-Forwarded-For 是"追加"还是"覆盖/剥离"。只回显调用者自己的请求头，无敏感数据。
+@app.get("/_debug/xff")
+async def _debug_xff(request: Request):
+    return {
+        "x_forwarded_for": request.headers.get("x-forwarded-for"),
+        "x_real_ip": request.headers.get("x-real-ip"),
+        "forwarded": request.headers.get("forwarded"),
+        "client_host": request.client.host if request.client else None,
+        "computed_client_id": _client_id(request),
+    }
+
 # 挂载静态文件目录
 try:
     app.mount("/static", StaticFiles(directory="static"), name="static")
