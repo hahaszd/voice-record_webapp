@@ -175,8 +175,8 @@
 | O1 | IndexedDB 打开失败（隐私模式/Safari ITP/被禁） | `audio-storage.js init()` reject → 用户可见错误、不白屏崩溃 | L0/L3 | P0 | ⬜ |
 | O2 | 录音中 `saveChunk` 抛 QuotaExceeded | 不静默丢整段、录音继续或明确告警 | L0 | P1 | ⬜ |
 | O3 | `startRecording` 中 `clearAll()` reject（script.js:3010） | 仍能开始新录音或给错误，不卡死 | L0 | P1 | ⬜ |
-| O4 | 上传无超时/断网 | `uploadForTranscription`(script.js:1330) 裸 fetch **无 AbortController/超时** → 服务器挂起永久转圈；应加超时+友好提示（疑似缺陷，需修） | L0/L2 | P0 | ⬜ |
-| O5 | 短音频直传路径失败不重试 | 仅分段 worker 重试一次，短音频直传零重试（script.js:1343）——确认/修复 | L2 | P1 | ⬜ |
+| O4 | 上传超时中止 | `uploadForTranscription` 加 AbortController，超 120s 主动中止、抛超时错（修 v121） | L2 | P0 | ✅ `upload-resilience-eval.spec.ts` |
+| O5 | 上传失败重试 | 超时+重试集中到 `uploadForTranscription`：网络/超时/5xx 重试一次，4xx（429/413/400）不重试；短音频直传路径同样受益（修 v121） | L2 | P1 | ✅ `upload-resilience-eval.spec.ts` |
 | O6 | 后端 >25MB 拒绝分支 | `success=false`+"文件太大"文案（server2.py:812-823），前端展示 | L1/L2 | P0 | ⬜ |
 | O7 | 降采样被绕过时的大小兜底 | enforceMaxDuration 解码失败(script.js:1224)且 split 返回 null → 直传原始 WebM 时仍不超 25MB | L0 | P1 | ⬜ |
 | O8 | 系统音"共享但无音频轨" | `getAudioTracks().length===0`(script.js:2637) → 用户可见提示、不崩 | L3/L4 | P1 | ⬜ |
