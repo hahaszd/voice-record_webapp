@@ -32,7 +32,7 @@
 | A4 | 精确边界：录 90s 选 60s | 输出严格≈60s，含最后 60s 标记、不含最前 30s | L0 | P0 | ⬜ |
 | A5 | 5 分钟满窗：录 6 分钟选 5m | 输出≈300s，丢最前 60s（滚动缓冲动机） | L0 | P1 | ⬜ |
 | A6 | 解码失败兜底 | 传入损坏/不可解码 blob | 不抛错，原样返回（宁放行不丢录音） | L0 | P1 | ⬜ |
-| A7 | chunk 时间戳选择正确性（**真正的主链路**） | 模拟多 chunk 不同 timestamp，选 30s | cutoff 以最后 chunk 时间戳为基准，取最近 30s（v116） | **L3** | P0 | ⬜ |
+| A7 | chunk 时间戳选择正确性（**真正的主链路**） | 模拟多 chunk 不同 timestamp，选 30s | cutoff 以最后 chunk 时间戳为基准，取最近 30s（v116）；已抽成纯函数 `selectRecentChunks`(v121) | **L0** | P0 | ✅ `chunk-selection-eval.spec.ts` |
 
 > ⚠️ **重要澄清（review 发现）**：A1/A2/A4 测的 `enforceMaxDuration` 是**兜底防线**（其注释 script.js:1180
 > 自称"不是主修复"）。真正决定"选1分钟却转出好几分钟旧内容"这个历史 bug 的，是 `generateAndPlayAudio`
@@ -137,7 +137,7 @@
 | K3 | 客户端 IP 取 X-Forwarded-For | 代理后取真实客户端 IP 计数 | L2 | P1 | ⬜ |
 | K4 | 生产环境关闭 API 文档 | `SHOW_DOCS` **fail-closed**（server2.py:83）：默认即关，只有显式非 production 才开；/docs /redoc /openapi.json → 404/None | L2 | P1 | ⬜ |
 | K5 | 非付费路径不被限流 | 静态资源/首页不受限 | L2 | P2 | ⬜ |
-| K6 | 伪造 X-Forwarded-For 不能绕过限流 | 客户端自带 XFF 头（`server2.py:121` 取 split(",")[0]）——验证 Railway 代理是覆盖而非追加，否则单客户端可每请求换假 IP 绕过 | L2 | P0 | ⬜ |
+| K6 | 伪造 X-Forwarded-For 绕过限流 | **已评审(v121)：确认弱点**——`_client_id` 取最左 XFF、客户端可伪造换 key 绕过；可利用性取决于 Railway 追加/覆盖 XFF。**故意不写自动化测试**（打 20+ 次污染共享内存限流状态、必然 flaky；锁定现状还会挡住未来硬化）。已在 `_client_id` 注释 + CLAUDE.md 记录风险与硬化路径（取右起第 N 项） | — | P0 | 🟡已评审/待 owner 确认 Railway 后硬化 |
 | K7 | 429 前端展示契约 | 前端把后端友好文案展示出来，而非裸 `HTTP 429:`（`script.js:1344` 目前直接 throw body，疑似缺口） | L2/L3 | P1 | ⬜ |
 
 ## L. 前端健壮性 / Smoke / PWA
@@ -172,12 +172,12 @@
 
 | ID | 验证内容 | 期望 | Layer | 优先级 | 现状 |
 |----|----------|------|-------|--------|------|
-| O1 | IndexedDB 打开失败（隐私模式/Safari ITP/被禁） | `audio-storage.js init()` reject → 用户可见错误、不白屏崩溃 | L0/L3 | P0 | ⬜ |
+| O1 | IndexedDB 打开失败（隐私模式/Safari ITP/被禁） | startRecording(v121) 捕获存储失败 → 清晰提示"无法使用本地存储"，不再误报成"麦克风权限"；契约测试锁定 clearAll 以 reject 暴露失败 | L0 | P0 | ✅ `storage-resilience-eval.spec.ts`（代码修复+契约测试；完整 UX 因 alert 阻塞插件、人工核验） |
 | O2 | 录音中 `saveChunk` 抛 QuotaExceeded | 不静默丢整段、录音继续或明确告警 | L0 | P1 | ⬜ |
 | O3 | `startRecording` 中 `clearAll()` reject（script.js:3010） | 仍能开始新录音或给错误，不卡死 | L0 | P1 | ⬜ |
 | O4 | 上传超时中止 | `uploadForTranscription` 加 AbortController，超 120s 主动中止、抛超时错（修 v121） | L2 | P0 | ✅ `upload-resilience-eval.spec.ts` |
 | O5 | 上传失败重试 | 超时+重试集中到 `uploadForTranscription`：网络/超时/5xx 重试一次，4xx（429/413/400）不重试；短音频直传路径同样受益（修 v121） | L2 | P1 | ✅ `upload-resilience-eval.spec.ts` |
-| O6 | 后端 >25MB 拒绝分支 | `success=false`+"文件太大"文案（server2.py:812-823），前端展示 | L1/L2 | P0 | ⬜ |
+| O6 | 后端 >25MB 拒绝分支 | `success=false`+"文件太大"文案（server2.py:812-823，HTTP 200 非崩溃），未消耗付费 API | L2 | P0 | ✅ `backend-limits-eval.spec.ts` |
 | O7 | 降采样被绕过时的大小兜底 | enforceMaxDuration 解码失败(script.js:1224)且 split 返回 null → 直传原始 WebM 时仍不超 25MB | L0 | P1 | ⬜ |
 | O8 | 系统音"共享但无音频轨" | `getAudioTracks().length===0`(script.js:2637) → 用户可见提示、不崩 | L3/L4 | P1 | ⬜ |
 | O9 | getDisplayMedia 用户取消 | 取消共享 → 回到就绪态、无异常 | L3 | P1 | ⬜ |

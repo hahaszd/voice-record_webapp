@@ -5,7 +5,7 @@
 **Last Updated:** 2026-07-21  
 **Current Version:** 
 - Frontend feature version: v121 (代码注释/UI 中的 vNNN)
-- Cache-bust: `script.js?v=127`, `style.css?v=127`
+- Cache-bust: `script.js?v=128`, `style.css?v=128`
 - Backend: server2.py — v120 安全加固（死端点清理 + 转录限流 + 关闭 API 文档）
 
 ---
@@ -18,7 +18,7 @@
 **Core Value Proposition:** Always-On Recording - "Open once, speak anytime — your thoughts are already captured"
 
 **Key Domains:**
-- Production: https://voicespark.site
+- Production: https://voicespark.app
 - Dev: https://web-dev-9821.up.railway.app
 
 **Version Numbering System:**
@@ -751,8 +751,18 @@ window.focus: Document definitively has focus ✓
   重试一次，4xx（429/413/400）不重试；分段 worker 移除重复的手动重试。
 - 真实浏览器 mock-fetch 验证：500ms 超时中止、5xx→200 恢复、429 不重试、网络错误重试——全部符合。
 
+**4. EVAL 清单 P0 缺口批量补齐（评审后，`?v=128`）：**
+- **O6**：为 25MB 拒绝分支补集成测试（代码本已正确，server2.py:814）。
+- **A7**：把主链路 chunk 选择逻辑从 generateAndPlayAudio 抽成纯函数 `selectRecentChunks`，
+  行为逐字不变，加 L0 测试（`chunk-selection-eval.spec.ts`）——之前只测了兜底 enforceMaxDuration。
+- **O1**：startRecording 捕获 IndexedDB 不可用（隐私模式等）→ 清晰提示，不再误报"麦克风权限"；
+  加契约测试。
+- **K6**：确认 X-Forwarded-For 最左项可伪造绕过限流（弱点）；**不盲改生产限流**（硬化取决于
+  Railway 代理层数），在 `_client_id` 注释 + CLAUDE.md 记录风险与硬化路径，待 owner 确认。
+- 新增测试：`backend-limits-eval` / `chunk-selection-eval` / `storage-resilience-eval`。
+
 **Version Numbers:**
-- script.js: v120 → v121（`index.html` 中 `script.js?v=127`、`style.css?v=127`）
+- script.js: v120 → v121（`index.html` 中 `script.js?v=128`、`style.css?v=128`）
 
 ---
 
@@ -956,7 +966,7 @@ window.addEventListener('focus', () => {
 6. Deploy to Dev → Test → Deploy to Production
 
 ### Branch Strategy
-- **main** - Production (voicespark.site)
+- **main** - Production (voicespark.app)
 - **dev** - Development (web-dev-9821.up.railway.app)
 
 ### Deployment

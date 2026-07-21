@@ -66,11 +66,17 @@ API keys are not an option. The defenses are:
   (Railway sits behind a proxy; `request.client.host` would be the proxy). Returns 429 + `Retry-After`.
   In-memory state is fine only while Railway runs a **single instance** — if you ever scale out,
   each instance gets its own counter and the effective limit multiplies.
+  - **Known weakness (K6, eval review 2026-07-21):** `_client_id` uses the **leftmost** XFF entry,
+    which the client can forge — a per-request fake `X-Forwarded-For` rotates the rate-limit key
+    without even needing multiple real IPs. Exploitable only if Railway's edge **appends** rather
+    than overwrites incoming XFF (unconfirmed). Hardening = trust the proxy-injected value (Nth-from-
+    right for a known proxy depth), but getting N wrong breaks rate limiting for everyone — so it's
+    left as-is pending confirmation of Railway's XFF handling. See the comment on `_client_id`.
 - **API docs disabled in production**: `/docs`, `/redoc`, `/openapi.json` are `None` when
   `DEPLOY_ENVIRONMENT=production`, so the endpoint list and schemas aren't published.
 
-Anyone determined can still rotate IPs. The goal is blocking opportunistic scanners and runaway
-scripts, not defeating a targeted attacker.
+Anyone determined can still rotate IPs (or forge XFF, see K6). The goal is blocking opportunistic
+scanners and runaway scripts, not defeating a targeted attacker.
 
 ## Transcription fallback (api_fallback.py)
 
