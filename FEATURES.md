@@ -71,6 +71,17 @@
 
 ## ⏱️ Capture Duration Options
 
+### **How the duration buttons actually work** ⚠️
+
+The 30s / 1m / 5m buttons do **not** set a recording length and they do **not** auto-stop recording. Recording runs continuously from when you press record until **you** press stop (the only automatic stop is a 12-hour crash guard). The duration button decides **how much of the tail is kept and transcribed at the moment you stop**:
+
+- Recorded **less** than the selected duration → you get the **whole** recording.
+- Recorded **more** → only the **last N seconds** are transcribed; earlier audio is discarded.
+
+Under the hood, the app keeps a **rolling ~5-minute buffer** of the most recent audio (older audio is trimmed out of the buffer as you go). So "5 minutes" is the maximum tail the app retains, not a timer that stops recording.
+
+> Gotcha: with 5m selected, if you record 10 minutes and then stop, only the last 5 minutes are transcribed — the first 5 are silently dropped, and the timer keeps counting up past 5:00 with no warning.
+
 ### **Why 5-Minute Maximum?**
 
 VoiceSpark is designed for **idea snippets**, not long-form recording. Here's why:
@@ -80,6 +91,7 @@ VoiceSpark is designed for **idea snippets**, not long-form recording. Here's wh
 - 🎯 Forces you to focus on key insights
 - 📊 Easier to organize and search later
 - 💰 Lower API costs = lower price for you
+- 🧠 **Keeps browser memory low, on purpose**: the app only ever transcribes the last 5 minutes, so holding more than that in the browser would burn memory for audio we'd never use. The rolling 5-minute buffer discards older audio as you record — this is a deliberate design choice, not a limitation.
 
 **If you need longer captures**: Use continuous mode (explained below)
 
@@ -117,36 +129,37 @@ Transcription time: ~30 seconds
 
 ### **Auto-Capture Toggle**
 
-**What it does**: Automatically starts a new capture after the previous one completes
+**What it does**: When you stop a capture (it transcribes), a new recording starts **immediately and seamlessly**, so you can keep capturing without pressing record again.
+
+> Note: Auto-Capture does **not** cut on a timer. There is no "every 5 minutes" auto-split — the app never stops recording on its own (except the 12-hour crash guard). You still press stop to end each segment; Auto-Capture just re-arms the next one instantly. The selected duration only controls how much tail each stop keeps (see "How the duration buttons actually work" above).
 
 **Perfect for**:
-- 📚 Hour-long online courses (auto-captures every 5 minutes)
-- 🎧 Long podcasts (breaks it into digestible chunks)
-- 💻 Extended work sessions (captures all your thoughts)
+- 📚 Online courses — capture one point, stop, and it's ready for the next without fiddling with the record button
+- 🎧 Podcasts — grab key moments back-to-back
+- 💻 Extended work sessions — capture thought after thought hands-light
 
 ### **How it works**:
 
 ```
 1. Turn on "Auto-Capture" toggle
-2. Select duration (e.g., 5 minutes)
+2. Select duration (e.g., 5 minutes = keep up to the last 5 min on each stop)
 3. Click "Start Capturing"
 
-Then:
-  → Records for 5 minutes
-  → Auto-stops and transcribes
-  → Immediately starts new recording
-  → Repeats until you stop
+Then, each time you press stop:
+  → Transcribes the selected tail of what you recorded
+  → Immediately starts a new recording (buffer cleared)
+  → Repeat until you turn recording off
 
-Result: Continuous capture broken into 5-minute chunks
+Result: back-to-back captures without re-pressing record — you decide where each one ends
 ```
 
 ### **Real-world example**:
 ```
 Watching a 1-hour Coursera lecture:
-- Turn on auto-capture (5 min)
-- Let it run for the full hour
-- Get 12 separate, searchable transcripts
-- Each one represents 5 minutes of the lecture
+- Turn on auto-capture (5 min = keep the last 5 min per stop)
+- Whenever a section wraps, press stop — it transcribes and instantly re-arms
+- Build up separate, searchable transcripts, one per section you ended
+- You choose the boundaries (press stop); the app never auto-cuts on a timer
 - Easy to review specific sections later
 ```
 
@@ -434,5 +447,5 @@ See our [Roadmap](README.md#-roadmap) for upcoming features.
 
 ---
 
-**Last Updated**: 2026-01-30  
+**Last Updated**: 2026-07-21  
 **Version**: 1.0

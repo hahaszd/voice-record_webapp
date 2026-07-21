@@ -105,9 +105,9 @@ Building your Second Brain?
 
 #### **🎧 Podcast Notes**
 ```
-1. Set to 5-minute continuous mode
-2. Listen to podcast while VoiceSpark runs
-3. Auto-captures every 5 minutes
+1. Set to 5-minute duration + turn on Auto-Capture
+2. Listen to the podcast while VoiceSpark runs
+3. Hit stop at each key moment — it transcribes the last 5 min and re-arms instantly
 4. Review all snippets later
 ```
 
@@ -216,12 +216,17 @@ Learning snippets, podcast notes
 Perfect default for most use cases
 ```
 
+> **How the buttons work:** they don't set a recording length — recording runs until *you* press stop.
+> The button chooses how much of the **tail** to keep when you stop: recorded less than the selected
+> duration → you keep everything; recorded more → only the **last N seconds** are transcribed.
+
 ### **Continuous Capture Mode**
 
 **🔄 Auto-Capture Toggle**
 ```
 Turn on for learning sessions
-Automatically captures every N minutes
+After each stop, it transcribes and instantly re-arms the next recording
+— you press stop to end each segment; it never auto-cuts on a timer
 Great for courses, podcasts, long videos
 ```
 
@@ -230,19 +235,22 @@ Great for courses, podcasts, long videos
 ## 📊 Project Structure
 
 ```
-d:\Cursor voice record web\
-├── server2.py                  # FastAPI backend
+voice-record_webapp/
+├── server2.py                  # FastAPI backend (the real app; app = ASGI entry)
+├── api_fallback.py             # Transcription fallback engine (priority/quota/retry)
+├── logging_helper.py           # TranscriptionLogger + audio-format helpers
 ├── static/
 │   ├── index.html             # Main interface
 │   ├── style.css              # Styling
-│   ├── script.js              # Core logic
-│   └── audio-storage.js       # Local storage management
-├── .gitignore
-├── README.md                  # This file
-└── docs/                      # Additional documentation
-    ├── FEATURES.md            # Detailed features
-    ├── USE_CASES.md           # Real-world examples
-    └── PRIVACY.md             # Privacy & security info
+│   ├── script.js              # Core frontend logic (recording, VAD, upload, history)
+│   └── audio-storage.js       # Local audio storage (IndexedDB)
+├── tests/                      # Playwright suite (smoke / functional / mobile)
+├── requirements.txt
+├── Dockerfile / railway.json   # Deployment
+├── README.md                   # This file
+├── FEATURES.md                 # Detailed features
+├── ARCHITECTURE.md             # Architecture & deploy flow
+└── *.md                        # ~160 historical change-logs at repo root (reference only)
 ```
 
 ---
@@ -339,7 +347,7 @@ This is a **small & beautiful** product, not a billion-dollar startup. It's desi
 ---
 
 **Version**: v1.0  
-**Last Updated**: 2026-01-30  
+**Last Updated**: 2026-07-21  
 **Status**: Live & Actively Maintained ✨
 
 ---
