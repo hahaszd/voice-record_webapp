@@ -74,12 +74,26 @@ scripts, not defeating a targeted attacker.
 
 ## Transcription fallback (api_fallback.py)
 
-`transcribe_with_fallback()` — microphone scenario priority (per code, v111):
-1. OpenAI Whisper (`whisper-1`) — primary
-2. AI Builder Space
-3. Deepgram Nova-2 — backup
+`transcribe_with_fallback()` — **microphone** scenario priority (verified against the actual code
+body, `api_fallback.py:1402-1464`, not the docstring):
+1. OpenAI Whisper (`whisper-1`) → returns `api_used="openai_whisper"`
+2. AI Builder Space → `"ai_builder"`
+3. Google Cloud STT → `"google"`
 
-`transcribe_system_audio()` and `transcribe_with_preferred_api()` handle other scenarios. Quota/temp-error detection (`is_quota_exceeded`, `is_temporary_error`, `should_retry_api`) skips exhausted APIs for `QUOTA_RECHECK_INTERVAL` (1h). `whisper-1` is deliberately chosen over `gpt-4o-transcribe` for better Chinese accuracy — don't "upgrade" it without checking.
+⚠️ **Deepgram is NOT in the microphone path.** It's the last backup only in the **system-audio**
+path `transcribe_system_audio()` (order there: `gpt-4o-transcribe-diarize` → Google → Deepgram).
+Heads-up: the code is self-contradictory here — `transcribe_with_fallback`'s own docstring
+(`api_fallback.py:1378-1381`) claims "AI Builder→OpenAI→Deepgram", which matches neither the
+execution order nor the actual third API. Trust the code body. (This bit us: earlier CLAUDE.md/
+FEATURES copied the wrong "Deepgram" claim — caught by the eval-checklist review, 2026-07-21.)
+
+`transcribe_with_preferred_api()` handles history re-transcribe with an explicit API choice.
+Quota detection (`is_quota_exceeded` + `should_retry_api`) skips exhausted APIs for
+`QUOTA_RECHECK_INTERVAL` (1h). Note `is_temporary_error` (`api_fallback.py:136`) is **dead code** —
+defined but never called; any single-API failure just falls through to the next API, there is no
+"retry the same API on transient error" path. `whisper-1` is deliberately chosen over
+`gpt-4o-transcribe` for better Chinese accuracy on the mic path — don't "upgrade" it without checking
+(the system-audio path intentionally uses `gpt-4o-transcribe-diarize` for speaker diarization).
 
 ## Running locally
 
