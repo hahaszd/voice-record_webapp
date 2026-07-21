@@ -4,8 +4,8 @@
 
 **Last Updated:** 2026-07-21  
 **Current Version:** 
-- Frontend feature version: v119 (代码注释/UI 中的 vNNN)
-- Cache-bust: `script.js?v=126`, `style.css?v=126`
+- Frontend feature version: v121 (代码注释/UI 中的 vNNN)
+- Cache-bust: `script.js?v=127`, `style.css?v=127`
 - Backend: server2.py — v120 安全加固（死端点清理 + 转录限流 + 关闭 API 文档）
 
 ---
@@ -720,6 +720,39 @@ window.focus: Document definitively has focus ✓
 - server2.py 后端安全加固（前端 `script.js` / `style.css` 版本号不变，无需 cache-bust）
 
 **Commits:** `02a890e`、`5f3c71d`、`967c0b3`、`2ac0148`（dev）→ 合并至 main
+
+---
+
+### Phase 10: Docs↔Code Sync + Eval Harness + Upload Robustness (v121) - 2026-07-21
+
+#### v121 - 文档对齐、录音分段 eval、上传超时+重试
+**Date:** 2026-07-21
+**Type:** Docs + Tests + 前端健壮性（`static/script.js`）
+
+**背景：** 复盘时发现项目文档与代码长期两张皮（时长按钮机制、Auto-Capture、麦克风 API
+优先级都描述错误）。据此：立"代码与活文档同步"铁律、对齐文档、设计完整 eval 清单并经两个
+独立 agent 评审，评审顺带挖出两个真实上传缺陷。
+
+**1. 文档对齐（活文档：README/FEATURES/ARCHITECTURE/CLAUDE）：**
+- 修正时长按钮机制说明：滚动缓冲 + 停止时只保留**最后 N 秒**，不按所选时长自动停。
+- 修正 Auto-Capture：只是"停止后无缝重开"，非定时切段；补充 5 分钟窗口的省内存动机。
+- **修正麦克风转录优先级硬伤**：Whisper→AI Builder→**Google**（非 Deepgram；Deepgram 只在
+  系统音路径）。CLAUDE.md 原抄了 `api_fallback.py` 自相矛盾的 docstring。
+- CLAUDE.md 立铁律 + 标注 `is_temporary_error` 为死代码。
+
+**2. 录音分段 eval（`tests/functional/recording-segment-eval.spec.ts` + `tests/EVAL_CHECKLIST.md`）：**
+- 离线确定性测试：合成频率标记音频喂真实 `enforceMaxDuration`/`trimLeadingSilence`，验证
+  录30s选1m全保留 / 录1m选30s留最后30s / 中间停顿两段语音+停顿都保留。本地 3/3 通过、真实浏览器交叉验证一致。
+- EVAL_CHECKLIST：A–P 类完整测试计划，经两 agent 评审修订。
+
+**3. 上传健壮性修复（`uploadForTranscription`，前端）：**
+- **O4**：裸 `fetch` 无超时 → 服务器挂起前端永久转圈。加 AbortController，超 120s 主动中止。
+- **O5**：短音频直传路径零重试。把超时+重试集中到 `uploadForTranscription`：网络/超时/5xx
+  重试一次，4xx（429/413/400）不重试；分段 worker 移除重复的手动重试。
+- 真实浏览器 mock-fetch 验证：500ms 超时中止、5xx→200 恢复、429 不重试、网络错误重试——全部符合。
+
+**Version Numbers:**
+- script.js: v120 → v121（`index.html` 中 `script.js?v=127`、`style.css?v=127`）
 
 ---
 

@@ -1325,35 +1325,75 @@ async function splitAudioAtSilence(audioBlob, opts = {}) {
 }
 
 /**
- * 上传单个音频 blob 到 /transcribe-segment，返回服务端 JSON（不吞错误，HTTP 失败抛异常）
+ * 上传单个音频 blob 到 /transcribe-segment，返回服务端 JSON（不吞错误，失败抛异常）。
+ *
+ * v121：加入超时(AbortController) + 有限重试。
+ *   - O4 修复：裸 fetch 无超时 → 服务器挂起会让前端永久转圈。现在超过 timeoutMs 主动中止。
+ *   - O5 修复：短音频直传路径原先零重试。重试逻辑集中在此，两条调用路径（直传/分段）统一受益。
+ * 重试策略：仅对**网络错误 / 超时 / 5xx 服务端错误**重试；**4xx**（429 限流 / 413 过大 / 400）
+ * 是确定性失败，重试无意义，直接抛出（让上层拿到并展示服务端文案）。
+ *
+ * @param {Blob} blob
+ * @param {{durationSec:number, audioSource:string, language:string}} opts
+ * @param {{timeoutMs?:number, retries?:number}} [ctrl] 单次请求超时(默认120s)、重试次数(默认1)
  */
-async function uploadForTranscription(blob, { durationSec, audioSource, language }) {
-    const formData = new FormData();
-    const mimeType = blob.type || 'audio/wav';
-    const extension = mimeType.includes('wav') ? 'wav' :
-                      mimeType.includes('webm') ? 'webm' :
-                      mimeType.includes('mp3') ? 'mp3' : 'mp4';
-    formData.append('audio_file', blob, `recording_${Math.max(1, Math.round(durationSec))}s.${extension}`);
-    formData.append('duration', String(Math.max(1, Math.round(durationSec))));
-    formData.append('audio_source', audioSource || 'microphone');
-    if (language && language !== 'auto') {
-        formData.append('language', language);
-    }
+async function uploadForTranscription(blob, { durationSec, audioSource, language }, { timeoutMs = 120000, retries = 1 } = {}) {
+    const buildForm = () => {
+        const formData = new FormData();
+        const mimeType = blob.type || 'audio/wav';
+        const extension = mimeType.includes('wav') ? 'wav' :
+                          mimeType.includes('webm') ? 'webm' :
+                          mimeType.includes('mp3') ? 'mp3' : 'mp4';
+        formData.append('audio_file', blob, `recording_${Math.max(1, Math.round(durationSec))}s.${extension}`);
+        formData.append('duration', String(Math.max(1, Math.round(durationSec))));
+        formData.append('audio_source', audioSource || 'microphone');
+        if (language && language !== 'auto') {
+            formData.append('language', language);
+        }
+        return formData;
+    };
 
-    const response = await fetch('/transcribe-segment', { method: 'POST', body: formData });
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 300)}`);
+    let lastErr;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+            const response = await fetch('/transcribe-segment', {
+                method: 'POST',
+                body: buildForm(),
+                signal: controller.signal,
+            });
+            if (response.ok) {
+                return await response.json();
+            }
+            const errorText = await response.text();
+            const err = new Error(`HTTP ${response.status}: ${errorText.substring(0, 300)}`);
+            err.status = response.status;
+            // 4xx（429/413/400…）确定性失败 → 不重试，直接抛
+            if (response.status >= 400 && response.status < 500) throw err;
+            lastErr = err; // 5xx → 可重试
+        } catch (err) {
+            if (err.status && err.status >= 400 && err.status < 500) throw err; // 上面抛的 4xx，透传
+            // AbortError=超时；TypeError 等=网络失败 → 可重试
+            lastErr = (err.name === 'AbortError')
+                ? new Error(`转录请求超时（>${Math.round(timeoutMs / 1000)}s），已中止`)
+                : err;
+        } finally {
+            clearTimeout(timer);
+        }
+        if (attempt < retries) {
+            console.warn(`[UPLOAD] 请求失败，重试 ${attempt + 1}/${retries}: ${lastErr && lastErr.message}`);
+        }
     }
-    return await response.json();
+    throw lastErr || new Error('转录请求失败');
 }
 
 /**
  * v115 智能转录入口：长音频分段转录后拼接，短音频整段上传（行为不变）。
  * 返回与 /transcribe-segment 相同形状的结果对象（success / text / api_used / message）。
  *
- * 分段失败策略：网络/HTTP 错误重试一次；服务端 success=false（如纯静音段被
- * 后端过滤）不重试、按空文本跳过；所有段都失败才整体报错。
+ * 分段失败策略：单段的超时+重试由 uploadForTranscription 集中处理（v121）；服务端
+ * success=false（如纯静音段被后端过滤）不重试、按空文本跳过；所有段都失败才整体报错。
  */
 async function transcribeAudioSmart(blob, { durationSec, audioSource, language, onProgress = null }) {
     const chunks = await splitAudioAtSilence(blob);
@@ -1371,15 +1411,11 @@ async function transcribeAudioSmart(blob, { durationSec, audioSource, language, 
             const c = chunks[i];
             const uploadOpts = { durationSec: c.endSec - c.startSec, audioSource, language };
             try {
+                // uploadForTranscription 内部已含超时 + 重试（v121），不再在此重复重试
                 results[i] = await uploadForTranscription(c.blob, uploadOpts);
             } catch (err) {
-                console.warn(`[CHUNK] 段 ${i + 1}/${chunks.length} 请求失败，重试一次:`, err.message);
-                try {
-                    results[i] = await uploadForTranscription(c.blob, uploadOpts);
-                } catch (err2) {
-                    console.error(`[CHUNK] ❌ 段 ${i + 1}/${chunks.length} 重试仍失败:`, err2.message);
-                    results[i] = { success: false, message: err2.message };
-                }
+                console.error(`[CHUNK] ❌ 段 ${i + 1}/${chunks.length} 失败（含重试）:`, err.message);
+                results[i] = { success: false, message: err.message };
             }
             doneCount++;
             if (results[i] && !results[i].success) {
