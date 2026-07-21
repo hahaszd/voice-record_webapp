@@ -46,8 +46,8 @@
 | B1 | 中间停顿保留 | 静音-语音-停顿-语音 | 裁前导静音；两段语音+中间停顿都在 | L0 | P0 | ✅ |
 | B2 | 只裁前导、不裁尾部静音 | 语音后接长尾静音 | 尾部静音保留（VAD 只裁首） | L0 | P1 | ⬜ |
 | B3 | 前导静音 < minTrim(600ms) → 不裁 | 前导 300ms 静音 | 原样返回，reason=below_min_trim | L0 | P1 | ⬜ |
-| B4 | 真空录音识别 | 全程近零能量 | allSilence=true，但**仍不丢弃**（交后端过滤） | L0 | P0 | ⬜ |
-| B5 | 轻声前段不被误删（v119 修复） | 前段轻声+后段响亮 | 裁剪边界回退，轻声语音保留 | L0 | P0 | ⬜ |
+| B4 | 真空录音识别 | 全程近零能量 | allSilence=true，但**仍不丢弃**（保留 blob 交后端过滤） | L0 | P0 | ✅ `audio-processing-eval.spec.ts` |
+| B5 | 轻声前段不被误删（v119 修复） | 前段轻声+后段响亮 | 裁剪边界回退，轻声语音保留（实测 dur=7.45s、早段=轻声电平） | L0 | P0 | ✅ `audio-processing-eval.spec.ts` |
 | B6 | 瞬时噪声不误判为语音起点（triggerCount=9） | 前导静音中插单个尖峰 | 不把噪点当语音起点 | L0 | P1 | ⬜ |
 | B7 | 音频过短 → 跳过 | <3 窗口 | passthrough，reason=too_short | L0 | P2 | ⬜ |
 | B8a | 裁剪/截取路径 → 16kHz 单声道 WAV | trimmed=true 或超时长截取 | 采样率=16000，单声道 | L0 | P1 | ⬜ |
@@ -57,16 +57,16 @@
 
 | ID | 验证内容 | 期望 | Layer | 优先级 | 现状 |
 |----|----------|------|-------|--------|------|
-| C1 | 短音频不分段 | ≤ minChunkable 返回 null（不分段） | L0 | P1 | ⬜ |
+| C1 | 短音频不分段 | ≤ minChunkable(90s) 返回 null（不分段） | L0 | P1 | ✅ `audio-processing-eval.spec.ts` |
 | C2 | 长音频按静音点切成 ~60s 块 | 块数合理、切点靠近静音、块顺序正确 | L0 | P1 | ⬜ |
-| C3 | 分段结果拼接顺序正确 | 各块 startSec 递增、无重叠/漏采样 | L0 | P0 | ⬜ |
+| C3 | 分段结果拼接顺序正确 | 各块 startSec 递增、连续(endSec[i]===startSec[i+1])、全覆盖[0,总时长]、无重叠/漏采样 | L0 | P0 | ✅ `audio-processing-eval.spec.ts` |
 | C4 | 一段杂音只毒害所在块 | 中间插杂音，其它块文本不受影响 | L2(mock) | P1 | ⬜ |
 
 ## D. 音频编码 / 大小 / 降采样
 
 | ID | 验证内容 | 期望 | Layer | 优先级 | 现状 |
 |----|----------|------|-------|--------|------|
-| D1 | 满 5 分钟 WAV < 25MB 上传上限 | 300s@16kHz mono ≈ 9.6MB < 25MB | L0 | P0 | ⬜ |
+| D1 | 满 5 分钟 WAV < 25MB 上传上限 | 300s@16kHz mono ≈ 9.6MB(实测 9.16) < 25MB | L0 | P0 | ✅ `audio-processing-eval.spec.ts` |
 | D2 | `encodeMonoSamplesToWav` 头部/格式正确 | RIFF/WAVE/fmt/data 合法，可被 decode | L0 | P1 | ⬜ |
 | D3 | 幅度裁剪 [-1,1] 无溢出 | 超范围样本被 clamp | L0 | P2 | ⬜ |
 
