@@ -119,15 +119,11 @@ _rate_lock = threading.Lock()
 def _client_id(request: Request) -> str:
     """取真实客户端 IP。Railway 在反向代理后，request.client.host 是代理 IP。
 
-    ⚠️ K6 已知弱点（eval 评审 2026-07-21）：这里取 X-Forwarded-For 的**最左**项，
-    而最左项是客户端可自行伪造的——攻击者每个请求带一个不同的伪造 XFF 头即可换 key、
-    绕过限流，比"轮换真实 IP"还省事。是否可利用取决于 Railway 边缘代理对 incoming XFF 的处理：
-      - 若 Railway **追加**（`XFF: <伪造>, <真实>`）→ 最左是伪造值 → **可绕过**。
-      - 若 Railway **覆盖/剥离** incoming XFF → 安全。
-    更稳的做法是信任"可信代理"注入的值：已知代理层数 N 时取**右起第 N 项**，而非最左。
-    但 N 取决于 Railway 部署拓扑，改错会让所有用户塌缩到同一个 key（限流失效）或把内部代理
-    IP 当客户端。**故此处暂不改**，待 owner 确认 Railway 的 XFF 行为后再决定硬化。
-    现有防线本就只挡机会主义扫描器（见文件头注释），非定向攻击。
+    K6（eval 评审 2026-07-21，已实测确认安全）：取 X-Forwarded-For **最左**项在 Railway 上是
+    安全的。实测（临时 /_debug/xff 端点，用伪造 XFF 打 dev）：Railway 边缘代理会**剥离/覆盖**
+    客户端自带的 X-Forwarded-For，把真实客户端 IP 放在最左，伪造值完全不出现（X-Real-IP 同样被
+    覆盖为真实 IP）。因此 split(",")[0] 取到的就是真实客户端 IP、**无法用伪造头绕过限流**。
+    （注意：真实 IP 轮换仍能绕过，那是文件头注释里既定接受的权衡——只挡机会主义扫描器，非定向攻击。）
     """
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
