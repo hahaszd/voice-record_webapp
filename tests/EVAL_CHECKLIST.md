@@ -74,10 +74,10 @@
 
 | ID | 验证内容 | 期望 | Layer | 优先级 | 现状 |
 |----|----------|------|-------|--------|------|
-| E1 | 开始→停止基本流程（**可断言化**） | recordBtn.classList 含/不含 `recording`、`recordBtn.disabled`、`recordingTime.textContent` 匹配 `^\d{2}:\d{2}$`、cancelRecordBtn.style.display、源选择器 disabled 切换 | L3 | P0 | ⬜ |
+| E1 | 开始→停止基本流程（**可断言化**） | fake-mic 驱动真实录音：recording class 切换、计时走动、cancel 可见、源选择器 disabled/enabled | L3 | P0 | ✅ `recording-lifecycle-eval.spec.ts` |
 | E2 | 停止→快照窗口锁（v118 `isStoppingRecording`） | 停止处理期间重复点击被忽略 | L3 | P1 | ⬜ |
 | E3 | 会话 epoch 守卫（v117） | 孤儿 recorder 的 chunk 被丢弃、不污染新会话 | L0/L3 | P1 | ⬜ |
-| E4 | 新录音 clearAll 不影响正在转录的快照（v116） | 快照后清库，旧转录仍用快照数据 | L3 | P0 | ⬜ |
+| E4 | 新录音 clearAll 不影响正在转录的快照（v116） | fake-mic 录 3s→停止(自动录音开)→拦截上传体 >15KB，证明送的是真实录音而非被清空的库 | L3 | P0 | ✅ `recording-lifecycle-eval.spec.ts` |
 | E5 | 12 小时兜底自动停止 | 超 12h 自动 stopRecording | L4 | P2 | ⬜ |
 
 ## F. Auto-Capture（停止后无缝重挂，非定时切段）
@@ -92,7 +92,7 @@
 
 | ID | 验证内容 | 期望 | Layer | 优先级 | 现状 |
 |----|----------|------|-------|--------|------|
-| G1 | 麦克风 vs 系统音源选择 | 录音期间源选择器禁用、停止后启用 | L3 | P1 | ⬜ |
+| G1 | 麦克风 vs 系统音源选择 | 录音期间源选择器禁用、停止后启用（E1 已覆盖禁用/启用切换） | L3 | P1 | 🟡 由 `recording-lifecycle-eval.spec.ts` E1 覆盖禁用切换 |
 | G2 | 音频源信息随请求上传 | audioSource 正确传给后端用于路由 | L2 | P1 | ⬜ |
 | G3 | 麦克风场景 API 优先级（**已修正+测试**） | Whisper→AI Builder→**Google**（**非 Deepgram**）；docstring 已修正 | L1 | P0 | ✅ `test_fallback_engine.py` |
 | G4 | 系统音场景走 `transcribe_system_audio` | 路由正确；优先级 gpt-4o-diarize→Google→**Deepgram**（Deepgram 只在这条路径） | L1 | P1 | ⬜ |

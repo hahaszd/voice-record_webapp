@@ -770,6 +770,14 @@ window.focus: Document definitively has focus ✓
   加回归测试。
 - 校正 `transcribe_with_fallback` docstring（原写反顺序 + 第3位误写 Deepgram）。
 
+**6. 录音生命周期测试（引入 fake-mic）E1/E4：**
+- `playwright.config.ts` 新增隔离的 `recording` project，带 `--use-fake-device/-ui-for-media-stream`
+  启动参数，getUserMedia 返回假音频设备、自动授权。
+- `tests/recording/recording-lifecycle-eval.spec.ts`：E1 开始→停止 UI 状态机（recording class/计时/
+  cancel/源选择器禁用切换）、E4 v116 快照竞态（停止时快照的真实录音被送去转录，不受自动录音
+  clearAll 影响——拦截上传体 >15KB 证明）。转录端点用 page.route mock。放在 tests/recording/
+  以免被 functional project(无 fake-mic)误捞。
+
 **Version Numbers:**
 - script.js: v120 → v121（`index.html` 中 `script.js?v=128`、`style.css?v=128`）
 - 后端：api_fallback.py 修复 AI Builder 配额路径 NameError（无前端改动，无需 cache-bust）

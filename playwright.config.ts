@@ -57,6 +57,23 @@ export default defineConfig({
       testMatch: /mobile.*\.spec\.ts/,
       use: { ...devices['iPhone 14 Pro'] },
     },
+
+    // 录音生命周期（E1/E4）：需要 fake-mic —— 隔离成独立 project，不影响其它 functional 测试
+    {
+      name: 'recording',
+      testMatch: /recording-lifecycle.*\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        permissions: ['microphone'],
+        launchOptions: {
+          args: [
+            '--use-fake-device-for-media-stream',  // getUserMedia 返回假音频设备（持续 beep）
+            '--use-fake-ui-for-media-stream',       // 自动授予权限，无弹窗
+            '--autoplay-policy=no-user-gesture-required',
+          ],
+        },
+      },
+    },
   ],
 
   // 本地开发服务器配置（可选）
