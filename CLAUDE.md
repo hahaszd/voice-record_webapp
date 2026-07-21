@@ -81,12 +81,13 @@ API keys are not an option. The defenses are:
   (Railway sits behind a proxy; `request.client.host` would be the proxy). Returns 429 + `Retry-After`.
   In-memory state is fine only while Railway runs a **single instance** — if you ever scale out,
   each instance gets its own counter and the effective limit multiplies.
-  - **Known weakness (K6, eval review 2026-07-21):** `_client_id` uses the **leftmost** XFF entry,
-    which the client can forge — a per-request fake `X-Forwarded-For` rotates the rate-limit key
-    without even needing multiple real IPs. Exploitable only if Railway's edge **appends** rather
-    than overwrites incoming XFF (unconfirmed). Hardening = trust the proxy-injected value (Nth-from-
-    right for a known proxy depth), but getting N wrong breaks rate limiting for everyone — so it's
-    left as-is pending confirmation of Railway's XFF handling. See the comment on `_client_id`.
+  - **K6 (eval review 2026-07-21, empirically confirmed SAFE):** `_client_id` uses the leftmost XFF
+    entry, which is **not** forgeable on Railway. Tested via a temporary `/_debug/xff` endpoint on dev,
+    hitting it with a forged `X-Forwarded-For`: Railway's edge **strips/overwrites** the client-supplied
+    XFF and puts the real client IP leftmost (the forged value never appears; X-Real-IP is likewise
+    overwritten with the real IP). So `split(",")[0]` is the true client IP and can't be spoofed — no
+    code change needed. (Real-IP rotation can still bypass, but that's the already-accepted tradeoff:
+    block opportunistic scanners, not targeted attackers.)
 - **API docs disabled in production**: `/docs`, `/redoc`, `/openapi.json` are `None` when
   `DEPLOY_ENVIRONMENT=production`, so the endpoint list and schemas aren't published.
 

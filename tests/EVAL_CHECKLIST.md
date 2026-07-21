@@ -137,7 +137,7 @@
 | K3 | 客户端 IP 取 X-Forwarded-For | 代理后取真实客户端 IP 计数 | L2 | P1 | ⬜ |
 | K4 | 生产环境关闭 API 文档 | `SHOW_DOCS` **fail-closed**（server2.py:83）：默认即关，只有显式非 production 才开；/docs /redoc /openapi.json → 404/None | L2 | P1 | ⬜ |
 | K5 | 非付费路径不被限流 | 静态资源/首页不受限 | L2 | P2 | ⬜ |
-| K6 | 伪造 X-Forwarded-For 绕过限流 | **已评审(v121)：确认弱点**——`_client_id` 取最左 XFF、客户端可伪造换 key 绕过；可利用性取决于 Railway 追加/覆盖 XFF。**故意不写自动化测试**（打 20+ 次污染共享内存限流状态、必然 flaky；锁定现状还会挡住未来硬化）。已在 `_client_id` 注释 + CLAUDE.md 记录风险与硬化路径（取右起第 N 项） | — | P0 | 🟡已评审/待 owner 确认 Railway 后硬化 |
+| K6 | 伪造 X-Forwarded-For 绕过限流 | **已实测确认安全(v121)**：临时 `/_debug/xff` 端点打 dev，伪造 XFF 完全不出现——Railway 边缘剥离/覆盖客户端 XFF、把真实 IP 放最左，`split(",")[0]` 取到真实 IP、**无法伪造绕过**。X-Real-IP 同样被覆盖。**无需改代码**。真实 IP 轮换仍可绕（既定接受权衡） | 实测 | P0 | ✅ 实测确认安全，无需修复 |
 | K7 | 429 前端展示契约 | 前端把后端友好文案展示出来，而非裸 `HTTP 429:`（`script.js:1344` 目前直接 throw body，疑似缺口） | L2/L3 | P1 | ⬜ |
 
 ## L. 前端健壮性 / Smoke / PWA
