@@ -151,7 +151,19 @@ npm install            # first time (Playwright)
 npm run test:smoke     # smoke (also the precommit hook)
 npm run test:all       # full suite → HTML report
 ```
-Tests live in `tests/{smoke,functional,mobile}`. `playwright.config.ts` at root. Many `test_*.py` at root are ad-hoc audio-transcription scripts, not the Playwright suite.
+Tests live in `tests/{smoke,functional,mobile}` (Playwright/TS). `playwright.config.ts` at root. Many
+`test_*.py` at **repo root** are ad-hoc audio-transcription scripts, not a test suite — don't run them
+with pytest.
+
+**Backend unit tests (v121): `tests/backend/` (pytest).** Cover `api_fallback.py`'s fallback engine
+(priority / fallthrough / quota-skip) with the `_transcribe_*` fns mocked — no API keys, no network.
+Dev-only deps in `requirements-dev.txt`; `pytest.ini` scopes collection to `tests/backend` (so bare
+`pytest` won't pick up the root ad-hoc scripts) and sets `asyncio_mode=auto`.
+```bash
+./venv/bin/pip install -r requirements-dev.txt   # first time
+./venv/bin/pytest                                 # runs tests/backend only
+```
+Not wired into the Playwright precommit — run manually (or add to CI) when touching backend logic.
 
 ## Deployment & branching (see ARCHITECTURE.md)
 

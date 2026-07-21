@@ -1,0 +1,6 @@
+# Dev-only test dependencies (NOT needed to run the app).
+# 后端单元测试用；前端测试仍是 Playwright(TS)，见 package.json。
+# 安装：./venv/bin/pip install -r requirements-dev.txt
+# 运行：./venv/bin/pytest        （已由 pytest.ini 限定到 tests/backend）
+pytest>=8.0
+pytest-asyncio>=0.23

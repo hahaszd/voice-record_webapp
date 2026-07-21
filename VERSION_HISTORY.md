@@ -761,8 +761,18 @@ window.focus: Document definitively has focus ✓
   Railway 代理层数），在 `_client_id` 注释 + CLAUDE.md 记录风险与硬化路径，待 owner 确认。
 - 新增测试：`backend-limits-eval` / `chunk-selection-eval` / `storage-resilience-eval`。
 
+**5. 后端降级引擎测试（引入 pytest）+ 修一个真 bug：**
+- 引入 pytest 测试栈（`requirements-dev.txt` + `pytest.ini`，dev-only、限定 `tests/backend`、不挂 precommit）。
+- `tests/backend/test_fallback_engine.py` 覆盖 G3/H1/H2/H3/H4/H6：麦克风优先级
+  (Whisper→AI Builder→Google)、主 API 成功不降级、依次降级、配额跳过、1h 重检间隔、全失败抛异常。
+- **修真 bug**：`transcribe_with_fallback` 里 `API_BUILDER_STATUS`（未定义笔误）——AI Builder 遇
+  配额错误时会抛 NameError、导致整个 fallback 崩溃而非降级到 Google。改回 `API_FALLBACK_STATUS`，
+  加回归测试。
+- 校正 `transcribe_with_fallback` docstring（原写反顺序 + 第3位误写 Deepgram）。
+
 **Version Numbers:**
 - script.js: v120 → v121（`index.html` 中 `script.js?v=128`、`style.css?v=128`）
+- 后端：api_fallback.py 修复 AI Builder 配额路径 NameError（无前端改动，无需 cache-bust）
 
 ---
 

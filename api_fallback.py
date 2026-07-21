@@ -1373,13 +1373,14 @@ async def transcribe_with_fallback(
     logger: Optional[TranscriptionLogger] = None
 ) -> Tuple[str, str, Dict[str, Any]]:
     """
-    🎤 v111: 麦克风场景智能 fallback 转录
-    
-    优先级：
-    1️⃣ AI Builder Space (OpenAI Whisper)
-    2️⃣ OpenAI Whisper API
-    3️⃣ Deepgram Nova-2 (备用)
-    
+    🎤 麦克风场景智能 fallback 转录
+
+    优先级（与下方函数体一致；v121 校正——原 docstring 写反了顺序、且第3位误写 Deepgram）：
+    1️⃣ OpenAI Whisper API（主力，whisper-1）
+    2️⃣ AI Builder Space
+    3️⃣ Google Cloud STT（最后备用）
+    ⚠️ Deepgram 不在麦克风路径，只在系统音路径 transcribe_system_audio 里当兜底。
+
     Args:
         audio_content: 音频文件内容（字节）
         filename: 文件名
@@ -1443,7 +1444,9 @@ async def transcribe_with_fallback(
             print(f"[v111-FALLBACK] ❌ AI Builder 失败: {error_msg}")
             if is_quota_exceeded(None, error_msg):
                 API_FALLBACK_STATUS["ai_builder_quota_exceeded"] = True
-                API_BUILDER_STATUS["ai_builder_last_check"] = time.time()
+                # v121 修复：此处原为 API_BUILDER_STATUS（未定义的笔误）——AI Builder 遇配额错误时
+                # 会抛 NameError、导致整个 fallback 崩溃而非降级到 Google。改回正确的 API_FALLBACK_STATUS。
+                API_FALLBACK_STATUS["ai_builder_last_check"] = time.time()
     else:
         print(f"[v111-FALLBACK] ⏭️ 跳过 AI Builder（配额已耗尽）")
         errors.append("AI Builder: 配额已耗尽，跳过")

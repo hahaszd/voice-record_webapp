@@ -94,7 +94,7 @@
 |----|----------|------|-------|--------|------|
 | G1 | 麦克风 vs 系统音源选择 | 录音期间源选择器禁用、停止后启用 | L3 | P1 | ⬜ |
 | G2 | 音频源信息随请求上传 | audioSource 正确传给后端用于路由 | L2 | P1 | ⬜ |
-| G3 | 麦克风场景 API 优先级（**已修正**） | Whisper→AI Builder→**Google**（`api_fallback.py:1402-1464`，**非 Deepgram**；docstring 写错别信） | L1 | P0 | ⬜ |
+| G3 | 麦克风场景 API 优先级（**已修正+测试**） | Whisper→AI Builder→**Google**（**非 Deepgram**）；docstring 已修正 | L1 | P0 | ✅ `test_fallback_engine.py` |
 | G4 | 系统音场景走 `transcribe_system_audio` | 路由正确；优先级 gpt-4o-diarize→Google→**Deepgram**（Deepgram 只在这条路径） | L1 | P1 | ⬜ |
 | G5 | "Both"（麦克风+系统）源路由 | 走 `use_google_only`（server2.py:805），FEATURES 列为一等模式 | L1/L2 | P1 | ⬜ |
 
@@ -102,12 +102,12 @@
 
 | ID | 验证内容 | 期望 | Layer | 优先级 | 现状 |
 |----|----------|------|-------|--------|------|
-| H1 | 主 API 成功即返回 | Whisper 成功不再调用后续 | L1 | P0 | ⬜ |
-| H2 | 主 API 失败 → 依次 fallback | 按优先级降级到下一个可用 API | L1 | P0 | ⬜ |
-| H3 | 配额耗尽检测 `is_quota_exceeded` | 命中配额错误 → 跳过该 API | L1 | P0 | ⬜ |
-| H4 | 配额跳过窗口 `QUOTA_RECHECK_INTERVAL`(1h) | 1h 内不再重试已耗尽 API | L1 | P1 | ⬜ |
+| H1 | 主 API 成功即返回 | Whisper 成功不再调用后续 | L1 | P0 | ✅ `test_fallback_engine.py` |
+| H2 | 主 API 失败 → 依次 fallback | 按优先级降级到下一个可用 API | L1 | P0 | ✅ `test_fallback_engine.py` |
+| H3 | 配额耗尽检测 `is_quota_exceeded` | 命中配额错误 → 跳过该 API（并回归 v121 修的 AI Builder NameError 崩溃） | L1 | P0 | ✅ `test_fallback_engine.py` |
+| H4 | 配额跳过窗口 `QUOTA_RECHECK_INTERVAL`(1h) | 1h 内不再重试已耗尽 API | L1 | P1 | ✅ `test_fallback_engine.py` |
 | H5 | ~~临时错误重试~~（**删除**） | `is_temporary_error`(api_fallback.py:136) 是**死代码**、零调用；无"临时错误重试同一 API"路径。任何单 API 失败都 fall through 到下一个（即 H2）。此条不测 | — | — | ❌删 |
-| H6 | 全部 API 失败 | 返回结构化失败（success=false + message） | L1 | P0 | ⬜ |
+| H6 | 全部 API 失败 | 抛结构化异常（`所有转录 API 都失败了: ...`） | L1 | P0 | ✅ `test_fallback_engine.py` |
 | H7 | 响应契约 | api_used/text/success 字段齐全一致 | L1/L2 | P1 | ⬜ |
 
 ## I. 转录历史 & 重转录
