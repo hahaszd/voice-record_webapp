@@ -56,13 +56,79 @@ function isStreamUsable(stream) {
 }
 
 // 给音轨挂上失效监听，便于诊断（并在下次取流时重新获取）
+//
+// 🔥 v122：录音进行中（isRecording=true）时 track 变 muted，此前只有 console.warn，
+// 用户毫无感知——长时间挂机后麦克风失效，对着死轨道说话，转录只会拿到静音/幻觉文字
+// （2026-07-23 用户报告：息屏10小时后录到"栏目 栏目 栏目"）。
+// 这里只做提醒（toast + 系统通知），不做录音中途自动换流——那需要更大改动
+// （安全地在不中断 MediaRecorder 的前提下换 track），先留给 EVAL_CHECKLIST 的 M2。
 function attachTrackHealthHandlers(stream, label) {
     if (!stream) return;
     stream.getAudioTracks().forEach(track => {
-        track.onmute = () => console.warn(`[AUDIO-HEALTH] ${label} 轨道被静音 muted (readyState=${track.readyState})`);
-        track.onunmute = () => console.log(`[AUDIO-HEALTH] ${label} 轨道恢复 unmuted`);
+        track.onmute = () => {
+            console.warn(`[AUDIO-HEALTH] ${label} 轨道被静音 muted (readyState=${track.readyState})`);
+            if (isRecording) showMicHealthWarning();
+        };
+        track.onunmute = () => {
+            console.log(`[AUDIO-HEALTH] ${label} 轨道恢复 unmuted`);
+            hasShownMicHealthWarning = false; // 恢复后重置，若再次失效仍会提醒
+        };
         track.onended = () => console.warn(`[AUDIO-HEALTH] ${label} 轨道结束 ended`);
     });
+}
+
+let hasShownMicHealthWarning = false; // 同一次失效只提醒一次，避免刷屏
+
+// 麦克风疑似失效提醒：录音中途 track 变 muted 时调用。
+// 页面可见时显示 toast；同时尝试系统通知，确保用户不在这个 Tab 时也能看到
+// （这正是最容易中招的场景——挂机/切后台期间失效，回来前完全不知情）。
+function showMicHealthWarning() {
+    if (hasShownMicHealthWarning) return;
+    hasShownMicHealthWarning = true;
+
+    const warning = document.createElement('div');
+    warning.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #f8d7da;
+        border: 2px solid #dc3545;
+        border-radius: 12px;
+        padding: 15px 20px;
+        max-width: 90%;
+        width: 420px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1001;
+        font-size: 0.9em;
+        line-height: 1.5;
+        animation: slideUp 0.3s ease;
+    `;
+    warning.innerHTML = `
+        <div style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="font-size: 1.5em; flex-shrink: 0;">🎙️⚠️</span>
+            <div style="flex: 1;">
+                <strong style="color: #721c24;">Mic may have stopped capturing</strong><br>
+                <span style="color: #721c24;">The microphone track went silent — often after the computer slept or this tab stayed backgrounded a long time. Please stop and restart recording so your voice is actually captured.</span>
+            </div>
+            <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; font-size: 1.2em; cursor: pointer; color: #721c24; padding: 0; margin-left: 5px;">×</button>
+        </div>
+    `;
+    document.body.appendChild(warning);
+    console.warn('[AUDIO-HEALTH] 已显示麦克风失效提示');
+    // 不像 iOS 提示那样自动消失：这是需要用户采取行动的警告
+
+    if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+            const n = new Notification('🎙️ VoiceSpark: Mic may have stopped working', {
+                body: 'The microphone went silent mid-recording (often after sleep/long background). Please stop and restart recording.',
+                icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🎙️</text></svg>',
+                tag: 'mic-health-warning',
+                requireInteraction: true
+            });
+            n.onclick = () => { window.focus(); n.close(); };
+        } catch (e) { /* 通知失败不影响 toast 提醒 */ }
+    }
 }
 
 // 诊断日志：一次性打印各流/轨道健康状态 + AudioContext 状态
@@ -3195,6 +3261,7 @@ function cleanupAudioStreams(force = false) {
             // 可能在 recordingStartTime 赋值前触发，用到上一次会话的旧原点。
             isRecording = true;
             recordingStartTime = Date.now();
+            hasShownMicHealthWarning = false; // 新一段录音，若失效应重新提醒
 
             // 每1秒保存一次数据
             mediaRecorder.start(1000);
