@@ -250,6 +250,9 @@ voice-record_webapp/
 ├── README.md                   # This file
 ├── FEATURES.md                 # Detailed features
 ├── ARCHITECTURE.md             # Architecture & deploy flow
+├── BACKLOG.md                  # What's NOT done yet: todos, open decisions (living — keep pruned)
+├── DECISION_LOG.md             # Decisions, rejected directions, ops/key changes (append-only)
+├── VERSION_HISTORY.md          # Code changelog by vNNN (append-only)
 └── *.md                        # ~160 historical change-logs at repo root (reference only)
 ```
 

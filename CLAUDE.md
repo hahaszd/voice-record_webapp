@@ -201,16 +201,17 @@ Not wired into the Playwright precommit — run manually (or add to CI) when tou
 
 ## Conventions & gotchas
 
-- **~160 Markdown docs at repo root** split into two kinds:
-  - **Living docs (source-of-truth-adjacent, keep in sync with code):** `README.md`, `FEATURES.md`, `ARCHITECTURE.md`, `CLAUDE.md`. These describe *current* behavior/structure. The **iron rule** below governs them.
-  - **Frozen historical logs (reference only, do NOT retro-edit):** everything else (`AUTO_COPY_*.md`, `V1xx_*.md`, `TEST_REPORT_*.md`, `DURATION_BUTTON_WARNING.md`, etc.) — snapshots of a past change. `VERSION_HISTORY.md` is the closest thing to a changelog. When code and a frozen log disagree, the **code wins** and the log stays as-is (it's history).
+- **~160 Markdown docs at repo root** split into three kinds:
+  - **Living docs (source-of-truth-adjacent, keep in sync with code):** `README.md`, `FEATURES.md`, `ARCHITECTURE.md`, `CLAUDE.md`, `BACKLOG.md`. These describe *current* state — behavior, structure, and what's still outstanding. **Iron rule #1** governs the first four; **iron rule #2** governs `BACKLOG.md`.
+  - **Append-only logs (write, never retro-edit; read only when looking something up):** `VERSION_HISTORY.md` (code changes, by `vNNN`) and `DECISION_LOG.md` (everything with no code change: decisions, **rejected directions**, ops/key/config changes). You are *not* expected to read these at session start — they exist so "why did we decide that in July?" is answerable.
+  - **Frozen historical logs (reference only, do NOT retro-edit):** everything else (`AUTO_COPY_*.md`, `V1xx_*.md`, `TEST_REPORT_*.md`, `DURATION_BUTTON_WARNING.md`, etc.) — snapshots of a past change. When code and a frozen log disagree, the **code wins** and the log stays as-is (it's history).
 - Feature "versions" are tracked as `vNNN` tags in code comments/UI (currently ~v113 in `script.js`). Keep them consistent when touching related logic.
 - **CACHE-BUST when editing `static/style.css` or `static/script.js`:** `index.html` links them with a version query (`style.css?v=NNN`, `script.js?v=NNN`). Returning visitors (and the CDN) cache by that exact URL, so if you don't bump the number, your CSS/JS change won't reach anyone who already loaded the site — it silently serves the stale file. ALWAYS bump both `?v=` numbers in `index.html` in the same change. (This bit us once: language selector shipped but rendered as unstyled native buttons in prod because `?v=` wasn't bumped.)
 - Code comments and commit messages are frequently in **Chinese**; match the surrounding language when editing.
 - Recent work focus (git log): client-side **VAD** to trim leading/trailing silence, 16kHz mono downsampling to stay under the 25MB upload limit, Whisper hallucination filtering, transcription history + re-transcribe with API selection.
 - No linter/formatter config committed. Match existing style.
 
-## 🔒 Iron rule: code and living docs move together
+## 🔒 Iron rule #1: code and living docs move together
 
 **Every code change that alters behavior, structure, or setup described in a living doc MUST update that living doc in the same change** — never in a "later" pass. If you change what the duration buttons do, how recording/auto-capture works, an endpoint, an env var, or the deploy flow, the matching section of `README.md` / `FEATURES.md` / `ARCHITECTURE.md` / `CLAUDE.md` is updated before the change is considered done.
 
@@ -218,9 +219,39 @@ Not wired into the Playwright precommit — run manually (or add to CI) when tou
 - If a change touches nothing in a living doc, no doc update is needed — but check, don't assume.
 - If code and a living doc already disagree, the code is the truth: fix the doc to match (that's how this rule got added — `FEATURES.md`/`README.md` claimed the duration button auto-stops recording and auto-capture chunks "every 5 minutes"; neither is true — see those files).
 
+## 🔒 Iron rule #2: decisions and todos land in a doc immediately
+
+**Iron rule #1 only fires on code changes.** A discussion can produce a decision, a rejected
+direction, an ops change (API key rotation, dashboard config), or a todo — with **zero code
+changed** — and rule #1 never triggers, so it evaporates when the session ends. That is exactly how
+this rule got added: one session produced three actionable conclusions (OpenAI key scoping, a
+spend-cap recommendation, a transcription-model A/B) and none of them had anywhere to live.
+
+**So: anything from a discussion that affects the project's future gets written down in the same
+turn it's decided — never "later".**
+
+- **Not yet done** (todo, direction, needs-owner-decision) → **`BACKLOG.md`**
+- **Already happened, no code change** (decision, **rejected direction + why**, ops/key/config change,
+  important fact established) → **`DECISION_LOG.md`** (append, reverse-chronological)
+- **Already happened, code changed** → `VERSION_HISTORY.md` (rule #1)
+- **Test/eval coverage gap** → `tests/EVAL_CHECKLIST.md` (don't duplicate it in `BACKLOG.md`)
+
+Filter — don't log everything, or these rot into noise. The test is:
+**"three months from now, would someone ask 'why did we decide that?' and need this?"** If no, skip
+it. Transient chatter and half-formed ideas stay out.
+
+**Record rejected directions especially** — with the reasoning. That's the highest-value content
+here; it's what stops the same question being re-litigated every few months.
+
+⚠️ **A todo list that only grows is worse than none** — it gets read as current state when it isn't.
+`/handover` MUST prune `BACKLOG.md`: move finished items out (to `VERSION_HISTORY.md` or
+`DECISION_LOG.md`) and delete dead ones with a note. Precedent: `INDIE_DEVELOPER_ROADMAP.md` was a
+serious plan once; nobody reads it now.
+
 ## When making changes
 
 1. Real app code = `server2.py`, `api_fallback.py`, `static/script.js`, `static/index.html`, `static/style.css`. Start there.
 2. Prefer editing over adding yet another root `.md` file unless the user asks.
 3. Ask before committing/pushing; if committing, do it on `dev` first (not `main`) unless it's a hotfix.
-4. **Honor the iron rule above** — sync living docs in the same change.
+4. **Honor iron rule #1** — sync living docs in the same change.
+5. **Honor iron rule #2** — decisions/rejections/todos from the discussion go into `BACKLOG.md` or `DECISION_LOG.md` before the turn ends, even when no code changed.

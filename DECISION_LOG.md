@@ -1,0 +1,62 @@
+# 🗂️ VoiceSpark — 决策与变更日志
+
+**这是"回头查"用的流水账，不是每次开工都要读的文档。** 按时间**倒序**追加，只增不改
+（写错了就补一条订正，不要retro-edit历史条目 —— 这是 log，不是现状描述）。
+
+## 什么进这里，什么不进
+
+| 情况 | 记到哪 |
+|------|--------|
+| **有代码改动** | `VERSION_HISTORY.md`（按 vNNN）—— 这里最多留一行指针 |
+| **无代码改动、但影响项目** | **本文件** ← 决策、**否决的方向**、设计调整、运维/配置/密钥变更、外部依赖变化 |
+| **还没做的事** | `BACKLOG.md` |
+| **测试覆盖缺口** | `tests/EVAL_CHECKLIST.md` |
+
+判断标准一句话：**"三个月后有人问『当时为什么这么定』，这条能答上吗？"** 能，就记。
+
+**否决的方向一定要记**（含否掉的理由）—— 这是本文件价值最高的部分，防止同一个问题被反复重新讨论。
+
+**条目类型**：`决策` · `否决` · `运维` · `方向` · `发现`（查明的重要事实）
+
+---
+
+## 2026-07-28
+
+**`发现` 活文档漂移：FEATURES.md 的转录技术描述长期是错的**
+FEATURES.md 写着转录用 "Google Cloud Speech-to-Text API"，实际是两条各自带降级链的路径
+（麦克风 `whisper-1`→AI Builder→Google；系统音 `gpt-4o-transcribe-diarize`→Google→Deepgram）。
+按铁律"代码与文档不一致时以代码为准"已修正。→ 代码变更见 `VERSION_HISTORY.md` v122 补录。
+
+**`发现` 7-24 的两笔改动（v122/v129）上线时没同步活文档**
+违反了 CLAUDE.md 铁律 #1。本次补齐 VERSION_HISTORY / FEATURES / CLAUDE / EVAL_CHECKLIST。
+**这次漏记直接催生了铁律 #2**（见下条）—— 说明只靠"记得写"不可靠，必须挂在 handover 强制执行点上。
+
+**`方向` 新增铁律 #2：讨论产生的决策/待办当场落文档**
+起因：本次会话产出三条有后续动作的结论（key 限权、预算上限、模型 A/B），但**都没有代码改动**，
+铁律 #1 根本不触发 → 它们会随会话消失。新建 `BACKLOG.md`（还没做的）+ `DECISION_LOG.md`（本文件，
+已发生的），写进 CLAUDE.md，并在 `/handover` skill 加强制步骤。
+**同时定下防腐规则**：handover 必须清理 BACKLOG 中已完成/作废的条目 —— 只增不删的待办文档会烂成
+`INDIE_DEVELOPER_ROADMAP.md` 那样没人看的快照。
+
+**`否决` 无法给"转录"单独开 OpenAI key 权限 —— 粒度不存在**
+原计划是只放行 `/v1/audio/transcriptions`、其余全 None。实际查明：OpenAI 受限 key 的
+Model capabilities 展开只有 7 项（`/v1/responses`、`/v1/audio/speech`(TTS)、`/v1/realtime`、
+`/v1/chat/completions`、`/v1/embeddings`、`/v1/images`、`/v1/moderations`），**`/v1/audio/transcriptions`
+不在其中**，它归父级 `model.request` scope 管。
+→ **改为**：父级 Model capabilities 设 Request，父级以外全部 None。能挡住 Fine-tuning/Videos/Batch/
+Files/Vector Stores（泄露后最烧钱的入口），**挡不住 chat/images**（父级一开就全通）。
+→ 因此追加"给 Project 设预算上限"作为更强防线，见 `BACKLOG.md`。
+
+**`决策` 限权要新建 key，不在生产 key 上原地改**
+scope 给错不会报错停机，而是 OpenAI 路径静默失败、降级到 AI Builder/Google —— 表现为"还能用但
+质量悄悄变差"，很难察觉。故：新建 → 脚本验证两条路径 → 换 Railway 变量 → 删旧 key。
+
+**`决策` 不盲换麦克风路径的转录模型，先做 A/B**
+`gpt-4o-mini-transcribe-2025-12-15` 宣称幻觉比 Whisper v2 少 ~90%、且"中文（普通话）尤其强"，
+正好命中本项目选 whisper-1 的原因和一直在打的补丁。**但**该系列不支持 `verbose_json`，换了会
+**静默废掉** v122 的段落级过滤。当初选 whisper-1 是基于真实中文测试，厂商自述不足以直接推翻。
+→ 先用真实录音 A/B，系统音 diarize 路径不动。详见 `BACKLOG.md`。
+
+**`发现` 系统音 diarize 调用参数正确，无需改动**
+核查 `api_fallback.py:269` 已正确设置 `chunking_strategy: 'auto'`（文档要求音频 >30s 时必需）。
+曾怀疑是缺陷，实测不是。记此条以免下次重查。
