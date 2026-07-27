@@ -2,11 +2,12 @@
 
 **Document Purpose:** 记录从项目启动到现在的所有主要功能、版本更新和关键决策。使用实际的代码版本号（v52-v96+），每个版本号对应script.js或style.css的实际版本。
 
-**Last Updated:** 2026-07-21  
+**Last Updated:** 2026-07-28  
 **Current Version:** 
-- Frontend feature version: v121 (代码注释/UI 中的 vNNN)
-- Cache-bust: `script.js?v=128`, `style.css?v=128`
-- Backend: server2.py — v120 安全加固（死端点清理 + 转录限流 + 关闭 API 文档）
+- Frontend feature version: v122 (代码注释/UI 中的 vNNN)
+- Cache-bust: `script.js?v=129`, `style.css?v=129`
+- Backend: server2.py — v120 安全加固（死端点清理 + 转录限流 + 关闭 API 文档）；
+  api_fallback.py — v122 幻觉过滤（通用重复检测 + 开头段落阈值 + AI Builder 补齐段落过滤）
 
 ---
 
@@ -783,6 +784,63 @@ window.focus: Document definitively has focus ✓
 **Version Numbers:**
 - script.js: v120 → v121（`index.html` 中 `script.js?v=128`、`style.css?v=128`）
 - 后端：api_fallback.py 修复 AI Builder 配额路径 NameError（无前端改动，无需 cache-bust）
+
+---
+
+### Phase 11: 幻觉过滤加固 + 录音中麦克风失效提醒 (v122) - 2026-07-24
+
+#### v122 - 通用重复幻觉检测、开头段落过滤、AI Builder 补齐、mic 失效提醒
+**Date:** 2026-07-24（记入 VERSION_HISTORY：2026-07-28 补录）
+**Type:** 后端转录质量（`api_fallback.py`）+ 前端可感知性（`static/script.js`）
+
+**背景：** 两起真实用户报告，都是"明明说了话，转出来是幻觉"：
+1. 息屏/挂机约 10 小时后，录音转出 `"栏目 栏目 栏目"`。
+2. 录音从"我现在先把…"开始，实际转出 `"響鐘 響鐘 栏目 主席 我现在先把…"`——**开头**几个
+   不成句的碎词，后文完全正常。
+
+**1. 录音中麦克风失效提醒（`static/script.js`）：**
+- 根因：track 失效检测（`muted=true` 但 `readyState` 仍 `live`）此前**只在 `!isRecording`**
+  时触发（挂在 visibilitychange 上）。用户的录音会话从未停止，track 在挂机期间悄悄失效后
+  从未被检测 → 用户对着死轨道说话，实际录到静音。
+- 改动：`track.onmute` 时若 `isRecording`，弹页面内红色提示条 + 系统通知（`requireInteraction`，
+  切后台也能看到），提示停止并重新开始录音。`onunmute` / 新一段录音开始时重置标志位，
+  同一次失效只提醒一次、再次失效仍会提醒。
+- **范围限定**：只做提醒，**不做录音中途自动换流**（需在不中断 MediaRecorder 的前提下安全换
+  track，改动大得多）——留在 `tests/EVAL_CHECKLIST.md` 的 **M2**。
+
+**2. 通用重复幻觉检测（`api_fallback.py` `_HALLUCINATION_PHRASES`）：**
+- 根因：幻觉过滤此前是**硬编码具体短语黑名单**，`"栏目 栏目 栏目"` 不在其中 → 未拦截。
+- 新增正则 `^(\S{1,6})(?:[\s,，、]+\1){2,}[\s,，、。!！?？]*$`：整段输出只是同一个 1-6 字
+  短词、被分隔符隔开重复 3 次以上时判为幻觉。
+- **防误伤**：`^…$` 锚定整段 + 要求重复项之间**有分隔符**——真实中文口语的紧凑重复
+  （"对对对"、"好的好的好的"，字词间无分隔符）和夹在正常句子中的重复一律不命中
+  （吸取 v114 "单指标误删真实语音"的教训）。
+
+**3. 开头段落幻觉过滤 + 两条 API 路径统一（`api_fallback.py`）：**
+- 抽出共享函数 **`_filter_hallucinated_segments(segments, log_tag)`**，供 `_transcribe_openai`
+  与 `_transcribe_ai_builder` 复用（此前 OpenAI 路径的段落过滤逻辑是内联的）。
+- **位置感知阈值**：第 0 段且 `start < 3.0s` 的**开头段落**用更严格的**单指标**判据
+  （`compression_ratio>2.0` / `no_speech_prob>0.5` / `avg_logprob<-0.7`）——Whisper 公认倾向
+  在音频开头吐几个幻觉碎词后转入正常转录，这是与"整段都是幻觉"不同的形状，此前的整段锚定
+  重复检测和逐段严格阈值都覆盖不到"幻觉前缀 + 正常正文"。
+  非开头段落**维持 v114 不变**（`compression_ratio>2.4`，或 `no_speech_prob>0.8` **且**
+  `avg_logprob<-1.0` 才丢），避免误删长静音后的真实语音。
+- **`_transcribe_ai_builder` 从"只打日志"改为真正过滤**：它一直请求 `verbose_json`、算了
+  `no_speech_prob` 却从不据此丢段落——同一份响应，两条路径把关力度不一致。现已同标准。
+
+**⚠️ 已知未验证点：** 开头段落那三个阈值是基于 Whisper 已知行为模式的**保守推断，没有真实
+Railway confidence 数据验证**（代码注释中已标注）。过滤比例异常偏高（≥5 段且删掉一半以上）
+时会打 `⚠️` 日志留证据。**下一步应按真实 Railway 日志复核阈值**，并考虑给这个纯函数补
+`tests/backend` 单测（EVAL_CHECKLIST **N1**，目前仍 ⬜）。
+
+**验证：** 用真实案例 + 3 个边界场景手工验证（幻觉前缀被剥离 / 真实轻声开场不受影响 /
+同样置信度数值出现在非开头段落时不触发，证明位置感知生效 / 整段幻觉仍抛异常走 fallback）。
+`./venv/bin/pytest` 13/13 通过。**无新增自动化测试**。
+
+**Version Numbers:**
+- script.js: v121 → v122（`index.html` 中 `script.js?v=129`、`style.css?v=129`，已按 CACHE-BUST 铁律同步）
+- 注：这两笔改动的 commit message 分别写作 "（v129）""（v122）"——前者用的是 cache-bust 号、
+  后者是前端功能版本号。**以功能版本号 v122 为准**，cache-bust 是 129。
 
 ---
 

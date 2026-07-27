@@ -117,6 +117,32 @@ defined but never called; any single-API failure just falls through to the next 
 `gpt-4o-transcribe` for better Chinese accuracy on the mic path — don't "upgrade" it without checking
 (the system-audio path intentionally uses `gpt-4o-transcribe-diarize` for speaker diarization).
 
+### Hallucination filtering (v122/v129) — two independent layers
+
+Whisper invents text when fed silence/noise. Two separate defenses, both in `api_fallback.py`:
+
+1. **Text-level** — `_HALLUCINATION_PHRASES` (regex list, applied to the final transcript). Hardcoded
+   stock phrases (subscribe-to-my-channel boilerplate etc.) **plus** a generic repeat detector
+   (v129): `^(\S{1,6})(?:[\s,，、]+\1){2,}…$` catches "栏目 栏目 栏目"-shaped output. Anchored to the
+   whole string and requires separators between repeats, so natural compact Chinese repetition
+   ("对对对") is not hit. **Model-agnostic — works on any API's output.**
+2. **Segment-level** — `_filter_hallucinated_segments(segments, log_tag)` (v122), shared by
+   `_transcribe_openai` and `_transcribe_ai_builder` (AI Builder used to only *log* `no_speech_prob`
+   and never drop anything; it now filters to the same standard). Drops per-segment on
+   `no_speech_prob` / `compression_ratio` / `avg_logprob`. **Position-aware**: segment 0 starting
+   <3.0s uses stricter *single-metric* thresholds (Whisper tends to emit a few junk fragments at the
+   very start then transcribe normally); later segments keep v114's *two-metrics-must-both-hit* rule
+   so real speech after a long silence isn't deleted. Raises if *every* segment is filtered → falls
+   through to the next API.
+
+⚠️ Two things to know before touching this:
+- The leading-segment thresholds are **unvalidated guesses** (no real Railway confidence data yet) —
+  see the `⚠️` over-filtering log it emits when >half of ≥5 segments are dropped.
+- **Layer 2 only works with `response_format=verbose_json`, which only `whisper-1` supports.** The
+  `gpt-4o-*-transcribe` family returns `json`/`text` only, so swapping the mic model would silently
+  disable segment filtering (layer 1 would still work). It has `logprobs` instead. Also **untested**
+  — EVAL_CHECKLIST **N1** is still ⬜.
+
 ## Running locally
 
 ```bash

@@ -169,12 +169,23 @@ Watching a 1-hour Coursera lecture:
 
 ### **AI-Powered Speech-to-Text**
 
-**Technology**: Google Cloud Speech-to-Text API
+**Technology**: multiple speech-to-text APIs with automatic fallback — if one fails or hits its
+quota, the next one takes over transparently:
+
+- **Microphone capture**: OpenAI Whisper (`whisper-1`) → AI Builder Space → Google Cloud STT.
+  (`whisper-1` is deliberately chosen over newer models for better Chinese accuracy.)
+- **System audio capture**: OpenAI `gpt-4o-transcribe-diarize` (speaker separation) → Google Cloud
+  STT → Deepgram.
 
 **Accuracy**: 
 - English: 90-95%
 - Clear audio: Even higher
 - Background noise: May reduce accuracy
+
+**Hallucination filtering**: Speech models tend to invent text when fed silence or noise (e.g.
+repeating a stray word over and over, or a few nonsense fragments at the very start of a clip).
+Output is screened for these patterns and the junk is dropped rather than shown to you — if a whole
+clip is judged non-speech, the app falls back to the next API instead of returning gibberish.
 
 **Speed**: 
 - 30 seconds audio → ~15 seconds transcription
@@ -239,6 +250,22 @@ Turn on auto-copy toggle
 ```
 
 **Privacy**: Notification permission is optional. The app works fine without it.
+
+---
+
+### **Microphone Failure Alert** (v122)
+
+**Problem solved**: After the computer sleeps, or the tab sits in the background for hours, the
+microphone track can go silent while the recording session is still nominally running. You keep
+talking, but nothing is actually being captured — you only find out when the transcript comes back
+empty or as gibberish.
+
+**Solution**: If the mic track goes silent *while recording*, the app raises a red in-page warning
+bar **and** a browser notification (so you see it even when you're in another tab), telling you to
+stop and restart the recording.
+
+**Note**: This is an alert only — the app does not currently swap in a fresh microphone stream
+mid-recording. You have to stop and start again.
 
 ---
 
