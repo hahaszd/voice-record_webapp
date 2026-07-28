@@ -49,6 +49,26 @@
 
 - **`.env` 存在，但代码根本不加载它**：没有 `load_dotenv()`，`requirements.txt` 无 `python-dotenv`。`.env` 唯一被读的地方是 `server2.py:284` 的 `get_ai_builder_token()`，且**只认 `AI_BUILDER_TOKEN=` 一个前缀**。→ `OPENAI_API_KEY` 写进 `.env` **对应用无效**，本地要跑付费 API 得 `export`（或 `set -a && . ./.env`）。
 
+### 📋 OpenAI 批量转录模型完整清单（`/v1/audio/transcriptions`，2026-07-28 查证）
+
+**截至 2026-07-28，OpenAI 没有任何 2026-02 之后发布的批量转录新模型。全部选项如下，已穷尽：**
+
+| 模型 | 能否走 `/v1/audio/transcriptions` | 状态 |
+|---|---|---|
+| `whisper-1` | ✅ | **现役麦克风主力** |
+| `gpt-4o-transcribe` | ✅ | ❌ owner 2026-02 实测否决 |
+| `gpt-4o-mini-transcribe`（含 `-2025-12-15`） | ✅ | ❌ owner 2026-02 实测否决 |
+| `gpt-4o-transcribe-diarize` | ✅ | 已用于**系统音**路径 |
+| `gpt-realtime-whisper` | **❌ 404 `Invalid URL`** | 仅 realtime/streaming 端点；且 2024-09 发布，比 2 月还早 |
+
+实测记录：`gpt-realtime-whisper` 对 `/v1/audio/transcriptions` 返回
+`404 {'message': 'Invalid URL (POST /v1/audio/transcriptions)'}`；探测
+`gpt-4o-transcribe-2026`/`gpt-5-transcribe`/`whisper-2` 均为 `model does not exist`。
+（`GET /v1/models` 因受限 key 缺 `api.model.read` 返回 403 —— 顺带证明限权确实生效。）
+
+**⏭️ 什么时候值得重新查**：OpenAI 发布**全新**音频/转录模型时（关注 developers.openai.com 的
+audio 相关公告）。**在那之前，"有没有更好的 OpenAI 转录 API" 这个问题已有答案：没有，别再查。**
+
 ### 📌 麦克风路径模型：结论已定，不要再动
 
 **继续用 `whisper-1`。** OpenAI 现有的转录模型 owner 已于 2026-02 在真实使用中逐个试过，
