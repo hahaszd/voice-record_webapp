@@ -20,7 +20,12 @@ Work the steps in order. If a step surfaces a problem, **stop and fix or flag it
 For everything this session changed, update the matching **living doc** in this same wrap-up (never "later"):
 - Living docs: `README.md`, `FEATURES.md`, `ARCHITECTURE.md`, `CLAUDE.md`. If a code change altered behavior / endpoints / env vars / deploy flow described there, fix that section.
 - `VERSION_HISTORY.md`: add or extend the `vNNN` entry for code changes and bump the "Current Version" header. (It's an append-only log but is actively appended by convention.)
-- **Cache-bust:** if `static/script.js` or `static/style.css` changed, bump BOTH `?v=NNN` in `static/index.html`.
+- **Cache-bust: nothing to do.** Since v123 it's automatic (content hash injected by `server2.py`'s
+  `_inject_asset_versions()`); source HTML uses `?v=auto`. Never hand-edit a `?v=` value back to a
+  number. If `tests/smoke/asset-versioning.spec.ts` fails, the injection broke — fix it, don't paper
+  over it (returning visitors would get pinned to a stale cache key).
+- **Version bump:** feature version lives ONLY in `APP_VERSION` (`server2.py`). Bump it there for a
+  meaningful change; leave historical `vNNN` code comments alone.
 - Don't retro-edit the ~160 frozen historical `.md` files.
 
 ## 2b. Sweep the session into BACKLOG / DECISION_LOG (iron rule #2)

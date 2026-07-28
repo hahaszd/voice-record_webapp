@@ -211,8 +211,24 @@ Not wired into the Playwright precommit — run manually (or add to CI) when tou
   - **Living docs (source-of-truth-adjacent, keep in sync with code):** `README.md`, `FEATURES.md`, `ARCHITECTURE.md`, `CLAUDE.md`, `BACKLOG.md`. These describe *current* state — behavior, structure, and what's still outstanding. **Iron rule #1** governs the first four; **iron rule #2** governs `BACKLOG.md`.
   - **Append-only logs (write, never retro-edit; read only when looking something up):** `VERSION_HISTORY.md` (code changes, by `vNNN`) and `DECISION_LOG.md` (everything with no code change: decisions, **rejected directions**, ops/key/config changes). You are *not* expected to read these at session start — they exist so "why did we decide that in July?" is answerable.
   - **Frozen historical logs (reference only, do NOT retro-edit):** everything else (`AUTO_COPY_*.md`, `V1xx_*.md`, `TEST_REPORT_*.md`, `DURATION_BUTTON_WARNING.md`, etc.) — snapshots of a past change. When code and a frozen log disagree, the **code wins** and the log stays as-is (it's history).
-- Feature "versions" are tracked as `vNNN` tags in code comments/UI (currently **v122** in `script.js`; cache-bust is a *separate* number, currently `?v=129` — don't conflate them). Keep them consistent when touching related logic.
-- **CACHE-BUST when editing `static/style.css` or `static/script.js`:** `index.html` links them with a version query (`style.css?v=NNN`, `script.js?v=NNN`). Returning visitors (and the CDN) cache by that exact URL, so if you don't bump the number, your CSS/JS change won't reach anyone who already loaded the site — it silently serves the stale file. ALWAYS bump both `?v=` numbers in `index.html` in the same change. (This bit us once: language selector shipped but rendered as unstyled native buttons in prod because `?v=` wasn't bumped.)
+- **Versioning — there is exactly ONE version number now (v123 onward).**
+  - `APP_VERSION` in `server2.py` is the **single source of truth** for the feature version
+    (currently `"v123"`). Change it there and nowhere else. `vNNN` tags in code comments/UI mark
+    *when and why* a piece of logic was added — they're archaeology pointers into
+    `VERSION_HISTORY.md`. **Never renumber historical `vNNN` comments** (~205 of them); they'd
+    stop matching the history.
+  - **Cache-bust is automatic — do NOT maintain it by hand.** `server2.py`'s
+    `_inject_asset_versions()` rewrites every `/static/*.css|js?v=…` in the served HTML to a
+    10-char content hash of that file. Source HTML keeps `?v=auto` as a placeholder. Change a
+    CSS/JS file and the hash changes by itself.
+    - Guarded by `tests/smoke/asset-versioning.spec.ts` — a silent failure here is nasty
+      (page renders fine, but returning visitors get pinned to the `?v=auto` cache key forever).
+    - **Historical note on why this exists:** there used to be a manual "always bump both `?v=`
+      numbers" rule, and it leaked twice — the language selector shipped as unstyled native
+      buttons in prod, and `about.html`/`faq.html` sat on `style.css?v=105` from 2026-02 while
+      `style.css` changed in July, so returning visitors were served a five-month-old stylesheet.
+      It also collided numerically with the feature version (cache-bust 129 vs feature v122),
+      which is how commit messages ended up mixing the two.
 - Code comments and commit messages are frequently in **Chinese**; match the surrounding language when editing.
 - Recent work focus (git log): client-side **VAD** to trim leading/trailing silence, 16kHz mono downsampling to stay under the 25MB upload limit, Whisper hallucination filtering, transcription history + re-transcribe with API selection.
 - No linter/formatter config committed. Match existing style.
