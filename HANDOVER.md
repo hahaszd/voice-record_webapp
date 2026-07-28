@@ -20,21 +20,15 @@
 
 ## 2. 下一步
 
-**① GSC 收尾（唯一有时限的事，owner 操作）。** v125 已上线，重复源已消除。需要：
-- 那条 issue → **VALIDATE FIX**（之前那次是针对 v124 的，可重新点）
-- 首页 URL Inspection → **REQUEST INDEXING**
-- 重爬后**再看一眼 "Google-selected canonical"** —— 变成 `https://voicespark.app/`
-  才算彻底解决。（当前实测值曾是 `https://web-production-37d30.up.railway.app/`。）
-- Google 重爬通常**数天到两周**，完成会发邮件。
+**全部待办已在 `BACKLOG.md`，本次已按剪枝规则清理过**（做完的移走、已否决的归 DECISION_LOG）。
+按优先级：
 
-**② `BACKLOG.md` 里两条，都不紧急：**
-- `'you'` 静音幻觉进文本层，省一次 fallback API 调用。⚠️ `'you'` 是极常见英文词，
-  **必须锚定整段**（`^you$`）才能加进 `_HALLUCINATION_PHRASES`，否则误删真实语音（v114 教训）。
-  `tests/backend/test_hallucination_filter.py` 已有误伤防护用例可直接扩。
-- OpenAI Project 预算上限——纯控制台操作，**owner 才能做**。受限 key 挡不住 chat/images。
-
-**③ `tests/EVAL_CHECKLIST.md` 的 N2**：全幻觉时最终要给用户看到"未识别到文字"。
-N1 只验到"过滤器抛异常触发降级"这一层，**N2 是端到端行为，没被覆盖**。
+1. **🔴 GSC 收尾** —— 唯一有时限的事，**owner 操作 + 需等待数天到两周**。
+   VALIDATE FIX → REQUEST INDEXING → 重爬后复查 "Google-selected canonical"，
+   变成 `https://voicespark.app/` 才算彻底解决。
+2. **🔵 OpenAI Project 预算上限** —— 控制台操作，**owner 才能做**。
+3. **🔵 `'you'` 静音幻觉提前到文本层** —— 唯一的代码活，不紧急。
+4. **🧪 N2 / M2** —— 见 `tests/EVAL_CHECKLIST.md`。
 
 ## 3. 注意事项（这次踩到的坑的"形状"）
 

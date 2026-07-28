@@ -45,7 +45,11 @@
 
 - **全项目只调一个 endpoint**：`POST /v1/audio/transcriptions`，读取点只有 `api_fallback.py:245`（diarize）和 `:831`（whisper-1），均为 `os.environ.get`。**无硬编码、无散落读取、git 全历史无泄露**（`OPENAI_API_SETUP_GUIDE.md:99` 那个 `sk-proj-abcdef...` 是占位符）。
 - **受限 key 的粒度到此为止**：`/v1/audio/transcriptions` **没有独立开关**，归父级 `model.request`（= Model capabilities 那一行）管。**父级设 Request 后 7 个子项会自动级联成 Request/Write，无法单独关**（2026-07-28 owner 实测）。→ 能挡 Fine-tuning/Videos/Batch/Files/Vector Stores，**挡不住** chat/embeddings/images。
-- **当前受限 key 已验证可用**：`whisper-1`、`gpt-4o-transcribe-diarize` 均 HTTP 200。
+- **受限 key 收紧一事已结案（2026-07-28）**：owner 在**生产 key 上原地**改为父级
+  Model capabilities = Request、其余全 None；随后实测 `whisper-1` 与 `gpt-4o-transcribe-diarize`
+  **均 HTTP 200**，生产未受影响。`GET /v1/models` 返回 403（缺 `api.model.read`），反证限权生效。
+  ⚠️ 下次再动 key 仍应走「新建 → 验证 → 切换 Railway 变量 → 删旧 key」，别原地改 ——
+  scope 给错不会报错停机，只会静默降级到 AI Builder/Google。
 
 ### 测试工具
 
