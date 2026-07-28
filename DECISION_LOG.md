@@ -57,6 +57,10 @@
 
 ### SEO / 规范 URL
 
+- **非规范域名一律 301 到 `voicespark.app`**（v125，`canonical_host_middleware`）。
+  Railway 会额外分配 `*.up.railway.app` 域名，内容相同 → Google 曾选它当规范、**导致首页不被索引**。
+  ⚠️ `IS_PRODUCTION` 是 **fail-open**（与 `SHOW_DOCS` 的 fail-closed 方向相反，故意的）：
+  本地不设该变量，写成 fail-closed 会把本地请求全部跳到线上。只跳 GET/HEAD，localhost 有白名单兜底。
 - **`/static/*.html` 一律 301 到规范 URL**（v124）。因为 `static/` 整目录挂载会给每个页面造出
   内容相同的孪生 URL，Google 曾据此**不索引首页**。**跳转路由必须注册在
   `app.mount("/static", ...)` 之前**，否则被 StaticFiles 抢先、静默失效。
@@ -108,6 +112,32 @@ whisper-1 的两个已知缺点（繁體输出、静音幻觉）**改用后处�
 `test_model_ab.py` 第 0 步实测：`whisper-1` HTTP 200、`gpt-4o-transcribe-diarize` HTTP 200。
 父级 Model capabilities = Request 足够覆盖 `/v1/audio/transcriptions`。原地改生产 key 这次没出事，
 但下次仍应走"新建→验证→切换"。
+
+**`发现` ⚠️ 推断被推翻：Google 选的规范是 **Railway 自动域名**，不是 /static 孪生页（v125 修复）**
+GSC URL Inspection（2026-07-28，首页）实测：
+```
+User-declared canonical  : https://voicespark.app/
+Google-selected canonical: https://web-production-37d30.up.railway.app/   ← Google 选了它
+Page indexing            : Page is not indexed: Duplicate, Google chose different canonical
+Referring page           : https://web-production-37d30.up.railway.app/ 等外部链接
+```
+**当天早些时候"Google 选的是 `/static/index.html`"的推断是错的**，v124 因此**没有修好这个问题**
+（v124 消灭 /static 重复页本身是对的、留着，但不是首页掉索引的成因）。
+**根因**：Railway 除自定义域名外还分配 `*.up.railway.app` 域名，两个都对外可访问、内容完全相同；
+且有外部站点直接链到 Railway 域名，加重其权重。实测该域名返回的 HTML **已经**声明 canonical
+指向 voicespark.app，Google 依然选了它 —— **再次印证：canonical 只是建议，301 才是指令**。
+**修法（v125）**：`canonical_host_middleware` —— 生产环境下非规范 Host 的 GET/HEAD 一律 301 到
+`voicespark.app`（保留路径与 query）。
+**⚠️ 三个设计要点（都已被变异测试守住）**：
+  1. **`IS_PRODUCTION` 必须 fail-OPEN，与 `SHOW_DOCS` 的 fail-closed 方向故意相反。**
+     本地不加载 `.env`、该变量未设；若照抄 SHOW_DOCS 的 `default='production'`，
+     **本地每个请求都会被 301 到线上**，开发直接废掉。
+  2. **只跳 GET/HEAD** —— 301 会让部分客户端把 POST 改成 GET。
+  3. **localhost 白名单兜底** —— 即使有人在本地误设 `DEPLOY_ENVIRONMENT=production` 也不跳。
+  另：`railway.json` 未配 `healthcheckPath`（已确认），Railway 不做 HTTP 健康检查，重定向安全；
+  dev 环境 `web-dev-9821.up.railway.app` 因非 production 不受影响。
+**教训**：这正是"未确认的推断"该被标注出来的价值 —— 当天把它记成"推断不是实测"并要求 owner
+核实，才在 v124 之后立刻发现真正的成因。**别把推断写成结论。**
 
 **`运维` GSC 已提交验证：首页索引问题（2026-07-28 由 owner 点击 VALIDATE FIX）**
 v124 的 301 上线并验证后，owner 在 GSC 的「Duplicate, Google chose different canonical

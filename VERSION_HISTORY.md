@@ -4,7 +4,7 @@
 
 **Last Updated:** 2026-07-28  
 **Current Version:** 
-- **功能版本号：`APP_VERSION = "v124"`（`server2.py`）—— 唯一权威来源，只改这一处**
+- **功能版本号：`APP_VERSION = "v125"`（`server2.py`）—— 唯一权威来源，只改这一处**
 - **Cache-bust：已自动化（内容哈希），不再是人工维护的编号**（v123 起）
 - Backend: server2.py — v120 安全加固（死端点清理 + 转录限流 + 关闭 API 文档）；
   api_fallback.py — v122 幻觉过滤（通用重复检测 + 开头段落阈值 + AI Builder 补齐段落过滤）
@@ -942,6 +942,63 @@ robots.txt 不得 Disallow /static/。
 
 **验证：** 本地三个 .html 均 301 到正确目标；css/js/manifest 仍 200；规范 URL 仍 200。
 后端 pytest 31/31、Playwright 54/54 全绿。
+
+---
+
+### Phase 14: 首页掉索引的真正成因 —— Railway 域名 301 (v125) - 2026-07-28
+
+#### v125 - 非规范域名一律 301 到 voicespark.app
+**Date:** 2026-07-28
+**Type:** 后端（`server2.py` 中间件）+ 后端测试 — SEO 修复
+
+**v124 没修对。** 当天早些时候把首页掉索引归因于 `/static/index.html` 孪生页，那是**推断**。
+owner 在 GSC 用 URL Inspection 核实后，实测值把推断推翻了：
+
+```
+User-declared canonical  : https://voicespark.app/
+Google-selected canonical: https://web-production-37d30.up.railway.app/   ← Google 选了它
+Page indexing            : Page is not indexed: Duplicate, Google chose different canonical
+Referring page           : https://web-production-37d30.up.railway.app/ 等外部链接
+```
+
+**真正的根因**：Railway 除自定义域名外还会给服务分配一个 `*.up.railway.app` 域名，
+**两个都对外可访问、内容完全相同**；报告里 "Referring page" 还显示有外部站点直接链到
+Railway 域名，进一步加重了它的权重。实测该域名返回的 HTML **已经**声明 canonical 指向
+voicespark.app，Google 依然选了它 —— **再次印证 canonical 只是建议，301 才是指令**。
+
+（v124 的 `/static/*.html` 301 本身是对的、留着——它确实消灭了一批重复 URL，只是不是这个
+问题的成因。）
+
+**修法：** 新增 `canonical_host_middleware` —— 生产环境下，非规范 Host 的 GET/HEAD 请求
+一律 301 到 `https://voicespark.app` + 原路径 + 原 query。
+
+**⚠️ 三个设计要点（全部被变异测试守住）：**
+1. **`IS_PRODUCTION` 必须 fail-OPEN，与同文件里 `SHOW_DOCS` 的 fail-closed 方向故意相反。**
+   `SHOW_DOCS` 是安全开关，变量缺失要落在"关文档"一侧；而本中间件若也默认成 production，
+   **本地每个请求都会被 301 到线上**（代码不加载 `.env`，本地该变量是没设的），开发直接废掉。
+   所以要求**显式**等于 `'production'`。
+2. **只跳 GET/HEAD** —— 301 会让部分客户端把 POST 改写成 GET，别动其它方法。
+3. **localhost 白名单兜底** —— 即使有人在本地误设 `DEPLOY_ENVIRONMENT=production` 也不跳。
+
+已确认 `railway.json` 未配 `healthcheckPath`，Railway 不做 HTTP 健康检查，重定向不会让部署
+判为不健康；dev 环境 `web-dev-9821.up.railway.app` 因非 production 不受影响。
+
+**`tests/backend/test_canonical_host.py`（新增 10 条）：** 直接调中间件、不起服务不打网络。
+覆盖生产下 301 + 保留路径/query、规范域名与带端口不跳、localhost 一律不跳、只跳 GET/HEAD、
+任意非规范域名都跳；以及非生产环境（变量未设 / dev）一律不跳，并显式断言
+`IS_PRODUCTION` 与 `SHOW_DOCS` 的默认方向相反是有意为之。
+变异测试 4 项全部变红：抄成 fail-closed 默认、去掉 GET/HEAD 限制、去掉 localhost 兜底、丢掉 query。
+
+**教训（已写入 DECISION_LOG）：** 当天把"Google 选的是 /static/index.html"明确标注为
+**推断而非实测**、并要求 owner 去核实，才让真正的成因在 v124 之后立刻暴露。
+**别把推断写成结论。**
+
+**后续（owner 操作）：** 部署后重新 VALIDATE FIX，并对首页 Request Indexing。
+
+**验证：** 本地双环境实测——未设变量时 localhost 与伪造外部 Host 均 200（不跳）；
+`DEPLOY_ENVIRONMENT=production` 时 Railway Host → 301 到 voicespark.app（路径+query 保留）、
+localhost 仍 200、规范域名仍 200、POST 返回 422 而非 301。
+后端 pytest 41/41、Playwright 54/54 全绿。
 
 ---
 
