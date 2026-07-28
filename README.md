@@ -250,6 +250,7 @@ voice-record_webapp/
 ├── README.md                   # This file
 ├── FEATURES.md                 # Detailed features
 ├── ARCHITECTURE.md             # Architecture & deploy flow
+├── HANDOVER.md                 # Last session's baton (if present) — READ FIRST, then delete/rewrite
 ├── BACKLOG.md                  # What's NOT done yet: todos, open decisions (living — keep pruned)
 ├── DECISION_LOG.md             # Decisions, rejected directions, ops/key changes (append-only)
 ├── VERSION_HISTORY.md          # Code changelog by vNNN (append-only)
