@@ -207,9 +207,14 @@ Not wired into the Playwright precommit — run manually (or add to CI) when tou
 
 ## Conventions & gotchas
 
+- **📌 `HANDOVER.md` (repo root) is READ-FIRST when it exists.** It's the previous session's baton:
+  where things stand, the next task, what to watch out for, what's waiting on the owner. **Read it,
+  follow its pointers, then delete or rewrite it** — never leave a stale baton beside new work, it
+  reads authoritative long after it stopped being true. It never duplicates `BACKLOG.md`; it points at it.
 - **~168 Markdown docs at repo root** split into three kinds:
   - **Living docs (source-of-truth-adjacent, keep in sync with code):** `README.md`, `FEATURES.md`, `ARCHITECTURE.md`, `CLAUDE.md`, `BACKLOG.md`. These describe *current* state — behavior, structure, and what's still outstanding. **Iron rule #1** governs the first four; **iron rule #2** governs `BACKLOG.md`.
-  - **Append-only logs (write, never retro-edit; read only when looking something up):** `VERSION_HISTORY.md` (code changes, by `vNNN`) and `DECISION_LOG.md` (everything with no code change: decisions, **rejected directions**, ops/key/config changes). You are *not* expected to read these at session start — they exist so "why did we decide that in July?" is answerable.
+  - **Append-only logs (write, never retro-edit; read only when looking something up):** `VERSION_HISTORY.md` (code changes, by `vNNN`) and `DECISION_LOG.md` (everything with no code change: decisions, **rejected directions**, ops/key/config changes). You are *not* expected to read these front-to-back at session start — they exist so "why did we decide that in July?" is answerable. **Exception: `DECISION_LOG.md`'s "✅ 已验证结论速查" section is current state and IS worth checking before re-investigating anything (iron rule #2b).**
+  - **Ephemeral baton (`HANDOVER.md`):** written at the end of a session, consumed and deleted at the start of the next. Not maintained, not history — see the read-first note above.
   - **Frozen historical logs (reference only, do NOT retro-edit):** everything else (`AUTO_COPY_*.md`, `V1xx_*.md`, `TEST_REPORT_*.md`, `DURATION_BUTTON_WARNING.md`, etc.) — snapshots of a past change. When code and a frozen log disagree, the **code wins** and the log stays as-is (it's history).
 - **Versioning — there is exactly ONE version number now (v123 onward).**
   - `APP_VERSION` in `server2.py` is the **single source of truth** for the feature version
