@@ -20,12 +20,66 @@
 
 ---
 
+# ✅ 已验证结论速查
+
+**动手查证或提问之前，先读这一节。** 下面每条都已经实测/查证过，**不要重新验证、不要重新问 owner**。
+时间久了要复核可以，但要说明为什么怀疑它过时了，别当没查过一样从头再来。
+
+（这一节是**稳定的**，随验证结果更新；下面按日期的流水账才是不可改的历史。）
+
+### 转录模型选型
+
+| 模型 | 验证结论 | 时间 |
+|---|---|---|
+| `whisper-1` | **现役麦克风主力。** 中文内容准确，但**输出繁體**、纯静音下吐 `'you'` 幻觉。`temperature=0` **对静音幻觉无效**（带不带都吐）。是唯一支持 `verbose_json`/segments 的 —— v122 段落层过滤只对它生效 | 2026-07-28 |
+| `gpt-4o-transcribe`（全尺寸 2025-03 版） | **已否决，勿再提。** 2026-02-28 `6c11dff` 从它换回 whisper-1，原因是中文准确率。2026-07-28 补测证实：纯静音下吐 `'Delicious!'`，比 whisper-1 更糟 | 2026-02 + 2026-07-28 |
+| `gpt-4o-mini-transcribe-2025-12-15` | 候选。实测：**输出简体**、**纯静音输出为空**（三者中唯一干净）、延迟更低。**无 segments** → 段落层过滤失效。⚠️ 中文准确率**未被有效验证**（见下方"已知盲区"） | 2026-07-28 |
+| `gpt-4o-transcribe-diarize` | **系统音路径主力，不动它。** 无 2025-12 快照，且 speaker 分离只有它能做。已确认 `chunking_strategy='auto'` 设置正确（>30s 必需） | 2026-07-28 |
+
+- **繁简体**：whisper-1 输出繁體，**`language` 参数改不了**（`auto`/`zh` 实测同结果），且**代码里没有任何繁转简处理** → 繁體直接给到用户。
+- **A/B 必须按生产参数跑**（whisper-1 要带 `temperature=0`），否则结论失真。工具：`test_model_ab.py`。
+
+### OpenAI API Key
+
+- **全项目只调一个 endpoint**：`POST /v1/audio/transcriptions`，读取点只有 `api_fallback.py:245`（diarize）和 `:831`（whisper-1），均为 `os.environ.get`。**无硬编码、无散落读取、git 全历史无泄露**（`OPENAI_API_SETUP_GUIDE.md:99` 那个 `sk-proj-abcdef...` 是占位符）。
+- **受限 key 的粒度到此为止**：`/v1/audio/transcriptions` **没有独立开关**，归父级 `model.request`（= Model capabilities 那一行）管。**父级设 Request 后 7 个子项会自动级联成 Request/Write，无法单独关**（2026-07-28 owner 实测）。→ 能挡 Fine-tuning/Videos/Batch/Files/Vector Stores，**挡不住** chat/embeddings/images。
+- **当前受限 key 已验证可用**：`whisper-1`、`gpt-4o-transcribe-diarize` 均 HTTP 200。
+
+### 本地环境
+
+- **`.env` 存在，但代码根本不加载它**：没有 `load_dotenv()`，`requirements.txt` 无 `python-dotenv`。`.env` 唯一被读的地方是 `server2.py:284` 的 `get_ai_builder_token()`，且**只认 `AI_BUILDER_TOKEN=` 一个前缀**。→ `OPENAI_API_KEY` 写进 `.env` **对应用无效**，本地要跑付费 API 得 `export`（或 `set -a && . ./.env`）。
+
+### ⚠️ 已知盲区（这些**还没**被验证，别当成已知）
+
+- **`gpt-4o-mini-transcribe-2025-12-15` 的中文准确率**：现有测试用的是干净录音室样本，**三个模型全对**，根本区分不出来 —— 而这正是 2026-02 否决 `gpt-4o-transcribe` 的维度。真实嘈杂环境、中英混说、口音**均未测**。
+- **v122/v129 的幻觉过滤逻辑无任何自动化测试**（EVAL_CHECKLIST **N1**），开头段落阈值是未经真实数据验证的推断。
+
+---
+
 ## 2026-07-28
 
 **`发现` 受限 key 权限验证通过 —— 生产未受影响**
 `test_model_ab.py` 第 0 步实测：`whisper-1` HTTP 200、`gpt-4o-transcribe-diarize` HTTP 200。
 父级 Model capabilities = Request 足够覆盖 `/v1/audio/transcriptions`。原地改生产 key 这次没出事，
 但下次仍应走"新建→验证→切换"。
+
+**`发现` 澄清：2026-02 否掉的是 `gpt-4o-transcribe`，不是 `gpt-4o-mini-transcribe-2025-12-15`**
+owner 凭记忆提出"之前试过 2025-12-15 那个，不行"。查证 `6c11dff`(2026-02-28,
+"Switch OpenAI transcription **back** to whisper-1")：当时换掉的是 **`gpt-4o-transcribe`**
+（全尺寸、2025-03 版，配 `response_format=json` + `chunking_strategy=auto`），
+**与候选 `gpt-4o-mini-transcribe-2025-12-15` 是不同模型**。owner 记忆准确，但指向的是另一个模型。
+补测证实 owner 当时否得对：`gpt-4o-transcribe` 对纯静音吐出 `'Delicious!'`，比 whisper-1 更糟。
+
+**`发现` 订正上一条 A/B 的方法论缺陷：`temperature=0` 不影响静音幻觉**
+生产的 whisper-1 调用带 `temperature=0`（`api_fallback.py:849`，注释称"大幅减少幻觉"），
+首轮 A/B **没传这个参数**，结论可能失真。已按生产参数重测：**带不带 `temperature=0`，
+whisper-1 对纯静音都输出 `'you'`** —— 首轮结论不受影响，但此后 A/B 必须按生产参数跑。
+
+**`发现` 当前测试样本不足以判定中文准确率（重要局限）**
+三个模型（whisper-1 / mini-2025-12-15 / gpt-4o-transcribe）对同一句干净中文**全部转对**，
+包括 2 月被否掉的那个。**即本测试无法区分中文准确率**，而这正是 2026-02 决策所依据的维度 ——
+当时的判断来自真实使用，非合成样本。**结论：不能仅凭本测试决定换模型。**
+→ 定为：改动先只上 `dev`（`web-dev-9821`）真实使用若干天，再决定是否合 main。
 
 **`发现` 转录模型 A/B 实测结果（whisper-1 vs gpt-4o-mini-transcribe-2025-12-15）**
 四项实测，**候选在每一项上都不劣于或优于现役**：

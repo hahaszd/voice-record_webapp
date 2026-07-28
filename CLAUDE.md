@@ -242,6 +242,33 @@ turn it's decided — never "later".**
 - **Already happened, code changed** → `VERSION_HISTORY.md` (rule #1)
 - **Test/eval coverage gap** → `tests/EVAL_CHECKLIST.md` (don't duplicate it in `BACKLOG.md`)
 
+### 2a. Verified findings — write them down so nothing gets re-verified
+
+**Anything that was actually tested, measured, or looked up goes into
+`DECISION_LOG.md`'s "✅ 已验证结论速查" section** — including negative results ("we tried X, it was
+worse") and **verifications the owner performed themselves** outside the repo (a model tried in the
+playground, a dashboard setting confirmed, a support answer). Owner-side knowledge leaves *no trace in
+git*, so if you don't capture it when it's mentioned, it's gone — and the next session re-derives it or,
+worse, re-asks.
+
+Record the **conclusion + how it was verified + when**, so a future session can judge whether it's
+still trustworthy. Also record what was **not** covered — an unverified gap silently reads as verified.
+
+### 2b. Read before you re-derive
+
+**`DECISION_LOG.md`'s 速查 section is the first thing to check** before investigating a settled
+question, re-running an experiment, or asking the owner something. The owner's explicit standard:
+*"我不希望一个轮子要反复的验证和重新发明 ... 下次我再问你问题，就明确的不用再问了."*
+
+- Already in there → use it. Don't re-test, don't re-ask.
+- Suspect it's gone stale → fine to re-check, but **say why you doubt it** and update the entry.
+  Don't quietly start from zero.
+- Owner recalls something that contradicts the record → **check the record and git before accepting or
+  dismissing it**. A real case: the owner recalled rejecting `gpt-4o-mini-transcribe-2025-12-15`;
+  `6c11dff` showed what was actually rejected was `gpt-4o-transcribe`, a different model. Memory was
+  right about the event, wrong about the subject. Neither "owner must be right" nor "owner must be
+  wrong" — go look.
+
 Filter — don't log everything, or these rot into noise. The test is:
 **"three months from now, would someone ask 'why did we decide that?' and need this?"** If no, skip
 it. Transient chatter and half-formed ideas stay out.

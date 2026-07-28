@@ -35,7 +35,13 @@ session and ask: what did we decide, reject, or leave undone that will matter la
 - **⚠️ PRUNE `BACKLOG.md` — this is mandatory, not optional.** Move finished items out (code change →
   `VERSION_HISTORY.md`; no code change → `DECISION_LOG.md`) and delete dead ones with a one-line reason.
   A backlog that only grows gets mistaken for current state and rots (see `INDIE_DEVELOPER_ROADMAP.md`).
-- Never retro-edit past `DECISION_LOG.md` entries — it's a log. Wrong entry → append a correction.
+- **Verified findings** (anything tested/measured/looked up this session, **including what the owner
+  verified themselves outside the repo**, and including negative results) → update
+  `DECISION_LOG.md`'s **"✅ 已验证结论速查"** section, with conclusion + how verified + when. Also record
+  what was *not* covered — an unstated gap reads as verified. This is the section future sessions consult
+  *before* re-testing or re-asking, so it must stay accurate.
+- Never retro-edit past dated `DECISION_LOG.md` entries — that part is a log. Wrong entry → append a
+  correction. (The 速查 section at the top *is* meant to be updated — it's current state, not history.)
 
 ## 2c. Fix any stale living doc you noticed (iron rule #3)
 If anything you read this session contradicted reality — a claim about local setup, a version number, a
