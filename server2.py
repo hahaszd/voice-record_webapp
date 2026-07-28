@@ -84,6 +84,13 @@ def get_project_id():
 # （v120 首版用的是 == 'production'，结果生产上该变量没设，文档意外敞开。）
 SHOW_DOCS = os.getenv('DEPLOY_ENVIRONMENT', 'production').lower() == 'development'
 
+# ⚠️ 注意：下面这个和 SHOW_DOCS 的默认方向**故意相反**，不是笔误。
+# SHOW_DOCS 是安全开关，必须 fail-closed（缺失时按生产、关文档）。
+# IS_PRODUCTION 用于"非规范域名 301"（v125），必须 fail-**open**：本地开发时该变量是没设的
+# （代码不加载 .env，见 CLAUDE.md），若也默认成 production，本地每个请求都会被 301 到
+# voicespark.app，本地开发直接废掉。所以这里要求**显式**等于 'production' 才算生产。
+IS_PRODUCTION = os.getenv('DEPLOY_ENVIRONMENT', '').strip().lower() == 'production'
+
 app = FastAPI(
     title="VoiceSpark",
     description="语音转文字服务（OpenAI Whisper / AI Builder Space / Google STT / Deepgram）",
@@ -172,6 +179,47 @@ async def rate_limit_middleware(request: Request, call_next):
         hits.append(now)
 
     return await call_next(request)
+
+# ================================================================================
+# SEO（v125）：非规范域名 301 到 voicespark.app
+#
+# 问题：Railway 除了自定义域名，还会给服务分配一个 `*.up.railway.app` 域名，**两个都对外可访问、
+# 内容完全相同**。Google 因此把站点判为重复，并且选了 Railway 那个作规范：
+#   GSC URL Inspection（2026-07-28，首页）：
+#     User-declared canonical  : https://voicespark.app/
+#     Google-selected canonical: https://web-production-37d30.up.railway.app/   ← Google 选了它
+#     Page indexing            : Page is not indexed: Duplicate, Google chose different canonical
+# 报告里 "Referring page" 还显示有外部站点直接链到 Railway 域名，进一步加重了它的权重。
+#
+# 为什么 canonical 标签救不了：Railway 域名返回的 HTML **已经**声明 canonical 指向
+# voicespark.app（实测确认），Google 依然选了它——canonical 只是**建议**。**301 才是指令。**
+#
+# ⚠️ v124 修的 `/static/*.html` 重复**不是**这个问题的成因（当时是推断，被 URL Inspection
+# 推翻）。那个修复本身是对的、留着，但真正让首页不被索引的是本条。
+#
+# 设计要点：
+#   · **只在 production 生效** —— dev 环境 `web-dev-9821.up.railway.app` 是独立环境，不能跳。
+#   · **只跳 GET/HEAD** —— SEO 只关心这两个；避免把别人对 Railway 域名的 POST 调用改成 GET。
+#   · railway.json 未配 `healthcheckPath`（已确认），故 Railway 不做 HTTP 健康检查，重定向安全。
+#   · 注册在限流中间件**之后** —— Starlette 里后注册的更靠外、先执行，这样跳转不消耗限流额度。
+# ================================================================================
+CANONICAL_HOST = "voicespark.app"
+
+# 双保险：即使有人在本地误设 DEPLOY_ENVIRONMENT=production，也绝不把本地请求跳走
+_LOCAL_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1", "testserver"}
+
+
+@app.middleware("http")
+async def canonical_host_middleware(request: Request, call_next):
+    if IS_PRODUCTION and request.method in ("GET", "HEAD"):
+        host = (request.headers.get("host") or "").split(":")[0].lower()
+        if host and host != CANONICAL_HOST and host not in _LOCAL_HOSTS:
+            target = f"https://{CANONICAL_HOST}{request.url.path}"
+            if request.url.query:
+                target += f"?{request.url.query}"
+            return RedirectResponse(url=target, status_code=301)
+    return await call_next(request)
+
 
 # ================================================================================
 # SEO（v124）：/static/*.html 301 跳到规范 URL
@@ -264,7 +312,7 @@ async def sitemap():
 # 于是只剩 APP_VERSION 一个版本号，混淆的根源消失。
 # ⚠️ 历史注释里的 vNNN 一律保持原样，不要重编——那 200 多处是考古坐标，重编等于烧掉它们。
 # ================================================================================
-APP_VERSION = "v124"   # 唯一权威来源：要改版本号只改这里
+APP_VERSION = "v125"   # 唯一权威来源：要改版本号只改这里
 
 # --------------------------------------------------------------------------------
 # 静态资源自动 cache-bust：用文件内容哈希替换 HTML 里的 ?v=…
