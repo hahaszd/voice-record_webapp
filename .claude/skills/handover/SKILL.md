@@ -69,6 +69,11 @@ For changes to `static/script.js` / `server2.py` / `api_fallback.py`:
 - Poll the target URL until it returns the new build — the served HTML must carry **content-hash**
   `?v=` values (v123+; a `?v=auto` in the response means the deploy is stale or injection broke)
   and/or health 200: dev = `https://web-dev-9821.up.railway.app`, prod = `https://voicespark.app`.
+- **Run the smoke specs against the deployed site, not just localhost:**
+  `PLAYWRIGHT_BASE_URL=https://voicespark.app npx playwright test --project=smoke-chrome --reporter=line`
+  (⚠️ `baseURL` used to be hardcoded to localhost — setting the env var did nothing and a "verified
+  against prod" claim was actually hitting the local server. Only `smoke` specs are safe this way;
+  the `recording` project needs a fake mic.)
 - For frontend logic, cross-check the real behavior via the Chrome extension against the live site (same harness as the tests).
 - Doc-only / test-only changes need no deploy verification (no runtime effect).
 

@@ -47,6 +47,14 @@
 - **受限 key 的粒度到此为止**：`/v1/audio/transcriptions` **没有独立开关**，归父级 `model.request`（= Model capabilities 那一行）管。**父级设 Request 后 7 个子项会自动级联成 Request/Write，无法单独关**（2026-07-28 owner 实测）。→ 能挡 Fine-tuning/Videos/Batch/Files/Vector Stores，**挡不住** chat/embeddings/images。
 - **当前受限 key 已验证可用**：`whisper-1`、`gpt-4o-transcribe-diarize` 均 HTTP 200。
 
+### 测试工具
+
+- **`playwright.config.ts` 的 `baseURL` 可用 `PLAYWRIGHT_BASE_URL` 覆盖**（2026-07-28 起），
+  用来对已部署环境跑冒烟测试：
+  `PLAYWRIGHT_BASE_URL=https://voicespark.app npx playwright test --project=smoke-chrome`
+  ⚠️ **在此之前它是硬编码 localhost 的** —— 设了环境变量也没用，会让"已对生产验证"这个结论
+  变成假的（本次差点犯）。只有 `smoke` 项目适合这么跑，`recording` 需要 fake mic。
+
 ### SEO / 规范 URL
 
 - **`/static/*.html` 一律 301 到规范 URL**（v124）。因为 `static/` 整目录挂载会给每个页面造出
