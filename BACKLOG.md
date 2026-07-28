@@ -68,7 +68,20 @@
 
 ## 🎙️ 转录质量
 
-### 🔴 是否把麦克风路径换成 `gpt-4o-mini-transcribe-2025-12-15`（2026-07-28，待 owner 决策）
+### 🔴 是否把麦克风路径换成 `gpt-4o-mini-transcribe-2025-12-15`（2026-07-28，**A/B 已跑完，待 owner 拍板**）
+
+> **A/B 结果（2026-07-28，详见 `DECISION_LOG.md`）：候选四项全胜。**
+> 内容准确率持平；**候选输出简体、whisper-1 输出繁體**（且 `language` 参数改不了、代码无繁转简）；
+> **纯静音下 whisper-1 吐出 `'you'`、候选输出为空**；候选延迟更低（0.8–2.4s vs 2.0–11.1s）。
+> 代价仍是丢掉 v122 段落层过滤（候选无 segments）—— 但该过滤器本就主要在擦 whisper-1 的屁股。
+>
+> **建议：换。** 换之前补一步 —— 用**你自己真实场景的录音**（嘈杂环境、中英混说）再跑一遍
+> `./venv/bin/python test_model_ab.py 你的录音.webm`，样本量目前只有 2 个干净文件。
+> **系统音 diarize 路径不动。**
+>
+> 若决定换，改动点：`api_fallback.py:849` 的 `model` 与 `:846` 的选型注释、`:839` 附近的
+> `response_format`（`verbose_json` → `json`）、`_transcribe_openai` 里依赖 `segments` 的分支，
+> 以及 CLAUDE.md「幻觉过滤两层结构」一节（铁律 #1）。
 
 **为什么重要**：这个模型同时命中本项目的两个核心事实 ——
 - 当初选 `whisper-1` 就是因为**中文准确率**（`api_fallback.py:846`），而 OpenAI 明确称新快照
