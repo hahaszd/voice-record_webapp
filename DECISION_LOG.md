@@ -109,6 +109,15 @@ whisper-1 的两个已知缺点（繁體输出、静音幻觉）**改用后处�
 父级 Model capabilities = Request 足够覆盖 `/v1/audio/transcriptions`。原地改生产 key 这次没出事，
 但下次仍应走"新建→验证→切换"。
 
+**`运维` GSC 已提交验证：首页索引问题（2026-07-28 由 owner 点击 VALIDATE FIX）**
+v124 的 301 上线并验证后，owner 在 GSC 的「Duplicate, Google chose different canonical
+than user」上点了 **VALIDATE FIX**，状态 = *Validation Started, 28/07/2026*。
+Google 会重新抓取受影响 URL（本例只有 1 个：首页），**通常数天到两周**出结果，完成后发邮件。
+**⏭️ 下次会话应做的事**：查 GSC 这条 issue 的状态。
+  · Passed → 修复生效，把本条移出待办；
+  · Failed → 用 URL Inspection 看 `/` 的 **Google-selected canonical** 究竟是什么，
+    再判断是不是 /static 孪生页以外的原因（见下条的未确认点）。
+
 **`发现` 真 bug：首页 `https://voicespark.app/` 未被 Google 索引（GSC，v124 修复）**
 GSC「Duplicate, Google chose different canonical than user」，**受影响页面 = 首页**，
 状态 "aren't indexed or served on Google"。2026-07-25 检测到，最后爬取 2026-07-22。
@@ -125,6 +134,10 @@ Google 把 `/` 与 `/static/index.html` 归为一组，**自己选了另一个�
   2. **跳转路由必须注册在 `app.mount("/static", ...)` 之前** —— 路由按注册顺序匹配，
      写在后面不会报错，只是 StaticFiles 抢先返回 200、跳转静默失效，几周后才在 GSC 上看到后果。
      已用变异测试验证 `tests/smoke/seo-canonical.spec.ts` 能抓到这个顺序错误。
+**⚠️ 一个未确认点（诚实记录）**：「Google 选的规范是 `/static/index.html`」是**推断**，
+不是实测 —— GSC 的 URL Inspection 才会显示 "Google-selected canonical"，那是 owner 才能看的。
+推断依据：全站唯一与 `/` 内容完全相同的 URL 就是它。若验证失败，第一步就是去核实这个值。
+
 **另一封邮件「Alternative page with proper canonical tag」是正常的** —— 那是 Google 在说
 "发现了重复页、读到了 canonical、已正确归位"，不是错误，无需处理。
 
