@@ -59,7 +59,7 @@
 | `gpt-4o-transcribe` | ✅ | ❌ owner 2026-02 实测否决 |
 | `gpt-4o-mini-transcribe`（含 `-2025-12-15`） | ✅ | ❌ owner 2026-02 实测否决 |
 | `gpt-4o-transcribe-diarize` | ✅ | 已用于**系统音**路径 |
-| `gpt-realtime-whisper` | **❌ 404 `Invalid URL`** | 仅 realtime/streaming 端点；且 2024-09 发布，比 2 月还早 |
+| `gpt-realtime-whisper` | **❌ 404 `Invalid URL`** | **架构不同，不是权限问题，别重试。** 它是 **streaming** 模型：走 WebSocket/realtime 会话、边说边吐字。VoiceSpark 是 **batch**：录完一段 → 把音频文件 POST 上去 → 拿回整段文本。两者不是同一类东西，不存在"换过去"这个选项。（且 2024-09 发布，比 2 月还早） |
 
 实测记录：`gpt-realtime-whisper` 对 `/v1/audio/transcriptions` 返回
 `404 {'message': 'Invalid URL (POST /v1/audio/transcriptions)'}`；探测
