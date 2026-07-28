@@ -1,7 +1,9 @@
 import os
+import re
 import json
 import time
 import base64
+import hashlib
 import threading
 import requests
 import datetime
@@ -215,6 +217,72 @@ async def sitemap():
         return Response(content='<?xml version="1.0" encoding="UTF-8"?><urlset></urlset>', 
                        media_type="application/xml", status_code=404)
 
+# ================================================================================
+# 版本号（v123）
+#
+# 本项目历史上有**两个**长得一样、量级又接近的编号，被反复混用：
+#   - 功能版本号 vNNN（代码注释/UI 里的 v114、v122…）—— 标记"这段逻辑为什么存在"，
+#     可顺着它到 VERSION_HISTORY.md 查当初的来龙去脉。
+#   - 静态资源 cache-bust ?v=NNN —— 只是让浏览器/CDN 重新拉文件，与功能无关。
+# 两者曾同时在 122 / 129 附近，于是 commit message 里就混着用（`0cb7c01「v129」`
+# 用的其实是 cache-bust 号，比 `aa747c5「v122」` 提交得还早——这就是"数字大的反而是先做的"）。
+#
+# v123 起把 cache-bust 彻底自动化（见下方 _asset_version），**它不再是一个人工维护的编号**，
+# 于是只剩 APP_VERSION 一个版本号，混淆的根源消失。
+# ⚠️ 历史注释里的 vNNN 一律保持原样，不要重编——那 200 多处是考古坐标，重编等于烧掉它们。
+# ================================================================================
+APP_VERSION = "v123"   # 唯一权威来源：要改版本号只改这里
+
+# --------------------------------------------------------------------------------
+# 静态资源自动 cache-bust：用文件内容哈希替换 HTML 里的 ?v=…
+#
+# 取代了原先"改 js/css 必须手动把 index.html 里两个 ?v=NNN 都 +1"的铁律。
+# 那条铁律至少漏过两次：
+#   1. 语言选择器上线后在生产是没样式的原生按钮（忘记 bump，见 CLAUDE.md）。
+#   2. about.html / faq.html 的 `style.css?v=105` 停在 2026-02，而 style.css 7 月改过
+#      → 老访客浏览器里一直是 2 月那份样式表。（本次修复时发现）
+# 哈希天然精确：文件真变了才变，不会漏也不会多。
+# --------------------------------------------------------------------------------
+_ASSET_VERSION_CACHE = {}
+
+def _asset_version(filename: str) -> str:
+    """返回 static/<filename> 的短内容哈希。以 (mtime, size) 为缓存键，文件没变就不重算。"""
+    full_path = os.path.join("static", filename)
+    try:
+        stat = os.stat(full_path)
+    except OSError:
+        # 文件不存在就退回一个固定值：宁可缓存不刷新，也不要 500
+        return "0"
+
+    stamp = (stat.st_mtime_ns, stat.st_size)
+    cached = _ASSET_VERSION_CACHE.get(filename)
+    if cached and cached[0] == stamp:
+        return cached[1]
+
+    digest = hashlib.sha256()
+    with open(full_path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            digest.update(chunk)
+    short = digest.hexdigest()[:10]
+    _ASSET_VERSION_CACHE[filename] = (stamp, short)
+    return short
+
+
+# 只匹配本站 /static 下的 css/js，且必须已带 ?v=；外链（Tally 等）不受影响
+_ASSET_REF_RE = re.compile(r'(/static/([A-Za-z0-9_.\-]+\.(?:css|js)))\?v=[^"\'\s>]*')
+
+
+def _inject_asset_versions(html: str) -> str:
+    """把 HTML 里 /static/*.css|js 的 ?v=… 换成内容哈希。
+
+    HTML 源文件里保留原来的 ?v=NNN 作为占位符——这样直接用 file:// 打开也不会坏，
+    线上则一律由本函数覆盖。
+    """
+    return _ASSET_REF_RE.sub(
+        lambda m: f"{m.group(1)}?v={_asset_version(m.group(2))}", html
+    )
+
+
 # SEO: About page
 @app.get("/about.html")
 async def about():
@@ -224,7 +292,7 @@ async def about():
     if os.path.exists(about_path):
         with open(about_path, 'r', encoding='utf-8') as f:
             content = f.read()
-        return HTMLResponse(content=content)
+        return HTMLResponse(content=_inject_asset_versions(content))
     else:
         return HTMLResponse(content="<h1>Page Not Found</h1>", status_code=404)
 
@@ -237,7 +305,7 @@ async def faq():
     if os.path.exists(faq_path):
         with open(faq_path, 'r', encoding='utf-8') as f:
             content = f.read()
-        return HTMLResponse(content=content)
+        return HTMLResponse(content=_inject_asset_versions(content))
     else:
         return HTMLResponse(content="<h1>Page Not Found</h1>", status_code=404)
 
@@ -252,7 +320,7 @@ async def root():
     if os.path.exists(html_path):
         with open(html_path, 'r', encoding='utf-8') as f:
             html_content = f.read()
-        return HTMLResponse(content=html_content)
+        return HTMLResponse(content=_inject_asset_versions(html_content))
     else:
         return HTMLResponse(
             content=f"<h1>错误</h1><p>录音界面文件未找到：{os.path.abspath(html_path)}</p>",

@@ -112,7 +112,10 @@
     }
     </script>
     
-    <link rel="stylesheet" href="/static/style.css?v=129">
+    <!-- v123: 下面所有 /static/*.css|js 的 ?v=auto 由服务端自动替换成文件内容哈希
+         （server2.py 的 _inject_asset_versions）。不要再手动维护版本号——改了 js/css
+         哈希会自己变。`auto` 只是直接用 file:// 打开时的占位符。 -->
+    <link rel="stylesheet" href="/static/style.css?v=auto">
 </head>
 <body>
     <div class="container">
@@ -429,8 +432,8 @@
         <a href="/faq.html" style="color: #aaa; text-decoration: none; font-weight: 600; margin: 0 10px; pointer-events: auto;">FAQ</a>
     </footer>
 
-    <script src="/static/audio-storage.js?v=51"></script>
-    <script src="/static/script.js?v=129"></script>
+    <script src="/static/audio-storage.js?v=auto"></script>
+    <script src="/static/script.js?v=auto"></script>
     <!-- 🔥 v106: 修复 VAD 把正常长语音误判为静音（全程能量基准 + 不再丢弃录音） --></script></script></script></script>
     
     <!-- Tally Embed Script -->

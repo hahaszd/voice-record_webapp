@@ -4,8 +4,8 @@
 
 **Last Updated:** 2026-07-28  
 **Current Version:** 
-- Frontend feature version: v122 (代码注释/UI 中的 vNNN)
-- Cache-bust: `script.js?v=129`, `style.css?v=129`
+- **功能版本号：`APP_VERSION = "v123"`（`server2.py`）—— 唯一权威来源，只改这一处**
+- **Cache-bust：已自动化（内容哈希），不再是人工维护的编号**（v123 起）
 - Backend: server2.py — v120 安全加固（死端点清理 + 转录限流 + 关闭 API 文档）；
   api_fallback.py — v122 幻觉过滤（通用重复检测 + 开头段落阈值 + AI Builder 补齐段落过滤）
 
@@ -841,6 +841,62 @@ Railway confidence 数据验证**（代码注释中已标注）。过滤比例�
 - script.js: v121 → v122（`index.html` 中 `script.js?v=129`、`style.css?v=129`，已按 CACHE-BUST 铁律同步）
 - 注：这两笔改动的 commit message 分别写作 "（v129）""（v122）"——前者用的是 cache-bust 号、
   后者是前端功能版本号。**以功能版本号 v122 为准**，cache-bust 是 129。
+
+---
+
+### Phase 12: 版本号体系整顿 —— cache-bust 自动化 (v123) - 2026-07-28
+
+#### v123 - 干掉第二个人工计数器，版本号收敛为一个
+**Date:** 2026-07-28
+**Type:** 后端（`server2.py`）+ 静态页面 + 文档 + 冒烟测试
+
+**问题（owner 提出"版本号特别混乱"后查证）：** 项目里存在**两个语义不同、但长得一样、
+量级还接近**的编号，长期被混用：
+
+| | 是什么 | 何时 +1 | 当时值 |
+|---|---|---|---|
+| `vNNN`（代码注释/UI） | **功能**计数器 | 每个有意义的功能/修复 | v122 |
+| `?v=NNN`（index.html） | **部署**计数器 | 每次动 js/css 手动 +1 | 129 |
+
+翻 git 查到的实证：
+- `0cb7c01`「**v129**」（7-24）用的其实是 **cache-bust 号**，却比 `aa747c5`「**v122**」
+  **提交得更早** —— 这就是 owner 说的"数字大的反而是先做的"。
+- cache-bust 自身也乱过：**2026-02-09 从 106 倒退回 103**（`ad0c679`→`a2fa053`）；
+  script.js 与 style.css 长期不同步（2/5：script=73 而 style 已 93→96）；2/9 后停滞在
+  105/106 直到 6/17，7/6 又跳到 115。
+- **根因不是"编号乱"，而是两个计数器都没有唯一权威来源** —— 功能号靠"扫注释里最大的数"，
+  cache-bust 靠"记得手动 +1"。靠人脑维护的编号必然漂移。
+
+**顺带发现并修掉的真 bug：** `about.html` / `faq.html` 引用 `style.css?v=105`（2026-02 定的），
+而 `style.css` 在 **7 月改过** → 浏览器按完整 URL 缓存，**老访客回访这两页时一直拿的是 2 月那份
+样式表**。（`audio-storage.js?v=51` 是虚惊：该文件 2 月后没再改过。）
+
+**改动：**
+1. **`APP_VERSION = "v123"`（`server2.py`）** —— 功能版本号的唯一权威来源，以后只改这一处，
+   不必再靠扫描注释推断"当前是几"。
+2. **cache-bust 全自动**：新增 `_asset_version()`（按 `(mtime, size)` 缓存的 sha256 前 10 位）
+   与 `_inject_asset_versions()`（正则替换 `/static/*.css|js?v=…`），应用于 `/`、`/about.html`、
+   `/faq.html` 三个 handler。**关键前提**：这三个 handler 本来就是"读成字符串再 HTMLResponse"，
+   所以不需要模板引擎、不改架构，只是多一次字符串替换。
+3. 三个 HTML 源文件的 `?v=NNN` 改为 **`?v=auto` 占位符**（直接 `file://` 打开也不会坏），
+   并就地写明由服务端替换。
+4. **`tests/smoke/asset-versioning.spec.ts`（新增，5 条）**：三个页面的引用都必须是 10 位内容哈希、
+   不得残留 `?v=auto`、同一文件跨页面哈希一致、带哈希的 URL 可正常加载。
+   之所以必须有测试盯着：这个机制**静默失效**时页面照常渲染，只是所有回访用户被永久钉在
+   `?v=auto` 这一个缓存键上，再也拿不到新的 js/css。
+
+**明确不做的事（owner 认可）：**
+- **不重编历史 `vNNN`**（约 205 处）。它们是考古坐标，能顺着查 `VERSION_HISTORY.md` 弄清
+  "这段逻辑当初为什么加"；重编等于烧掉这份资产，且换不来任何收益。
+- **不换 semver / 日期版本号。** vNNN 作为功能计数器本身没毛病，问题从来是它跟 cache-bust 撞了。
+  把撞的那个干掉即可，别顺手重构。
+
+**连带废除：** CLAUDE.md 的「CACHE-BUST 铁律」（"改 js/css 必须手动把两个 `?v=` 都 +1"）
+**就此作废** —— 该规则至少漏过两次（语言选择器无样式上线、about/faq 陈旧样式表）。
+`/handover` skill 的对应步骤同步改为"无需操作"。
+
+**验证：** 内容哈希与真实 sha256 前 10 位一致；改动 style.css 后哈希随之改变、还原后复原；
+三页面注入正确且 style.css 哈希一致。后端 pytest 13/13、Playwright 49/49 全绿。
 
 ---
 
