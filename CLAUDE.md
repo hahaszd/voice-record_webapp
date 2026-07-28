@@ -117,6 +117,32 @@ defined but never called; any single-API failure just falls through to the next 
 `gpt-4o-transcribe` for better Chinese accuracy on the mic path — don't "upgrade" it without checking
 (the system-audio path intentionally uses `gpt-4o-transcribe-diarize` for speaker diarization).
 
+### Hallucination filtering (v122/v129) — two independent layers
+
+Whisper invents text when fed silence/noise. Two separate defenses, both in `api_fallback.py`:
+
+1. **Text-level** — `_HALLUCINATION_PHRASES` (regex list, applied to the final transcript). Hardcoded
+   stock phrases (subscribe-to-my-channel boilerplate etc.) **plus** a generic repeat detector
+   (v129): `^(\S{1,6})(?:[\s,，、]+\1){2,}…$` catches "栏目 栏目 栏目"-shaped output. Anchored to the
+   whole string and requires separators between repeats, so natural compact Chinese repetition
+   ("对对对") is not hit. **Model-agnostic — works on any API's output.**
+2. **Segment-level** — `_filter_hallucinated_segments(segments, log_tag)` (v122), shared by
+   `_transcribe_openai` and `_transcribe_ai_builder` (AI Builder used to only *log* `no_speech_prob`
+   and never drop anything; it now filters to the same standard). Drops per-segment on
+   `no_speech_prob` / `compression_ratio` / `avg_logprob`. **Position-aware**: segment 0 starting
+   <3.0s uses stricter *single-metric* thresholds (Whisper tends to emit a few junk fragments at the
+   very start then transcribe normally); later segments keep v114's *two-metrics-must-both-hit* rule
+   so real speech after a long silence isn't deleted. Raises if *every* segment is filtered → falls
+   through to the next API.
+
+⚠️ Two things to know before touching this:
+- The leading-segment thresholds are **unvalidated guesses** (no real Railway confidence data yet) —
+  see the `⚠️` over-filtering log it emits when >half of ≥5 segments are dropped.
+- **Layer 2 only works with `response_format=verbose_json`, which only `whisper-1` supports.** The
+  `gpt-4o-*-transcribe` family returns `json`/`text` only, so swapping the mic model would silently
+  disable segment filtering (layer 1 would still work). It has `logprobs` instead. Also **untested**
+  — EVAL_CHECKLIST **N1** is still ⬜.
+
 ## Running locally
 
 ```bash
@@ -142,7 +168,13 @@ Code reads these via `os.getenv` (see `server2.py`, `api_fallback.py`):
 | `DEPLOY_ENVIRONMENT` | `production` / `development` banner |
 | `PORT` | Railway-injected |
 
-**Not present locally right now**: no `.env`, no Google `oceanic-hook-*.json`, `aibuilder_config.json` has no token. So transcription won't work until the user supplies keys. `.env`, `aibuilder_config.json`, and `oceanic-hook-*.json` / `*-credentials.json` are gitignored — see `CONFIG.md` for the token-loading precedence (env var → `.env`/`aibuilder_config.json`). Never commit secrets.
+**Local state (re-verified 2026-07-28)**: a `.env` **does** exist, but every API key in it is **empty** —
+`OPENAI_API_KEY`, `DEEPGRAM_API_KEY`, `AI_BUILDER_TOKEN` are all blank; only `AI_BUILDER_API_BASE`,
+`DEPLOY_ENVIRONMENT`, `PORT` have values. No Google `oceanic-hook-*.json`, and `aibuilder_config.json`
+has no token. **So transcription still won't work locally until the user supplies keys** — the real
+keys live only in Railway's env vars. To run anything that hits a paid API locally, have the user
+`export` the key in their own shell rather than writing it into `.env` (keeps it out of the repo and
+out of the conversation). `.env`, `aibuilder_config.json`, and `oceanic-hook-*.json` / `*-credentials.json` are gitignored — see `CONFIG.md` for the token-loading precedence (env var → `.env`/`aibuilder_config.json`). Never commit secrets.
 
 ## Testing
 
@@ -175,16 +207,17 @@ Not wired into the Playwright precommit — run manually (or add to CI) when tou
 
 ## Conventions & gotchas
 
-- **~160 Markdown docs at repo root** split into two kinds:
-  - **Living docs (source-of-truth-adjacent, keep in sync with code):** `README.md`, `FEATURES.md`, `ARCHITECTURE.md`, `CLAUDE.md`. These describe *current* behavior/structure. The **iron rule** below governs them.
-  - **Frozen historical logs (reference only, do NOT retro-edit):** everything else (`AUTO_COPY_*.md`, `V1xx_*.md`, `TEST_REPORT_*.md`, `DURATION_BUTTON_WARNING.md`, etc.) — snapshots of a past change. `VERSION_HISTORY.md` is the closest thing to a changelog. When code and a frozen log disagree, the **code wins** and the log stays as-is (it's history).
-- Feature "versions" are tracked as `vNNN` tags in code comments/UI (currently ~v113 in `script.js`). Keep them consistent when touching related logic.
+- **~168 Markdown docs at repo root** split into three kinds:
+  - **Living docs (source-of-truth-adjacent, keep in sync with code):** `README.md`, `FEATURES.md`, `ARCHITECTURE.md`, `CLAUDE.md`, `BACKLOG.md`. These describe *current* state — behavior, structure, and what's still outstanding. **Iron rule #1** governs the first four; **iron rule #2** governs `BACKLOG.md`.
+  - **Append-only logs (write, never retro-edit; read only when looking something up):** `VERSION_HISTORY.md` (code changes, by `vNNN`) and `DECISION_LOG.md` (everything with no code change: decisions, **rejected directions**, ops/key/config changes). You are *not* expected to read these at session start — they exist so "why did we decide that in July?" is answerable.
+  - **Frozen historical logs (reference only, do NOT retro-edit):** everything else (`AUTO_COPY_*.md`, `V1xx_*.md`, `TEST_REPORT_*.md`, `DURATION_BUTTON_WARNING.md`, etc.) — snapshots of a past change. When code and a frozen log disagree, the **code wins** and the log stays as-is (it's history).
+- Feature "versions" are tracked as `vNNN` tags in code comments/UI (currently **v122** in `script.js`; cache-bust is a *separate* number, currently `?v=129` — don't conflate them). Keep them consistent when touching related logic.
 - **CACHE-BUST when editing `static/style.css` or `static/script.js`:** `index.html` links them with a version query (`style.css?v=NNN`, `script.js?v=NNN`). Returning visitors (and the CDN) cache by that exact URL, so if you don't bump the number, your CSS/JS change won't reach anyone who already loaded the site — it silently serves the stale file. ALWAYS bump both `?v=` numbers in `index.html` in the same change. (This bit us once: language selector shipped but rendered as unstyled native buttons in prod because `?v=` wasn't bumped.)
 - Code comments and commit messages are frequently in **Chinese**; match the surrounding language when editing.
 - Recent work focus (git log): client-side **VAD** to trim leading/trailing silence, 16kHz mono downsampling to stay under the 25MB upload limit, Whisper hallucination filtering, transcription history + re-transcribe with API selection.
 - No linter/formatter config committed. Match existing style.
 
-## 🔒 Iron rule: code and living docs move together
+## 🔒 Iron rule #1: code and living docs move together
 
 **Every code change that alters behavior, structure, or setup described in a living doc MUST update that living doc in the same change** — never in a "later" pass. If you change what the duration buttons do, how recording/auto-capture works, an endpoint, an env var, or the deploy flow, the matching section of `README.md` / `FEATURES.md` / `ARCHITECTURE.md` / `CLAUDE.md` is updated before the change is considered done.
 
@@ -192,9 +225,89 @@ Not wired into the Playwright precommit — run manually (or add to CI) when tou
 - If a change touches nothing in a living doc, no doc update is needed — but check, don't assume.
 - If code and a living doc already disagree, the code is the truth: fix the doc to match (that's how this rule got added — `FEATURES.md`/`README.md` claimed the duration button auto-stops recording and auto-capture chunks "every 5 minutes"; neither is true — see those files).
 
+## 🔒 Iron rule #2: decisions and todos land in a doc immediately
+
+**Iron rule #1 only fires on code changes.** A discussion can produce a decision, a rejected
+direction, an ops change (API key rotation, dashboard config), or a todo — with **zero code
+changed** — and rule #1 never triggers, so it evaporates when the session ends. That is exactly how
+this rule got added: one session produced three actionable conclusions (OpenAI key scoping, a
+spend-cap recommendation, a transcription-model A/B) and none of them had anywhere to live.
+
+**So: anything from a discussion that affects the project's future gets written down in the same
+turn it's decided — never "later".**
+
+- **Not yet done** (todo, direction, needs-owner-decision) → **`BACKLOG.md`**
+- **Already happened, no code change** (decision, **rejected direction + why**, ops/key/config change,
+  important fact established) → **`DECISION_LOG.md`** (append, reverse-chronological)
+- **Already happened, code changed** → `VERSION_HISTORY.md` (rule #1)
+- **Test/eval coverage gap** → `tests/EVAL_CHECKLIST.md` (don't duplicate it in `BACKLOG.md`)
+
+### 2a. Verified findings — write them down so nothing gets re-verified
+
+**Anything that was actually tested, measured, or looked up goes into
+`DECISION_LOG.md`'s "✅ 已验证结论速查" section** — including negative results ("we tried X, it was
+worse") and **verifications the owner performed themselves** outside the repo (a model tried in the
+playground, a dashboard setting confirmed, a support answer). Owner-side knowledge leaves *no trace in
+git*, so if you don't capture it when it's mentioned, it's gone — and the next session re-derives it or,
+worse, re-asks.
+
+Record the **conclusion + how it was verified + when**, so a future session can judge whether it's
+still trustworthy. Also record what was **not** covered — an unverified gap silently reads as verified.
+
+### 2b. Read before you re-derive
+
+**`DECISION_LOG.md`'s 速查 section is the first thing to check** before investigating a settled
+question, re-running an experiment, or asking the owner something. The owner's explicit standard:
+*"我不希望一个轮子要反复的验证和重新发明 ... 下次我再问你问题，就明确的不用再问了."*
+
+- Already in there → use it. Don't re-test, don't re-ask.
+- Suspect it's gone stale → fine to re-check, but **say why you doubt it** and update the entry.
+  Don't quietly start from zero.
+- Owner recalls something that contradicts the record → **check the record and git before accepting or
+  dismissing it**. A real case: the owner recalled rejecting `gpt-4o-mini-transcribe-2025-12-15`;
+  `6c11dff` showed what was actually rejected was `gpt-4o-transcribe`, a different model. Memory was
+  right about the event, wrong about the subject. Neither "owner must be right" nor "owner must be
+  wrong" — go look.
+
+Filter — don't log everything, or these rot into noise. The test is:
+**"three months from now, would someone ask 'why did we decide that?' and need this?"** If no, skip
+it. Transient chatter and half-formed ideas stay out.
+
+**Record rejected directions especially** — with the reasoning. That's the highest-value content
+here; it's what stops the same question being re-litigated every few months.
+
+⚠️ **A todo list that only grows is worse than none** — it gets read as current state when it isn't.
+`/handover` MUST prune `BACKLOG.md`: move finished items out (to `VERSION_HISTORY.md` or
+`DECISION_LOG.md`) and delete dead ones with a note. Precedent: `INDIE_DEVELOPER_ROADMAP.md` was a
+serious plan once; nobody reads it now.
+
+## 🔒 Iron rule #3: stale doc spotted → fix it on the spot
+
+Rules #1 and #2 fire when *you* change something. This one fires when you merely **notice** that a
+living doc no longer matches reality — no code change, no decision, just an observation in passing.
+**Fix it immediately, in the current turn.** Do not note it and move on, do not save it for "a
+cleanup pass" — that's precisely how docs rot, and a confidently-wrong doc is worse than a missing
+one because the next session (or the next model) will act on it.
+
+That's not hypothetical: this rule exists because a session read "**Not present locally right now**:
+no `.env`" in this very file, found a `.env` sitting right there, said "that line is out of date" out
+loud — and kept going without fixing it. Same pass also found `script.js` described as "~v113" when it
+was v122.
+
+- **Scope: living docs + trackers only** (`README`/`FEATURES`/`ARCHITECTURE`/`CLAUDE`/`BACKLOG`,
+  `tests/EVAL_CHECKLIST.md`). **Frozen historical logs and `DECISION_LOG.md`/`VERSION_HISTORY.md` are
+  supposed to be "stale" — they're history. Never retro-edit them.**
+- **Verify before rewriting.** Check the code/filesystem first; don't swap one wrong claim for another.
+- **Don't let it hijack the task.** Small and you're sure → fix inline. Large, risky, or uncertain →
+  put it in `BACKLOG.md` and say so. The point is that it never silently disappears — not that every
+  doc gets refactored mid-task.
+- Mention what you fixed in your reply, so the owner sees the doc moved.
+
 ## When making changes
 
 1. Real app code = `server2.py`, `api_fallback.py`, `static/script.js`, `static/index.html`, `static/style.css`. Start there.
 2. Prefer editing over adding yet another root `.md` file unless the user asks.
 3. Ask before committing/pushing; if committing, do it on `dev` first (not `main`) unless it's a hotfix.
-4. **Honor the iron rule above** — sync living docs in the same change.
+4. **Honor iron rule #1** — sync living docs in the same change.
+5. **Honor iron rule #2** — decisions/rejections/todos from the discussion go into `BACKLOG.md` or `DECISION_LOG.md` before the turn ends, even when no code changed.
+6. **Honor iron rule #3** — if you notice a living doc is out of date, fix it in that same turn; never just remark on it.
