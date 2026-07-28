@@ -168,7 +168,13 @@ Code reads these via `os.getenv` (see `server2.py`, `api_fallback.py`):
 | `DEPLOY_ENVIRONMENT` | `production` / `development` banner |
 | `PORT` | Railway-injected |
 
-**Not present locally right now**: no `.env`, no Google `oceanic-hook-*.json`, `aibuilder_config.json` has no token. So transcription won't work until the user supplies keys. `.env`, `aibuilder_config.json`, and `oceanic-hook-*.json` / `*-credentials.json` are gitignored — see `CONFIG.md` for the token-loading precedence (env var → `.env`/`aibuilder_config.json`). Never commit secrets.
+**Local state (re-verified 2026-07-28)**: a `.env` **does** exist, but every API key in it is **empty** —
+`OPENAI_API_KEY`, `DEEPGRAM_API_KEY`, `AI_BUILDER_TOKEN` are all blank; only `AI_BUILDER_API_BASE`,
+`DEPLOY_ENVIRONMENT`, `PORT` have values. No Google `oceanic-hook-*.json`, and `aibuilder_config.json`
+has no token. **So transcription still won't work locally until the user supplies keys** — the real
+keys live only in Railway's env vars. To run anything that hits a paid API locally, have the user
+`export` the key in their own shell rather than writing it into `.env` (keeps it out of the repo and
+out of the conversation). `.env`, `aibuilder_config.json`, and `oceanic-hook-*.json` / `*-credentials.json` are gitignored — see `CONFIG.md` for the token-loading precedence (env var → `.env`/`aibuilder_config.json`). Never commit secrets.
 
 ## Testing
 
@@ -201,11 +207,11 @@ Not wired into the Playwright precommit — run manually (or add to CI) when tou
 
 ## Conventions & gotchas
 
-- **~160 Markdown docs at repo root** split into three kinds:
+- **~168 Markdown docs at repo root** split into three kinds:
   - **Living docs (source-of-truth-adjacent, keep in sync with code):** `README.md`, `FEATURES.md`, `ARCHITECTURE.md`, `CLAUDE.md`, `BACKLOG.md`. These describe *current* state — behavior, structure, and what's still outstanding. **Iron rule #1** governs the first four; **iron rule #2** governs `BACKLOG.md`.
   - **Append-only logs (write, never retro-edit; read only when looking something up):** `VERSION_HISTORY.md` (code changes, by `vNNN`) and `DECISION_LOG.md` (everything with no code change: decisions, **rejected directions**, ops/key/config changes). You are *not* expected to read these at session start — they exist so "why did we decide that in July?" is answerable.
   - **Frozen historical logs (reference only, do NOT retro-edit):** everything else (`AUTO_COPY_*.md`, `V1xx_*.md`, `TEST_REPORT_*.md`, `DURATION_BUTTON_WARNING.md`, etc.) — snapshots of a past change. When code and a frozen log disagree, the **code wins** and the log stays as-is (it's history).
-- Feature "versions" are tracked as `vNNN` tags in code comments/UI (currently ~v113 in `script.js`). Keep them consistent when touching related logic.
+- Feature "versions" are tracked as `vNNN` tags in code comments/UI (currently **v122** in `script.js`; cache-bust is a *separate* number, currently `?v=129` — don't conflate them). Keep them consistent when touching related logic.
 - **CACHE-BUST when editing `static/style.css` or `static/script.js`:** `index.html` links them with a version query (`style.css?v=NNN`, `script.js?v=NNN`). Returning visitors (and the CDN) cache by that exact URL, so if you don't bump the number, your CSS/JS change won't reach anyone who already loaded the site — it silently serves the stale file. ALWAYS bump both `?v=` numbers in `index.html` in the same change. (This bit us once: language selector shipped but rendered as unstyled native buttons in prod because `?v=` wasn't bumped.)
 - Code comments and commit messages are frequently in **Chinese**; match the surrounding language when editing.
 - Recent work focus (git log): client-side **VAD** to trim leading/trailing silence, 16kHz mono downsampling to stay under the 25MB upload limit, Whisper hallucination filtering, transcription history + re-transcribe with API selection.
@@ -248,6 +254,28 @@ here; it's what stops the same question being re-litigated every few months.
 `DECISION_LOG.md`) and delete dead ones with a note. Precedent: `INDIE_DEVELOPER_ROADMAP.md` was a
 serious plan once; nobody reads it now.
 
+## 🔒 Iron rule #3: stale doc spotted → fix it on the spot
+
+Rules #1 and #2 fire when *you* change something. This one fires when you merely **notice** that a
+living doc no longer matches reality — no code change, no decision, just an observation in passing.
+**Fix it immediately, in the current turn.** Do not note it and move on, do not save it for "a
+cleanup pass" — that's precisely how docs rot, and a confidently-wrong doc is worse than a missing
+one because the next session (or the next model) will act on it.
+
+That's not hypothetical: this rule exists because a session read "**Not present locally right now**:
+no `.env`" in this very file, found a `.env` sitting right there, said "that line is out of date" out
+loud — and kept going without fixing it. Same pass also found `script.js` described as "~v113" when it
+was v122.
+
+- **Scope: living docs + trackers only** (`README`/`FEATURES`/`ARCHITECTURE`/`CLAUDE`/`BACKLOG`,
+  `tests/EVAL_CHECKLIST.md`). **Frozen historical logs and `DECISION_LOG.md`/`VERSION_HISTORY.md` are
+  supposed to be "stale" — they're history. Never retro-edit them.**
+- **Verify before rewriting.** Check the code/filesystem first; don't swap one wrong claim for another.
+- **Don't let it hijack the task.** Small and you're sure → fix inline. Large, risky, or uncertain →
+  put it in `BACKLOG.md` and say so. The point is that it never silently disappears — not that every
+  doc gets refactored mid-task.
+- Mention what you fixed in your reply, so the owner sees the doc moved.
+
 ## When making changes
 
 1. Real app code = `server2.py`, `api_fallback.py`, `static/script.js`, `static/index.html`, `static/style.css`. Start there.
@@ -255,3 +283,4 @@ serious plan once; nobody reads it now.
 3. Ask before committing/pushing; if committing, do it on `dev` first (not `main`) unless it's a hotfix.
 4. **Honor iron rule #1** — sync living docs in the same change.
 5. **Honor iron rule #2** — decisions/rejections/todos from the discussion go into `BACKLOG.md` or `DECISION_LOG.md` before the turn ends, even when no code changed.
+6. **Honor iron rule #3** — if you notice a living doc is out of date, fix it in that same turn; never just remark on it.

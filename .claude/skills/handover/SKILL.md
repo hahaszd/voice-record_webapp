@@ -37,6 +37,13 @@ session and ask: what did we decide, reject, or leave undone that will matter la
   A backlog that only grows gets mistaken for current state and rots (see `INDIE_DEVELOPER_ROADMAP.md`).
 - Never retro-edit past `DECISION_LOG.md` entries — it's a log. Wrong entry → append a correction.
 
+## 2c. Fix any stale living doc you noticed (iron rule #3)
+If anything you read this session contradicted reality — a claim about local setup, a version number, a
+file that does/doesn't exist, an endpoint — **fix it now**, don't just report it. Verify against the
+code/filesystem first, then edit. Applies to living docs + trackers only; `DECISION_LOG.md`,
+`VERSION_HISTORY.md` and the ~168 frozen root `.md` files are history and stay as-is. Too big or
+uncertain to fix inline → it goes in `BACKLOG.md` instead of being dropped.
+
 ## 3. Update the eval tracker
 `tests/EVAL_CHECKLIST.md` is the living tracker. Mark completed items ✅ with the spec filename, keep each item's Layer/priority/status honest, and refresh the "现状汇总" so the P0/P1 picture is current. Test/eval gaps live here, **not** in `BACKLOG.md` — `BACKLOG.md` may point to them, not duplicate them.
 
@@ -69,5 +76,5 @@ One tight recap: what shipped, test status (counts), what's live on dev/prod, an
 - **Real app code:** `server2.py`, `api_fallback.py`, `static/script.js`, `static/index.html`, `static/style.css`.
 - **Tests:** Playwright/TS in `tests/{smoke,functional,mobile,recording}` (`recording` = fake-mic project). Backend pytest in `tests/backend/` (`./venv/bin/pytest`, deps in `requirements-dev.txt`, scoped by `pytest.ini`).
 - **Trackers:** `BACKLOG.md` (not yet done — living, must be pruned) · `DECISION_LOG.md` (decisions/rejections/ops, append-only) · `tests/EVAL_CHECKLIST.md` (test gaps) · `VERSION_HISTORY.md` (code changelog by `vNNN`).
-- **Two iron rules** (see `CLAUDE.md`): #1 code ↔ living docs move together; #2 decisions/todos land in `BACKLOG.md`/`DECISION_LOG.md` immediately, even with zero code changed.
+- **Three iron rules** (see `CLAUDE.md`): #1 code ↔ living docs move together; #2 decisions/todos land in `BACKLOG.md`/`DECISION_LOG.md` immediately, even with zero code changed; #3 a stale living doc you notice gets fixed on the spot, never just remarked on.
 - **No auth by design** (anonymous product); defenses are per-IP rate limiting (3 paid paths) + docs-off in prod. Feature versions tracked as `vNNN`.

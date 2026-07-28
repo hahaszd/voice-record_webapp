@@ -25,7 +25,16 @@
 
 ## 🔐 安全 / 运维
 
-### 🟡 收紧 OpenAI API Key 权限（2026-07-28）
+### 🟡 收紧 OpenAI API Key 权限（2026-07-28）—— **权限已改，待验证**
+
+> **状态更新 2026-07-28**：owner 已在**生产 key 上原地修改**权限（父级 Model capabilities = Request、
+> 其余 None；实测子项会自动级联成 Request/Write，无法单独关）。**尚未验证生产是否仍正常**。
+> ⚠️ 权限给窄了不会报错停机，只会静默降级到 AI Builder/Google —— **必须跑一次验证**：
+> ```bash
+> export OPENAI_API_KEY='sk-...'      # 在你自己的终端，别写进 .env
+> ./venv/bin/python test_model_ab.py  # 第 0 步即验证生产两个模型
+> ```
+> 跑通后把本条移入 `DECISION_LOG.md` 并从这里删掉。
 
 **为什么重要**：key 泄露后最烧钱的入口是 Fine-tuning / Videos(Sora) / Batch / Files / Vector Stores，
 目前 key 是 All 权限，全都敞开。

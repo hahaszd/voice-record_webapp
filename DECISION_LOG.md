@@ -22,6 +22,31 @@
 
 ## 2026-07-28
 
+**`方向` 新增铁律 #3：发现活文档过时就当场改，不许只是"提一句"**
+起因很具体：同一次会话里读到 CLAUDE.md 写着"**Not present locally**: no `.env`"，转头就在仓库里
+看到 `.env` 躺着，只在回话里说了句"那条已过时"就继续往下做 —— 没修。同一轮还发现 CLAUDE.md 说
+`script.js` 是"~v113"，实际已经 v122。铁律 #1/#2 都不触发这种情况（没改代码、也不是决策），
+所以补第三条。
+**边界**：只管活文档 + tracker；`DECISION_LOG.md`/`VERSION_HISTORY.md`/168 个冻结历史文档"过时"
+是设计如此，**不许 retro-edit**。改之前先核对代码/文件系统，别用一个错的替换另一个错的。
+太大或没把握就写进 BACKLOG，不许静默丢掉。
+
+**`运维` OpenAI key 权限已收紧（owner 于 2026-07-28 操作，⚠️ 是在生产 key 上原地改的）**
+配置：Model capabilities（父级）= Request，父级以外全部 None。
+**实测确认：父级设为 Request 后，7 个子项会自动级联成 Request/Write，无法单独关掉。**
+（此前不确定 UI 是否允许父级=Request + 子项=None，现在有答案了：不允许。）
+→ 实际效果：挡住 Fine-tuning / Videos / Batch / Files / Vector Stores；**挡不住**
+chat/embeddings/images。这是当前 OpenAI 受限 key 能做到的最细粒度，见下方"否决"条。
+⚠️ **是原地改的生产 key，而非"新建→验证→切换"**，所以改完到验证之间生产可能已在静默降级
+（OpenAI 路径失败会无声降级到 AI Builder/Google，不报错）。验证脚本 `test_model_ab.py` 的
+第 0 步就是打这两个生产模型，跑通即确认无碍。
+
+**`发现` 本地 `.env` 存在但 API key 全为空**
+`.env`（946B，7-06 创建）里 `OPENAI_API_KEY`/`DEEPGRAM_API_KEY`/`AI_BUILDER_TOKEN` **都是空值**，
+只有 `AI_BUILDER_API_BASE`/`DEPLOY_ENVIRONMENT`/`PORT` 有值。真实 key 只在 Railway 环境变量里。
+结论没变（本地跑不了付费 API），但 CLAUDE.md 原来写的"no `.env`"是错的，已按铁律 #3 修正。
+本地要调付费 API 时，让 owner 在自己终端 `export`，不要写进 `.env`。
+
 **`发现` 活文档漂移：FEATURES.md 的转录技术描述长期是错的**
 FEATURES.md 写着转录用 "Google Cloud Speech-to-Text API"，实际是两条各自带降级链的路径
 （麦克风 `whisper-1`→AI Builder→Google；系统音 `gpt-4o-transcribe-diarize`→Google→Deepgram）。
