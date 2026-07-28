@@ -19,8 +19,12 @@ export default defineConfig({
   ],
   
   use: {
-    // 基础 URL（本地测试）
-    baseURL: 'http://localhost:8000',
+    // 基础 URL：默认本地；可用 PLAYWRIGHT_BASE_URL 覆盖以对已部署环境跑冒烟测试，例如
+    //   PLAYWRIGHT_BASE_URL=https://voicespark.app npx playwright test tests/smoke/seo-canonical.spec.ts --project=smoke-chrome
+    //   PLAYWRIGHT_BASE_URL=https://web-dev-9821.up.railway.app npx playwright test --project=smoke-chrome
+    // （曾经这里是硬编码 localhost，设了环境变量也没用——结果"对生产验证过了"其实打的是本地。
+    //   只有不依赖真实录音/麦克风的 smoke 项目适合这么跑。）
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8000',
     
     // 截图设置
     screenshot: 'only-on-failure',
