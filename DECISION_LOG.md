@@ -144,6 +144,13 @@ dev 域名 `web-dev-9821` 显式排除（跳到生产会毁掉 dev 验证流程�
 **教训**：这正是"未确认的推断"该被标注出来的价值 —— 当天把它记成"推断不是实测"并要求 owner
 核实，才在 v124 之后立刻发现真正的成因。**别把推断写成结论。**
 
+**`发现` 配置类判据的通用教训：先问"生产上这个变量真的设了吗"**
+v125 首版栽在 `DEPLOY_ENVIRONMENT == 'production'` 上（生产没设该变量 → 中间件线上零触发），
+而 v120 早就栽过同一个坑、注释也写着。**同一个仓库、同一个坑、第二次。**
+→ **规则：任何"按环境/配置分支"的判据，先确认那个变量在目标环境里真的存在；
+拿不准就换成不依赖配置的判据（如本例改为只看 Host）。** 已用回归测试 + 源码静态检查钉死。
+本仓库已知事实：**生产环境没有设 `DEPLOY_ENVIRONMENT`**（这也是 `SHOW_DOCS` 必须 fail-closed 的原因）。
+
 **`运维` GSC 已提交验证：首页索引问题（2026-07-28 由 owner 点击 VALIDATE FIX）**
 v124 的 301 上线并验证后，owner 在 GSC 的「Duplicate, Google chose different canonical
 than user」上点了 **VALIDATE FIX**，状态 = *Validation Started, 28/07/2026*。
