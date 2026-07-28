@@ -10,7 +10,7 @@ import datetime
 from collections import defaultdict, deque
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from google.oauth2 import service_account
 from logging_helper import TranscriptionLogger, detect_audio_format, format_file_header_hex
 
@@ -173,6 +173,39 @@ async def rate_limit_middleware(request: Request, call_next):
 
     return await call_next(request)
 
+# ================================================================================
+# SEO（v124）：/static/*.html 301 跳到规范 URL
+#
+# 问题：`static/` 目录被整体挂载，于是每个页面都有一个内容完全相同的孪生 URL
+# （`/static/index.html`、`/static/about.html`、`/static/faq.html`）。Google 把
+# `https://voicespark.app/` 和它的 /static 孪生版归为一组，**自己选了另一个作规范**，
+# 于是 GSC 报「Duplicate, Google chose different canonical than user」——
+# 受影响页面就是**首页**，状态是 "aren't indexed or served on Google"（2026-07-25 检测到）。
+#
+# 为什么 canonical 标签不够：canonical 只是**建议**，Google 可以不采纳（本例正是如此）。
+# 301 是**指令**——重复 URL 直接消失，它就没得选了。
+#
+# ⚠️ 不要改用 robots.txt Disallow /static/：那会让 Google 爬不到这些页面，
+# **因此也读不到它们的 canonical**，重复页反而可能留在索引里。这是 Google 明确不推荐的做法。
+#
+# ⚠️ 这些路由必须注册在 `app.mount("/static", ...)` **之前** —— 路由按注册顺序匹配，
+# 写在 mount 之后会被 StaticFiles 抢先处理，跳转永远不生效。
+# 只跳 .html；/static 下的 css/js/图标不受影响（应用正是靠它们工作的）。
+# ================================================================================
+_STATIC_HTML_REDIRECTS = {
+    "/static/index.html": "/",
+    "/static/about.html": "/about.html",
+    "/static/faq.html": "/faq.html",
+}
+
+def _make_static_html_redirect(target: str):
+    async def _redirect():
+        return RedirectResponse(url=target, status_code=301)
+    return _redirect
+
+for _src, _dst in _STATIC_HTML_REDIRECTS.items():
+    app.get(_src, include_in_schema=False)(_make_static_html_redirect(_dst))
+
 # 挂载静态文件目录
 try:
     app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -231,7 +264,7 @@ async def sitemap():
 # 于是只剩 APP_VERSION 一个版本号，混淆的根源消失。
 # ⚠️ 历史注释里的 vNNN 一律保持原样，不要重编——那 200 多处是考古坐标，重编等于烧掉它们。
 # ================================================================================
-APP_VERSION = "v123"   # 唯一权威来源：要改版本号只改这里
+APP_VERSION = "v124"   # 唯一权威来源：要改版本号只改这里
 
 # --------------------------------------------------------------------------------
 # 静态资源自动 cache-bust：用文件内容哈希替换 HTML 里的 ?v=…

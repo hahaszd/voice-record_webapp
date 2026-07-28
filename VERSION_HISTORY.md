@@ -4,7 +4,7 @@
 
 **Last Updated:** 2026-07-28  
 **Current Version:** 
-- **功能版本号：`APP_VERSION = "v123"`（`server2.py`）—— 唯一权威来源，只改这一处**
+- **功能版本号：`APP_VERSION = "v124"`（`server2.py`）—— 唯一权威来源，只改这一处**
 - **Cache-bust：已自动化（内容哈希），不再是人工维护的编号**（v123 起）
 - Backend: server2.py — v120 安全加固（死端点清理 + 转录限流 + 关闭 API 文档）；
   api_fallback.py — v122 幻觉过滤（通用重复检测 + 开头段落阈值 + AI Builder 补齐段落过滤）
@@ -897,6 +897,51 @@ Railway confidence 数据验证**（代码注释中已标注）。过滤比例�
 
 **验证：** 内容哈希与真实 sha256 前 10 位一致；改动 style.css 后哈希随之改变、还原后复原；
 三页面注入正确且 style.css 哈希一致。后端 pytest 13/13、Playwright 49/49 全绿。
+
+---
+
+### Phase 13: 修复首页未被索引 —— /static/*.html 301 (v124) - 2026-07-28
+
+#### v124 - 消灭 /static 孪生 URL，Google 不再能否决首页 canonical
+**Date:** 2026-07-28
+**Type:** 后端（`server2.py`）+ 冒烟测试 — SEO 修复
+
+**问题（GSC 邮件报出）：** 「Duplicate, Google chose different canonical than user」，
+**受影响页面就是首页 `https://voicespark.app/`**，状态 "aren't indexed or served on Google"。
+2026-07-25 检测到，最后爬取 2026-07-22。
+
+**根因：** `static/` 目录被整体挂载（`app.mount("/static", StaticFiles(...))`），于是每个页面
+都有一个内容**完全相同**的孪生 URL —— 实测 `/static/index.html`、`/static/about.html`、
+`/static/faq.html` 全部返回 200。Google 把 `/` 与 `/static/index.html` 归为同一组，
+**自己选了另一个作规范**。时间线吻合：canonical 标签是 2026-07-22 才补上的，在那之前
+Google 早已完成聚类并选定；后加的 canonical 只是**建议**，被否决。
+
+**修法：** 三个 `/static/*.html` **301** 到规范 URL（`/`、`/about.html`、`/faq.html`）。
+canonical 是建议、可被否决；**301 是指令** —— 重复 URL 直接消失，Google 没得选。
+只跳 `.html`；`/static` 下的 css/js/图标/manifest 不受影响（应用正是靠它们工作的）。
+已确认 `manifest.json` 的 `start_url` 是 `/`，无引用受影响。
+
+**⚠️ 两个坑（已写进代码注释 + 测试）：**
+1. **不要改用 robots.txt Disallow `/static/`。** 屏蔽后 Google 爬不到这些页面，
+   **因此也读不到它们的 canonical、看不到 301**，重复页反而可能留在索引里。
+   Google 明确不推荐用 robots.txt 处理重复内容。
+2. **跳转路由必须注册在 `app.mount("/static", ...)` 之前。** 路由按注册顺序匹配，
+   写在 mount 之后**不会报错**，只是 StaticFiles 抢先返回 200、跳转静默失效，
+   几周后才会在 GSC 上看到后果。已用变异测试验证：把路由挪到 mount 之后，
+   `/static/index.html` 立刻变回 200，`tests/smoke/seo-canonical.spec.ts` 变红。
+
+**`tests/smoke/seo-canonical.spec.ts`（新增 5 条）：** 三个 .html 必须 301 到正确目标、
+css/js 不被误伤仍 200、三个规范页 canonical 自引用正确、sitemap 不含 /static/、
+robots.txt 不得 Disallow /static/。
+
+**另一封邮件不用管：** 「Alternative page with proper canonical tag」是 Google 在说
+"发现重复页、读到 canonical、已正确归位"，**是正常状态不是错误**。
+
+**后续（owner 操作）：** 部署后在 GSC 该条 issue 上点 **VALIDATE FIX**，
+并对首页用 URL Inspection → Request Indexing 催一次重新抓取。
+
+**验证：** 本地三个 .html 均 301 到正确目标；css/js/manifest 仍 200；规范 URL 仍 200。
+后端 pytest 31/31、Playwright 54/54 全绿。
 
 ---
 

@@ -47,6 +47,17 @@
 - **受限 key 的粒度到此为止**：`/v1/audio/transcriptions` **没有独立开关**，归父级 `model.request`（= Model capabilities 那一行）管。**父级设 Request 后 7 个子项会自动级联成 Request/Write，无法单独关**（2026-07-28 owner 实测）。→ 能挡 Fine-tuning/Videos/Batch/Files/Vector Stores，**挡不住** chat/embeddings/images。
 - **当前受限 key 已验证可用**：`whisper-1`、`gpt-4o-transcribe-diarize` 均 HTTP 200。
 
+### SEO / 规范 URL
+
+- **`/static/*.html` 一律 301 到规范 URL**（v124）。因为 `static/` 整目录挂载会给每个页面造出
+  内容相同的孪生 URL，Google 曾据此**不索引首页**。**跳转路由必须注册在
+  `app.mount("/static", ...)` 之前**，否则被 StaticFiles 抢先、静默失效。
+- **canonical 标签只是建议，Google 可以否决**（本项目首页就被否决过）。要消灭重复用 **301**。
+- **不要用 robots.txt Disallow 处理重复内容** —— 爬不到就读不到 canonical/301，反而更糟。
+- GSC 的「**Alternative page with proper canonical tag**」**是正常状态**，不是错误，别去"修"它。
+- 已核查无误、不必重查：http→https 301 正常；www 不解析（无重复）；sitemap 只列 3 个规范 URL；
+  内部链接全部指向规范版本；随机路径正确返回 404（无软 404）。
+
 ### 本地环境
 
 - **`.env` 存在，但代码根本不加载它**：没有 `load_dotenv()`，`requirements.txt` 无 `python-dotenv`。`.env` 唯一被读的地方是 `server2.py:284` 的 `get_ai_builder_token()`，且**只认 `AI_BUILDER_TOKEN=` 一个前缀**。→ `OPENAI_API_KEY` 写进 `.env` **对应用无效**，本地要跑付费 API 得 `export`（或 `set -a && . ./.env`）。
@@ -89,6 +100,25 @@ whisper-1 的两个已知缺点（繁體输出、静音幻觉）**改用后处�
 `test_model_ab.py` 第 0 步实测：`whisper-1` HTTP 200、`gpt-4o-transcribe-diarize` HTTP 200。
 父级 Model capabilities = Request 足够覆盖 `/v1/audio/transcriptions`。原地改生产 key 这次没出事，
 但下次仍应走"新建→验证→切换"。
+
+**`发现` 真 bug：首页 `https://voicespark.app/` 未被 Google 索引（GSC，v124 修复）**
+GSC「Duplicate, Google chose different canonical than user」，**受影响页面 = 首页**，
+状态 "aren't indexed or served on Google"。2026-07-25 检测到，最后爬取 2026-07-22。
+**根因**：`static/` 目录被整体挂载 → 每个页面都有内容完全相同的孪生 URL
+（`/static/index.html`、`/static/about.html`、`/static/faq.html`，实测均 200）。
+Google 把 `/` 与 `/static/index.html` 归为一组，**自己选了另一个作规范**。
+时间线吻合：canonical 标签是 2026-07-22 才加的（见 SEO/GSC 那次），在那之前 Google
+早已完成聚类并选定，后加的 canonical 只是"建议"，被否决。
+**修法（v124）**：三个 `/static/*.html` **301** 到规范 URL。canonical 是建议、可被否决；
+301 是指令 —— 重复 URL 直接消失，Google 没得选。只跳 `.html`，css/js/图标不受影响。
+**⚠️ 两个坑已写进代码注释与测试**：
+  1. **不要改用 robots.txt Disallow `/static/`** —— 那会让 Google 爬不到这些页面、
+     **因此也读不到 canonical / 看不到 301**，重复页反而可能留在索引里（Google 明确不推荐）。
+  2. **跳转路由必须注册在 `app.mount("/static", ...)` 之前** —— 路由按注册顺序匹配，
+     写在后面不会报错，只是 StaticFiles 抢先返回 200、跳转静默失效，几周后才在 GSC 上看到后果。
+     已用变异测试验证 `tests/smoke/seo-canonical.spec.ts` 能抓到这个顺序错误。
+**另一封邮件「Alternative page with proper canonical tag」是正常的** —— 那是 Google 在说
+"发现了重复页、读到了 canonical、已正确归位"，不是错误，无需处理。
 
 **`决策` 版本号体系整顿：cache-bust 自动化，版本号收敛为一个（v123）**
 根因不是"编号乱"，而是**两个语义不同、长得一样、量级又接近的计数器**（功能号 v122 /
