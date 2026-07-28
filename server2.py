@@ -84,13 +84,6 @@ def get_project_id():
 # （v120 首版用的是 == 'production'，结果生产上该变量没设，文档意外敞开。）
 SHOW_DOCS = os.getenv('DEPLOY_ENVIRONMENT', 'production').lower() == 'development'
 
-# ⚠️ 注意：下面这个和 SHOW_DOCS 的默认方向**故意相反**，不是笔误。
-# SHOW_DOCS 是安全开关，必须 fail-closed（缺失时按生产、关文档）。
-# IS_PRODUCTION 用于"非规范域名 301"（v125），必须 fail-**open**：本地开发时该变量是没设的
-# （代码不加载 .env，见 CLAUDE.md），若也默认成 production，本地每个请求都会被 301 到
-# voicespark.app，本地开发直接废掉。所以这里要求**显式**等于 'production' 才算生产。
-IS_PRODUCTION = os.getenv('DEPLOY_ENVIRONMENT', '').strip().lower() == 'production'
-
 app = FastAPI(
     title="VoiceSpark",
     description="语音转文字服务（OpenAI Whisper / AI Builder Space / Google STT / Deepgram）",
@@ -197,23 +190,40 @@ async def rate_limit_middleware(request: Request, call_next):
 # ⚠️ v124 修的 `/static/*.html` 重复**不是**这个问题的成因（当时是推断，被 URL Inspection
 # 推翻）。那个修复本身是对的、留着，但真正让首页不被索引的是本条。
 #
+# ⚠️⚠️ 判据**故意不用 `DEPLOY_ENVIRONMENT`** —— 这是本次修复踩过的坑（v125 首版）：
+#   **生产环境根本没有设这个变量**（见上方 SHOW_DOCS 的注释：「v120 首版用的是
+#   == 'production'，结果生产上该变量没设」）。首版按 `== 'production'` 判断生产，于是中间件
+#   在线上一次都没触发，部署后 Railway 域名照样返回 200。
+#   → 改成**只看 Host**：不依赖任何环境变量，配置漏设也不会失效。
+#
 # 设计要点：
-#   · **只在 production 生效** —— dev 环境 `web-dev-9821.up.railway.app` 是独立环境，不能跳。
+#   · **只跳 Railway 自动分配的 `*.up.railway.app` 域名**，且**排除 dev 域名**
+#     （`web-dev-9821` 是独立环境，跳到生产会毁掉 dev 验证流程）。
+#   · **未知 Host 一律不跳**（fail-open）—— 宁可漏跳，也不要把没预料到的流量甩走。
+#   · **本地 Host 永不跳** —— 本地开发不受任何影响。
 #   · **只跳 GET/HEAD** —— SEO 只关心这两个；避免把别人对 Railway 域名的 POST 调用改成 GET。
 #   · railway.json 未配 `healthcheckPath`（已确认），故 Railway 不做 HTTP 健康检查，重定向安全。
 #   · 注册在限流中间件**之后** —— Starlette 里后注册的更靠外、先执行，这样跳转不消耗限流额度。
 # ================================================================================
 CANONICAL_HOST = "voicespark.app"
-
-# 双保险：即使有人在本地误设 DEPLOY_ENVIRONMENT=production，也绝不把本地请求跳走
+DEV_HOST = "web-dev-9821.up.railway.app"      # dev 环境，绝不能跳到生产
+_RAILWAY_SUFFIX = ".up.railway.app"
 _LOCAL_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1", "testserver"}
+
+
+def _should_redirect_to_canonical(host: str) -> bool:
+    """该 Host 是否应被 301 到规范域名。只看 Host，不看环境变量。"""
+    if not host or host == CANONICAL_HOST or host in _LOCAL_HOSTS or host == DEV_HOST:
+        return False
+    # 只处理 Railway 自动分配的域名；其余未知 Host 一律放行
+    return host.endswith(_RAILWAY_SUFFIX)
 
 
 @app.middleware("http")
 async def canonical_host_middleware(request: Request, call_next):
-    if IS_PRODUCTION and request.method in ("GET", "HEAD"):
+    if request.method in ("GET", "HEAD"):
         host = (request.headers.get("host") or "").split(":")[0].lower()
-        if host and host != CANONICAL_HOST and host not in _LOCAL_HOSTS:
+        if _should_redirect_to_canonical(host):
             target = f"https://{CANONICAL_HOST}{request.url.path}"
             if request.url.query:
                 target += f"?{request.url.query}"

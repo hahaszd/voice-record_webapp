@@ -10,27 +10,20 @@ Railway 除自定义域名外还会分配一个 `*.up.railway.app` 域名，两�
 Railway 域名返回的 HTML **已经**声明 canonical 指向 voicespark.app，Google 依然选了它——
 **canonical 只是建议，301 才是指令**。
 
-这些测试守住三件容易出事的事：
-  1. 生产下非规范 Host 必须 301（否则重复域名回来，首页可能再次掉出索引）；
-  2. **非生产环境绝不能跳** —— 本地不设 DEPLOY_ENVIRONMENT，若默认成 production，
-     本地每个请求都会被跳到线上，开发直接废掉；
-  3. dev 环境（`web-dev-9821.up.railway.app`）是独立环境，不能被跳到生产域名。
+⚠️⚠️ **本文件存在的头号理由：判据绝不能依赖 `DEPLOY_ENVIRONMENT`。**
+v125 首版按 `os.getenv('DEPLOY_ENVIRONMENT') == 'production'` 判断生产，
+**部署后线上一次都没触发** —— 因为**生产环境根本没设这个变量**
+（`server2.py` 里 SHOW_DOCS 的注释早就写着：「v120 首版用的是 == 'production'，
+结果生产上该变量没设」）。同一个坑在同一个仓库里踩了两次。
+现在改为**只看 Host**，配置漏设也不会失效；下面有用例专门钉死这一点。
 
-直接调中间件，不起服务器、不打网络。
+直接调判定函数与中间件，不起服务、不打网络、不依赖任何环境变量。
 """
-import importlib
+import os
 
 import pytest
 
-
-def _load_server(monkeypatch, deploy_env):
-    """按指定 DEPLOY_ENVIRONMENT 重新导入 server2，拿到对应的 IS_PRODUCTION。"""
-    if deploy_env is None:
-        monkeypatch.delenv("DEPLOY_ENVIRONMENT", raising=False)
-    else:
-        monkeypatch.setenv("DEPLOY_ENVIRONMENT", deploy_env)
-    import server2
-    return importlib.reload(server2)
+import server2 as srv
 
 
 class _FakeURL:
@@ -46,7 +39,7 @@ class _FakeRequest:
         self.method = method
 
 
-async def _call(srv, request):
+async def _call(request):
     """跑一次 canonical 中间件；未拦截时 call_next 返回哨兵对象。"""
     sentinel = object()
 
@@ -57,67 +50,90 @@ async def _call(srv, request):
     return None if result is sentinel else result
 
 
-class TestProduction:
-    """DEPLOY_ENVIRONMENT=production"""
+PROD_RAILWAY = "web-production-37d30.up.railway.app"
 
-    @pytest.fixture
-    def srv(self, monkeypatch):
-        return _load_server(monkeypatch, "production")
 
-    async def test_railway生产域名被301到规范域名(self, srv):
-        r = await _call(srv, _FakeRequest("web-production-37d30.up.railway.app"))
+class TestShouldRedirect:
+    """纯判定函数 —— 只看 Host"""
+
+    def test_railway生产域名要跳(self):
+        assert srv._should_redirect_to_canonical(PROD_RAILWAY) is True
+
+    def test_规范域名不跳(self):
+        assert srv._should_redirect_to_canonical(srv.CANONICAL_HOST) is False
+
+    def test_dev域名不跳(self):
+        """`web-dev-9821.up.railway.app` 是独立 dev 环境，跳到生产会毁掉 dev 验证流程。"""
+        assert srv._should_redirect_to_canonical(srv.DEV_HOST) is False
+
+    def test_本地Host一律不跳(self):
+        for host in ("localhost", "127.0.0.1", "0.0.0.0", "testserver"):
+            assert srv._should_redirect_to_canonical(host) is False, host
+
+    def test_未知外部域名不跳_fail_open(self):
+        """宁可漏跳，也不要把没预料到的流量甩走（例如将来新增的自定义域名）。"""
+        for host in ("example.com", "some-cdn.net", "voicespark.app.evil.com"):
+            assert srv._should_redirect_to_canonical(host) is False, host
+
+    def test_空Host不跳(self):
+        assert srv._should_redirect_to_canonical("") is False
+
+    def test_任意其它railway自动域名都跳(self):
+        """Railway 若重新生成域名（名字会变），规则仍然生效。"""
+        assert srv._should_redirect_to_canonical("web-production-abcde.up.railway.app") is True
+
+
+class TestMiddleware:
+
+    async def test_railway域名被301到规范域名(self):
+        r = await _call(_FakeRequest(PROD_RAILWAY))
         assert r is not None and r.status_code == 301
         assert r.headers["location"] == "https://voicespark.app/"
 
-    async def test_跳转保留路径与query(self, srv):
-        r = await _call(srv, _FakeRequest("web-production-37d30.up.railway.app",
-                                          path="/faq.html", query="a=1&b=2"))
+    async def test_跳转保留路径与query(self):
+        r = await _call(_FakeRequest(PROD_RAILWAY, path="/faq.html", query="a=1&b=2"))
         assert r.headers["location"] == "https://voicespark.app/faq.html?a=1&b=2"
 
-    async def test_规范域名本身不跳(self, srv):
-        assert await _call(srv, _FakeRequest("voicespark.app")) is None
+    async def test_带端口的Host也能正确判定(self):
+        assert await _call(_FakeRequest("voicespark.app:443")) is None
+        assert await _call(_FakeRequest(f"{PROD_RAILWAY}:443")) is not None
 
-    async def test_带端口的规范域名不跳(self, srv):
-        assert await _call(srv, _FakeRequest("voicespark.app:443")) is None
+    async def test_规范域名与本地不跳(self):
+        assert await _call(_FakeRequest("voicespark.app")) is None
+        assert await _call(_FakeRequest("localhost:8000")) is None
 
-    async def test_localhost绝不被跳(self, srv):
-        """双保险：即使有人在本地误设 DEPLOY_ENVIRONMENT=production，本地也不能被跳走。"""
-        for host in ("localhost", "127.0.0.1", "localhost:8000", "0.0.0.0", "testserver"):
-            assert await _call(srv, _FakeRequest(host)) is None, f"{host} 不该被跳转"
-
-    async def test_只跳GET和HEAD_不改写其它方法(self, srv):
-        """301 会让部分客户端把 POST 改成 GET。SEO 只关心 GET/HEAD，别动其它方法。"""
+    async def test_只跳GET和HEAD(self):
+        """301 会让部分客户端把 POST 改写成 GET。SEO 只关心 GET/HEAD，别动其它方法。"""
         for method in ("POST", "PUT", "PATCH", "DELETE", "OPTIONS"):
-            r = await _call(srv, _FakeRequest("web-production-37d30.up.railway.app",
-                                              path="/transcribe-segment", method=method))
-            assert r is None, f"{method} 不该被 301"
-        assert await _call(srv, _FakeRequest("web-production-37d30.up.railway.app",
-                                             method="HEAD")) is not None
+            assert await _call(_FakeRequest(PROD_RAILWAY, path="/transcribe-segment",
+                                            method=method)) is None, method
+        assert await _call(_FakeRequest(PROD_RAILWAY, method="HEAD")) is not None
 
-    async def test_任意非规范域名都跳_不是只针对railway(self, srv):
-        r = await _call(srv, _FakeRequest("some-other-host.example.com"))
+
+class TestNoEnvDependency:
+    """⚠️ 回归测试：判据绝不能依赖 DEPLOY_ENVIRONMENT（v125 首版就栽在这）"""
+
+    @pytest.mark.parametrize("env", [None, "", "production", "development", "staging", "PRODUCTION"])
+    async def test_任何DEPLOY_ENVIRONMENT取值下行为都不变(self, monkeypatch, env):
+        """生产环境实际上**没有**设这个变量。行为必须与它完全无关 ——
+        否则配置漏设时中间件静默失效，线上重复域名照旧、首页继续掉索引。"""
+        if env is None:
+            monkeypatch.delenv("DEPLOY_ENVIRONMENT", raising=False)
+        else:
+            monkeypatch.setenv("DEPLOY_ENVIRONMENT", env)
+
+        assert srv._should_redirect_to_canonical(PROD_RAILWAY) is True
+        assert srv._should_redirect_to_canonical(srv.CANONICAL_HOST) is False
+        assert srv._should_redirect_to_canonical("localhost") is False
+        r = await _call(_FakeRequest(PROD_RAILWAY))
         assert r is not None and r.status_code == 301
 
-
-class TestNonProduction:
-    """非生产环境（本地、dev）—— 一律不跳"""
-
-    async def test_环境变量未设时不跳(self, monkeypatch):
-        """本地跑 server2.py 就是这种情形（代码不加载 .env）。
-        若这里跳了，本地开发会被整个重定向到线上。"""
-        srv = _load_server(monkeypatch, None)
-        assert srv.IS_PRODUCTION is False
-        assert await _call(srv, _FakeRequest("web-production-37d30.up.railway.app")) is None
-
-    async def test_dev环境不跳(self, monkeypatch):
-        """`web-dev-9821.up.railway.app` 是独立的 dev 环境，跳到生产会毁掉 dev 验证流程。"""
-        srv = _load_server(monkeypatch, "development")
-        assert await _call(srv, _FakeRequest("web-dev-9821.up.railway.app")) is None
-
-    async def test_IS_PRODUCTION与SHOW_DOCS默认方向相反是有意为之(self, monkeypatch):
-        """SHOW_DOCS 是安全开关，fail-closed（缺失按生产、关文档）；
-        IS_PRODUCTION 用于重定向，必须 fail-open（缺失按非生产、不跳）。
-        两者默认方向相反不是笔误——写反任意一个都会出事。"""
-        srv = _load_server(monkeypatch, None)
-        assert srv.IS_PRODUCTION is False, "缺失时必须按非生产，否则本地被跳走"
-        assert srv.SHOW_DOCS is False, "缺失时必须关闭 API 文档"
+    def test_源码中该中间件不得引用DEPLOY_ENVIRONMENT(self):
+        """静态检查：把环境判断重新引进来会让线上再次静默失效。"""
+        src = open(os.path.join(os.path.dirname(__file__), "..", "..", "server2.py"),
+                   encoding="utf-8").read()
+        start = src.index("def _should_redirect_to_canonical")
+        end = src.index("return await call_next(request)", start)
+        block = src[start:end]
+        assert "DEPLOY_ENVIRONMENT" not in block, \
+            "规范域名判定不得依赖 DEPLOY_ENVIRONMENT —— 生产上该变量没设，会导致静默失效"

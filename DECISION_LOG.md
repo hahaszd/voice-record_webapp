@@ -59,8 +59,9 @@
 
 - **非规范域名一律 301 到 `voicespark.app`**（v125，`canonical_host_middleware`）。
   Railway 会额外分配 `*.up.railway.app` 域名，内容相同 → Google 曾选它当规范、**导致首页不被索引**。
-  ⚠️ `IS_PRODUCTION` 是 **fail-open**（与 `SHOW_DOCS` 的 fail-closed 方向相反，故意的）：
-  本地不设该变量，写成 fail-closed 会把本地请求全部跳到线上。只跳 GET/HEAD，localhost 有白名单兜底。
+  ⚠️ **判据只看 Host，绝不依赖 `DEPLOY_ENVIRONMENT` —— 生产上那个变量根本没设**
+  （v120 与 v125 首版都栽在这，已有回归测试 + 源码静态检查钉死）。
+  只跳 `*.up.railway.app` 且排除 dev 域名；未知 Host 放行；本地永不跳；只跳 GET/HEAD。
 - **`/static/*.html` 一律 301 到规范 URL**（v124）。因为 `static/` 整目录挂载会给每个页面造出
   内容相同的孪生 URL，Google 曾据此**不索引首页**。**跳转路由必须注册在
   `app.mount("/static", ...)` 之前**，否则被 StaticFiles 抢先、静默失效。
@@ -128,12 +129,16 @@ Referring page           : https://web-production-37d30.up.railway.app/ 等外�
 指向 voicespark.app，Google 依然选了它 —— **再次印证：canonical 只是建议，301 才是指令**。
 **修法（v125）**：`canonical_host_middleware` —— 生产环境下非规范 Host 的 GET/HEAD 一律 301 到
 `voicespark.app`（保留路径与 query）。
-**⚠️ 三个设计要点（都已被变异测试守住）**：
-  1. **`IS_PRODUCTION` 必须 fail-OPEN，与 `SHOW_DOCS` 的 fail-closed 方向故意相反。**
-     本地不加载 `.env`、该变量未设；若照抄 SHOW_DOCS 的 `default='production'`，
-     **本地每个请求都会被 301 到线上**，开发直接废掉。
-  2. **只跳 GET/HEAD** —— 301 会让部分客户端把 POST 改成 GET。
-  3. **localhost 白名单兜底** —— 即使有人在本地误设 `DEPLOY_ENVIRONMENT=production` 也不跳。
+**⚠️⚠️ v125 首版是错的，部署后线上一次都没触发（同一个坑第二次）**：首版按
+`os.getenv('DEPLOY_ENVIRONMENT') == 'production'` 判断生产，但**生产环境根本没设这个变量**
+—— `server2.py` 里 SHOW_DOCS 的注释早就写着「v120 首版用的是 == 'production'，结果生产上
+该变量没设」。合 main 后轮询 5 分钟，Railway 域名始终 200，才发现。
+**改为只看 Host、完全不依赖环境变量**：`_should_redirect_to_canonical()` ——
+只跳 `*.up.railway.app` 且排除 dev 域名；未知 Host 一律放行（fail-open）；本地 Host 永不跳。
+已加回归用例钉死这点：参数化跑遍 `DEPLOY_ENVIRONMENT` 的各种取值断言行为不变，
+外加一条**源码静态检查**断言该中间件不得出现 `DEPLOY_ENVIRONMENT`。
+**其余设计要点**：只跳 GET/HEAD（301 会让部分客户端把 POST 改成 GET）；
+dev 域名 `web-dev-9821` 显式排除（跳到生产会毁掉 dev 验证流程）。
   另：`railway.json` 未配 `healthcheckPath`（已确认），Railway 不做 HTTP 健康检查，重定向安全；
   dev 环境 `web-dev-9821.up.railway.app` 因非 production 不受影响。
 **教训**：这正是"未确认的推断"该被标注出来的价值 —— 当天把它记成"推断不是实测"并要求 owner
