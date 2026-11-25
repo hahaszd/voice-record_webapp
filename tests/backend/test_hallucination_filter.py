@@ -179,6 +179,42 @@ class TestSegmentFilter:
         assert "待测" in af._filter_hallucinated_segments(late), \
             "start>=3.0 的第 0 段不应按开头严判（VAD 裁掉静音后的正常语音会被误删）"
 
+    # 口语中文常见的"中等"置信度：在 v122 开头严判下会命中（avg_logprob 偏低），
+    # 在非开头的两指标合取规则下不会命中。用来模拟真实录音的窗口指标。
+    MEDIOCRE = dict(no_speech=0.1, compression=1.3, logprob=-0.85)
+
+    def test_v126真实案例_停顿前的整段语音不得被开头严判删除(self):
+        """2026-11-25 用户报告：说话中间停顿三五秒再继续，转录结果只剩停顿之后的内容。
+
+        机理：whisper-1 verbose_json 的三项指标是**按 30s 解码窗口共享**的（实测同窗口
+        所有段落数值完全相同），停顿让 Whisper 把停顿前的整段话切成第 0 段。所以两段
+        **指标相同**——旧逻辑仅因"第 0 段"就单指标删掉了停顿前的全部内容。"""
+        before = "我今天想记录一个关于产品的想法，就是我们可以把录音的功能做得更简单一些"
+        after = "然后第二点是转录完成以后自动复制到剪贴板"
+        segments = [
+            seg(before, start=0.0, end=12.5, **self.MEDIOCRE),
+            seg(after, start=20.6, end=29.6, **self.MEDIOCRE),
+        ]
+        out = af._filter_hallucinated_segments(segments)
+        assert before in out, "停顿前的真实语音被删了 —— 这就是 v126 修的 bug"
+        assert after in out
+
+    def test_v126_共享指标下开头短碎词仍被剥离(self):
+        """v122 的目标形状在**真实（共享指标）**条件下依然要能剥：短碎词 + 正文。"""
+        segments = [
+            seg("響鐘 響鐘 栏目 主席", start=0.0, end=1.5, **self.MEDIOCRE),
+            seg("我现在先把这个想法记下来，然后再看看要不要展开", start=1.5, **self.MEDIOCRE),
+        ]
+        out = af._filter_hallucinated_segments(segments)
+        assert "響鐘" not in out
+        assert out == "我现在先把这个想法记下来，然后再看看要不要展开"
+
+    def test_v126_长的第0段即使明显是垃圾也只按非开头规则判(self):
+        """长段落不走开头严判，但非开头规则仍然生效 —— 极端垃圾照样被丢。"""
+        long_junk = "字" * 40
+        segments = [seg(long_junk, start=0.0, **JUNK), seg("正常语句", start=20.0, **GOOD)]
+        assert af._filter_hallucinated_segments(segments) == "正常语句"
+
     def test_空段落列表会抛异常_且该路径在生产中不可达(self):
         """记录真实行为，而不是想当然的预期。
 

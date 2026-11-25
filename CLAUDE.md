@@ -131,17 +131,24 @@ Whisper invents text when fed silence/noise. Two separate defenses, both in `api
    and never drop anything; it now filters to the same standard). Drops per-segment on
    `no_speech_prob` / `compression_ratio` / `avg_logprob`. **Position-aware**: segment 0 starting
    <3.0s uses stricter *single-metric* thresholds (Whisper tends to emit a few junk fragments at the
-   very start then transcribe normally); later segments keep v114's *two-metrics-must-both-hit* rule
-   so real speech after a long silence isn't deleted. Raises if *every* segment is filtered → falls
-   through to the next API.
+   very start then transcribe normally) — **but only if segment 0 is a short fragment** (≤
+   `_LEADING_FRAGMENT_MAX_CHARS` = 10 meaningful chars, v126); later segments keep v114's
+   *two-metrics-must-both-hit* rule so real speech after a long silence isn't deleted. Raises if
+   *every* segment is filtered → falls through to the next API.
+   - ⚠️ **The three metrics are per 30s decode window, not per segment.** whisper-1 gives every
+     segment in a window the identical `no_speech_prob`/`avg_logprob`/`compression_ratio`
+     (measured 2026-11-25). So they can't tell segment 0 from segment 1. Without the v126 length
+     gate, a pause mid-speech (Whisper makes everything before the pause segment 0) + a slightly
+     low-confidence window deleted **all content before the pause**. Any position-based rule must
+     use segment-local evidence (text length, duration), not these metrics alone.
 
 ⚠️ Two things to know before touching this:
 - The leading-segment thresholds are **unvalidated guesses** (no real Railway confidence data yet) —
   see the `⚠️` over-filtering log it emits when >half of ≥5 segments are dropped.
 - **Layer 2 only works with `response_format=verbose_json`, which only `whisper-1` supports.** The
   `gpt-4o-*-transcribe` family returns `json`/`text` only, so swapping the mic model would silently
-  disable segment filtering (layer 1 would still work). It has `logprobs` instead. Also **untested**
-  — EVAL_CHECKLIST **N1** is still ⬜.
+  disable segment filtering (layer 1 would still work). It has `logprobs` instead. Covered by
+  `tests/backend/test_hallucination_filter.py` (EVAL_CHECKLIST **N1** ✅, incl. v126 shared-metric cases).
 
 ## Running locally
 
@@ -218,7 +225,7 @@ Not wired into the Playwright precommit — run manually (or add to CI) when tou
   - **Frozen historical logs (reference only, do NOT retro-edit):** everything else (`AUTO_COPY_*.md`, `V1xx_*.md`, `TEST_REPORT_*.md`, `DURATION_BUTTON_WARNING.md`, etc.) — snapshots of a past change. When code and a frozen log disagree, the **code wins** and the log stays as-is (it's history).
 - **Versioning — there is exactly ONE version number now (v123 onward).**
   - `APP_VERSION` in `server2.py` is the **single source of truth** for the feature version
-    (currently `"v123"`). Change it there and nowhere else. `vNNN` tags in code comments/UI mark
+    (currently `"v126"`). Change it there and nowhere else. `vNNN` tags in code comments/UI mark
     *when and why* a piece of logic was added — they're archaeology pointers into
     `VERSION_HISTORY.md`. **Never renumber historical `vNNN` comments** (~205 of them); they'd
     stop matching the history.
