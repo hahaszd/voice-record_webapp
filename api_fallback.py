@@ -21,6 +21,7 @@ API Fallback Module for Speech-to-Text
 """
 
 import os
+import re
 import time
 import json
 import base64
@@ -573,6 +574,11 @@ async def _transcribe_deepgram(
 # 共享：Whisper verbose_json 段落级幻觉过滤（OpenAI 与 AI Builder 共用）
 # ================================================================================
 
+# v126：开头段落严判只适用于不超过这么多个"有效字符"（去掉空白/标点）的短碎片。
+# v122 的真实案例"響鐘 響鐘 栏目 主席"= 8 个；停顿前的一整句真实语音远超这个数。
+_LEADING_FRAGMENT_MAX_CHARS = 10
+
+
 def _filter_hallucinated_segments(segments, log_tag='FILTER'):
     """
     过滤 Whisper verbose_json 的幻觉/非语音段落，重新拼接为干净文本。
@@ -586,6 +592,10 @@ def _filter_hallucinated_segments(segments, log_tag='FILTER'):
     实际命中情况，后续按真实 Railway 日志数据再调整。
     非开头段落维持 v114 的"两指标同时满足才丢弃"不变，避免重蹈"长静音后
     真实语音被单指标整段误删"的覆辙。
+
+    v126：开头严判再加一道门槛——第 0 段的有效字符数 ≤ _LEADING_FRAGMENT_MAX_CHARS。
+    原因：这三个指标是按 30s 解码窗口共享的，不是段落自己的；用户中间停顿时，
+    停顿前的整段话就是第 0 段，v122 会在窗口置信度稍低时把它整段删掉。
 
     之前只有 _transcribe_openai 有这层过滤，_transcribe_ai_builder 只是把
     no_speech_prob 打进日志、从不据此丢段落——同一份 verbose_json 响应，
@@ -609,7 +619,16 @@ def _filter_hallucinated_segments(segments, log_tag='FILTER'):
 
         is_hallucination = False
         reason = ''
-        is_leading = (i == 0 and start < 3.0)
+        # v126：开头严判只针对"短碎片"。whisper-1 的 no_speech_prob / avg_logprob /
+        # compression_ratio 是**按 30s 解码窗口算的、同窗口内所有段落共享同一组值**
+        # （2026-11-25 实测：同一窗口 7 个段落三项指标完全相同）——它们根本区分不了
+        # 第 0 段和第 1 段。而用户说话中间停顿几秒时，Whisper 会把停顿前的整段话
+        # 切成第 0 段；窗口置信度稍低（口语中文 avg_logprob < -0.7 很常见）就会把
+        # 停顿前的全部内容删掉、只剩停顿后的（用户报告，2026-11-25）。
+        # v122 要剥的是"響鐘 響鐘 栏目 主席"这种几个字的碎词，所以加上文本长度门槛：
+        # 只有足够短的开头段落才走严判，长段落一律按非开头的宽松规则。
+        meaningful_len = len(re.sub(r'[\W_]', '', seg_text))
+        is_leading = (i == 0 and start < 3.0 and meaningful_len <= _LEADING_FRAGMENT_MAX_CHARS)
 
         if is_leading:
             if compression_ratio > 2.0:

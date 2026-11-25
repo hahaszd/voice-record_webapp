@@ -41,6 +41,11 @@
   绝大多数中文用户能读繁體；**能读简体的人基本都能读繁體，反之未必**，所以输出繁體覆盖面反而更广。
 - **A/B 必须按生产参数跑**（whisper-1 要带 `temperature=0`），否则结论失真。工具：`test_model_ab.py`。
 
+- **whisper-1 `verbose_json` 的 `no_speech_prob` / `avg_logprob` / `compression_ratio` 是按 30s 解码窗口共享的，不是段落自己的**（2026-11-25 实测：
+  TTS"语音-停顿-语音"打 whisper-1，同一窗口内 2~7 个段落三项数值完全相同；跨窗口才变）。→ **不能用这三项区分同窗口内的段落**，v122 开头严判就是栽在这（v126 修）。
+  同次实测：说话中间停顿 4/8/15s，Whisper 都把停顿前的整段话切成第 0 段。
+  **未覆盖**：TTS 语音太干净（avg_logprob≈-0.1），真实口语录音的典型指标值仍没有数据。
+
 ### OpenAI API Key
 
 - **全项目只调一个 endpoint**：`POST /v1/audio/transcriptions`，读取点只有 `api_fallback.py:245`（diarize）和 `:831`（whisper-1），均为 `os.environ.get`。**无硬编码、无散落读取、git 全历史无泄露**（`OPENAI_API_SETUP_GUIDE.md:99` 那个 `sk-proj-abcdef...` 是占位符）。
